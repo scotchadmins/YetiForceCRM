@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 $sitebar-border: 1px solid #ccc;
 $modal-body-paddings: 2rem;
 $h-modal-header: calculate-rem(55px);
@@ -16,10 +16,21 @@ $h-calendar-form-actions: calculate-rem(49px);
 			padding-right: 1rem !important;
 		}
 	}
+	.fc-col-header,
+	.fc-scrollgrid-sync-table,
+	.fc-daygrid-body-unbalanced,
+	.fc-timegrid-body,
+	.fc-timegrid-slots table,
+	.fc-timegrid-cols table {
+		width: 100% !important;
+	}
 }
 
 .o-calendar__container {
 	@extend .pt-2;
+	.fc-header-toolbar.fc-toolbar {
+		overflow: unset !important;
+	}
 }
 
 .o-label-container {
@@ -93,6 +104,9 @@ $h-calendar-form-actions: calculate-rem(49px);
 	.siteBarRight {
 		width: auto !important;
 	}
+	.hideSiteBar {
+		right: 0 !important;
+	}
 }
 
 .hideSiteBar {
@@ -148,9 +162,20 @@ $h-calendar-form-actions: calculate-rem(49px);
 		background: $count-badge-color;
 	}
 
+	.fc-v-event,
+	.fc-h-event {
+		color: white;
+		.fc-event-main {
+			color: inherit;
+		}
+	}
+
 	.o-calendar {
 		&__container {
 			@extend .pt-0;
+		}
+		&__filter {
+			display: flex;
 		}
 
 		&__clear-btn,
@@ -198,20 +223,15 @@ $h-calendar-form-actions: calculate-rem(49px);
 				padding: 6px 3px;
 				height: 100%;
 			}
-
 			.sub-record-content.active {
-				background-color: inherit !important;
-				cursor: default;
+				border-width: 2px;
+				border-bottom-width: 0px;
 			}
 		}
 
 		.sub-date-name {
 			margin-bottom: 2px;
 		}
-	}
-
-	.fc-state-default .fc-button-effect {
-		top: 100% !important;
 	}
 
 	.fc-event-style1 {
@@ -330,10 +350,9 @@ $h-calendar-form-actions: calculate-rem(49px);
 		overflow-y: visible !important;
 	}
 
-	.fc-button {
+	.fc .fc-button {
 		/* FullCalendar buttons */
 		display: inline-block;
-		padding: 6px 0.4em !important;
 		margin-bottom: 0;
 		font-size: 14px;
 		font-weight: normal;
@@ -360,7 +379,7 @@ $h-calendar-form-actions: calculate-rem(49px);
 			}
 		}
 
-		&.fc-state-active .fc-button-inner .fc-button-content,
+		&.fc-button-active .fc-button-inner .fc-button-content,
 		&:active .fc-button-inner .fc-button-content {
 			color: #000 !important;
 			background: transparent;
@@ -373,7 +392,7 @@ $h-calendar-form-actions: calculate-rem(49px);
 		line-height: 20px;
 	}
 
-	.fc-widget-header {
+	.fc-col-header-cell {
 		th {
 			padding: 4px 0 !important;
 		}
@@ -420,11 +439,11 @@ $h-calendar-form-actions: calculate-rem(49px);
 				height: calculate-rem(30px) !important;
 				border: none;
 				box-shadow: none;
-				padding: calculate-rem(5px) calculate-rem(18px) !important;
+				padding: calculate-rem(5px) calculate-rem(10px) !important;
 			}
 
-			.fc-state-active,
-			.fc-today-button.fc-state-disabled {
+			.fc-button-active,
+			.fc-today-button:disabled {
 				z-index: 4;
 				background: #337ab7 !important;
 				color: #fff !important;
@@ -444,7 +463,7 @@ $h-calendar-form-actions: calculate-rem(49px);
 				box-shadow: none;
 				padding: 0;
 
-				&.fc-state-disabled {
+				&:disabled {
 					text-shadow: none;
 					cursor: unset;
 					opacity: 1;
@@ -472,6 +491,8 @@ $h-calendar-form-actions: calculate-rem(49px);
 					background: none;
 					border: none;
 					box-shadow: none;
+					color: #000;
+					padding: 0 5px;
 				}
 
 				display: flex;
@@ -482,6 +503,14 @@ $h-calendar-form-actions: calculate-rem(49px);
 					margin-top: calculate-rem(3px);
 					text-transform: uppercase;
 				}
+			}
+			.fc-prev-button span,
+			.fc-prevYear-button span {
+				margin-bottom: 4px;
+			}
+			.fc-next-button span,
+			.fc-nextYear-button span {
+				margin-top: 4px;
 			}
 		}
 	}
@@ -499,14 +528,16 @@ $h-calendar-form-actions: calculate-rem(49px);
 		min-height: 9em !important;
 	}
 
-	.fc-day-top {
-		.fc-day-number {
+	.fc-daygrid-day-top {
+		.fc-daygrid-day-number {
 			font-weight: bold;
-			font-size: 24px;
+			font-size: 20px;
+			line-height: 1.1;
 			color: #c1c1c1;
+			padding: 0 2px;
 		}
 
-		&.fc-today {
+		&.fc-day-today {
 			.fc-day-number {
 				color: #546e7a;
 			}
@@ -579,7 +610,7 @@ $h-calendar-form-actions: calculate-rem(49px);
 				min-height: 2.5em;
 			}
 
-			.fc-day-header.fc-widget-header {
+			.fc-col-header-cell {
 				padding: calculate-rem(2px) 0 !important;
 				font-size: $year-month-font-size;
 				background: $year-month-border-color;
@@ -726,8 +757,7 @@ $h-calendar-form-actions: calculate-rem(49px);
 
 				@at-root .c-calendar-quickcreate #{&} {
 					height: calc(
-						100vh - #{$h-footer} - #{$h-header} - #{$h-calendar-form-actions} - #{$h-modal-header} -
-							#{$modal-body-paddings}
+						100vh - #{$h-footer} - #{$h-header} - #{$h-calendar-form-actions} - #{$h-modal-header} - #{$modal-body-paddings}
 					);
 					overflow-y: auto;
 					overflow-x: hidden;
@@ -754,8 +784,7 @@ $h-calendar-form-actions: calculate-rem(49px);
 				top: $h-header;
 				right: calc(25% - 1px);
 				z-index: 100;
-				//border-left: 1px solid material-color('grey', '300');
-				//border-radius: $tab-left-border-radius 0 0 $tab-left-border-radius;
+				border-radius: $tab-left-border-radius 0 0 $tab-left-border-radius;
 				font-size: calculate-rem(13px);
 
 				@at-root .c-menu--open & {
@@ -808,15 +837,13 @@ $h-calendar-form-actions: calculate-rem(49px);
 		}
 		.user-info--active .c-calendar-quickcreate .o-calendar__form__wrapper {
 			height: calc(
-				100vh - #{$h-footer-user-info} - #{$h-header} - #{$h-calendar-form-actions} - #{$h-modal-header} -
-					#{$modal-body-paddings}
+				100vh - #{$h-footer-user-info} - #{$h-header} - #{$h-calendar-form-actions} - #{$h-modal-header} - #{$modal-body-paddings}
 			);
 		}
 
 		.limited-footer--active .c-calendar-quickcreate .o-calendar__form__wrapper {
 			height: calc(
-				100vh - #{$h-footer-limited} - #{$h-header} - #{$h-calendar-form-actions} - #{$h-modal-header} -
-					#{$modal-body-paddings}
+				100vh - #{$h-footer-limited} - #{$h-header} - #{$h-calendar-form-actions} - #{$h-modal-header} - #{$modal-body-paddings}
 			);
 		}
 
@@ -880,6 +907,6 @@ $h-calendar-form-actions: calculate-rem(49px);
 	right: 0;
 }
 
-.fc-day-top.fc-mon {
+.fc-daygrid-top.fc-mon {
 	position: relative;
 }

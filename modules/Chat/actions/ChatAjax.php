@@ -5,11 +5,12 @@
  *
  * @package Action
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Arkadiusz Adach <a.adach@yetiforce.com>
  * @author    Tomasz Poradzewski <t.poradzewski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Chat_ChatAjax_Action extends \App\Controller\Action
 {
@@ -38,17 +39,13 @@ class Chat_ChatAjax_Action extends \App\Controller\Action
 		$this->exposeMethod('addParticipant');
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function isSessionExtend(App\Request $request)
 	{
 		return false;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		$userPrivileges = \Users_Privileges_Model::getCurrentUserPrivilegesModel();
@@ -250,7 +247,7 @@ class Chat_ChatAjax_Action extends \App\Controller\Action
 			throw new \App\Exceptions\IllegalValue('ERR_NOT_ALLOWED_VALUE', 406);
 		}
 		if ('private' === $roomType && !$chat->isPrivateRoomAllowed($recordId)) {
-			$defaultRoom = $chat->setCurrentRoomDefault();
+			$defaultRoom = \App\Chat::setCurrentRoomDefault();
 			$result = [
 				'message' => 'JS_CHAT_ROOM_NOT_ALLOWED',
 				'data' => $this->setMessagesResult(new App\Request(['roomType' => $defaultRoom['roomType'], 'recordId' => $defaultRoom['recordId']]))
@@ -332,7 +329,7 @@ class Chat_ChatAjax_Action extends \App\Controller\Action
 			throw new \App\Exceptions\NoPermittedToRecord('ERR_NO_PERMISSIONS_FOR_THE_RECORD', 406);
 		}
 		if (\App\Chat::getCurrentRoom()['recordId'] === $recordId) {
-			$chat->setCurrentRoomDefault();
+			\App\Chat::setCurrentRoomDefault();
 		}
 		$chat->archivePrivateRoom($recordId);
 		$response = new Vtiger_Response();

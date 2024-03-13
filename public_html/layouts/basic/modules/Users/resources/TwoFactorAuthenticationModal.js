@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 $.Class(
@@ -34,11 +34,11 @@ $.Class(
 			let form = data.find('form');
 			form.on('submit', (e) => {
 				let progress = $.progressIndicator({ blockInfo: { enabled: true } });
-				AppConnector.request(form.serializeFormData()).done((respons) => {
-					if (respons.result.success) {
+				AppConnector.request(form.serializeFormData()).done((response) => {
+					if (response.result.success) {
 						app.hideModalWindow();
 						app.showNotify({
-							text: app.vtranslate(respons.result.message),
+							text: response.result.message,
 							type: 'success',
 							animation: 'show'
 						});
@@ -62,6 +62,7 @@ $.Class(
 		 */
 		registerEvents(modalContainer) {
 			this.registerSubmitFrom(modalContainer);
+			App.Fields.Text.registerCopyClipboard(modalContainer, '.js-clipboard');
 		}
 	}
 );

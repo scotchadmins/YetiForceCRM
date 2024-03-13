@@ -1,16 +1,19 @@
 <?php
+/**
+ * Event Handler main file.
+ *
+ * @package App
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ */
 
 namespace App;
 
 /**
  * Event Handler main class.
- *
- * @package App
- *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
- * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
- * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class EventHandler
 {
@@ -38,6 +41,18 @@ class EventHandler
 	public const EDIT_VIEW_CHANGE_VALUE = 'EditViewChangeValue';
 	/** @var string Record converter after create record */
 	public const RECORD_CONVERTER_AFTER_SAVE = 'RecordConverterAfterSave';
+	/** @var string This handler executes before the record is deleted */
+	public const ENTITY_BEFORE_DELETE = 'EntityBeforeDelete';
+	/**
+	 * @var string This handler executes before the record is deleted and gives the option to return a response to the user.
+	 *             Usage: custom record deletion verification.
+	 */
+	public const PRE_DELETE = 'PreDelete';
+	/**
+	 * @var string This handler executes before the record state changes and gives the possibility to return a response to the user.
+	 *             Usage: custom record state change verification.
+	 */
+	public const PRE_STATE_CHANGE = 'PreStateChange';
 
 	/**
 	 * Handler types.
@@ -81,6 +96,50 @@ class EventHandler
 		'EntityAfterSave' => [
 			'label' => 'LBL_ENTITY_AFTER_SAVE',
 			'icon' => 'far fa-save',
+			'columns' => [
+				'eventName' => ['label' => 'LBL_EVENT_NAME'],
+				'eventDescription' => ['label' => 'LBL_EVENT_DESC'],
+				'modules' => ['label' => 'LBL_INCLUDE_MODULES'],
+				'modulesExcluded' => ['label' => 'LBL_EXCLUDE_MODULES'],
+				'active' => ['label' => 'LBL_EVENT_IS_ACTIVE'],
+			],
+		],
+		'DetailViewBefore' => [
+			'label' => 'LBL_DETAIL_VIEW_BEFORE',
+			'icon' => 'mdi mdi-account-details c-mdi',
+			'columns' => [
+				'eventName' => ['label' => 'LBL_EVENT_NAME'],
+				'eventDescription' => ['label' => 'LBL_EVENT_DESC'],
+				'modules' => ['label' => 'LBL_INCLUDE_MODULES'],
+				'modulesExcluded' => ['label' => 'LBL_EXCLUDE_MODULES'],
+				'active' => ['label' => 'LBL_EVENT_IS_ACTIVE'],
+			],
+		],
+		'EditViewBefore' => [
+			'label' => 'LBL_EDIT_VIEW_BEFORE',
+			'icon' => 'yfi yfi-full-editing-view ',
+			'columns' => [
+				'eventName' => ['label' => 'LBL_EVENT_NAME'],
+				'eventDescription' => ['label' => 'LBL_EVENT_DESC'],
+				'modules' => ['label' => 'LBL_INCLUDE_MODULES'],
+				'modulesExcluded' => ['label' => 'LBL_EXCLUDE_MODULES'],
+				'active' => ['label' => 'LBL_EVENT_IS_ACTIVE'],
+			],
+		],
+		'EditViewDuplicate' => [
+			'label' => 'LBL_EDIT_VIEW_DUPLICATE',
+			'icon' => 'fas fa-clone',
+			'columns' => [
+				'eventName' => ['label' => 'LBL_EVENT_NAME'],
+				'eventDescription' => ['label' => 'LBL_EVENT_DESC'],
+				'modules' => ['label' => 'LBL_INCLUDE_MODULES'],
+				'modulesExcluded' => ['label' => 'LBL_EXCLUDE_MODULES'],
+				'active' => ['label' => 'LBL_EVENT_IS_ACTIVE'],
+			],
+		],
+		'InventoryRecordDetails' => [
+			'label' => 'LBL_INVENTORY_RECORD_DETAILS',
+			'icon' => 'fas fa-pallet',
 			'columns' => [
 				'eventName' => ['label' => 'LBL_EVENT_NAME'],
 				'eventDescription' => ['label' => 'LBL_EVENT_DESC'],
@@ -158,7 +217,7 @@ class EventHandler
 				if ($byKey) {
 					$return[$key] = $vars;
 				} else {
-					$return = array_unique(array_merge($return, $vars));
+					$return = array_values(array_unique(array_merge($return, $vars)));
 				}
 			}
 		}
@@ -193,7 +252,7 @@ class EventHandler
 					'exclude_modules' => $excludeModules,
 					'priority' => $priority,
 					'owner_id' => $ownerId,
-					'privileges' => $mode
+					'privileges' => $mode,
 				])->execute();
 			static::clearCache();
 		}
@@ -202,8 +261,10 @@ class EventHandler
 
 	/**
 	 * Clear cache.
+	 *
+	 * @return void
 	 */
-	public static function clearCache()
+	public static function clearCache(): void
 	{
 		Cache::delete('EventHandlerByType', 'All');
 		Cache::delete('EventHandlerByType', 'All:active');
@@ -306,6 +367,7 @@ class EventHandler
 	public function setRecordModel(\Vtiger_Record_Model $recordModel)
 	{
 		$this->recordModel = $recordModel;
+		$this->moduleName = $recordModel->getModuleName();
 		return $this;
 	}
 
@@ -326,10 +388,14 @@ class EventHandler
 	 * Set params.
 	 *
 	 * @param array $params
+	 *
+	 * @return $this
 	 */
 	public function setParams($params)
 	{
 		$this->params = $params;
+
+		return $this;
 	}
 
 	/**
@@ -372,6 +438,18 @@ class EventHandler
 	public function getParams()
 	{
 		return $this->params;
+	}
+
+	/**
+	 * Get param.
+	 *
+	 * @param string $key
+	 *
+	 * @return mixed
+	 */
+	public function getParam(string $key)
+	{
+		return $this->params[$key] ?? null;
 	}
 
 	/**
@@ -435,10 +513,10 @@ class EventHandler
 			throw new \App\Exceptions\AppException('LBL_HANDLER_NOT_FOUND');
 		}
 		if (isset($this->handlers[$className])) {
-			$handler = $this->handlers[$className];
+			$handlerInstance = $this->handlers[$className];
 		} else {
-			$handler = $this->handlers[$className] = new $className();
+			$handlerInstance = $this->handlers[$className] = new $className();
 		}
-		return $handler->{$function}($this);
+		return $handlerInstance->{$function}($this, $handler);
 	}
 }

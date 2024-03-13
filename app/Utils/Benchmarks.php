@@ -5,8 +5,8 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -18,7 +18,7 @@ namespace App\Utils;
 class Benchmarks
 {
 	/** @var string[] Math functions list */
-	public static $mathFunctions = ['abs', 'acos', 'asin', 'atan', 'floor', 'exp', 'sin', 'tan', 'pi', 'is_finite', 'is_nan', 'sqrt'];
+	public static $mathFunctions = ['abs', 'acos', 'asin', 'atan', 'floor', 'exp', 'sin', 'tan', 'is_finite', 'is_nan', 'sqrt'];
 	/** @var string[] Hash functions list */
 	public static $hashAlgo = ['md4', 'md5', 'crc32', 'sha1', 'adler32', 'ripemd256', 'sha256', 'sha384', 'sha512'];
 	/** @var string[] String functions list */
@@ -83,15 +83,15 @@ class Benchmarks
 		return [
 			'math' => [
 				'operations' => $mathOperations,
-				'time' => (int) ($mathOperations / $mathTime)
+				'time' => (int) ($mathOperations / $mathTime),
 			],
 			'hash' => [
 				'operations' => $hashOperations,
-				'time' => (int) ($hashOperations / $hashTime)
+				'time' => (int) ($hashOperations / $hashTime),
 			],
 			'string' => [
 				'operations' => $stringOperations,
-				'time' => (int) ($stringOperations / $stringTime)
+				'time' => (int) ($stringOperations / $stringTime),
 			],
 		];
 	}
@@ -131,11 +131,11 @@ class Benchmarks
 		return [
 			'read' => [
 				'operations' => $readOperations,
-				'time' => (int) ($readOperations / $readTime)
+				'time' => (int) ($readOperations / $readTime),
 			],
 			'write' => [
 				'operations' => $writeOperations,
-				'time' => (int) ($writeOperations / $writeTime)
+				'time' => (int) ($writeOperations / $writeTime),
 			],
 		];
 	}
@@ -169,7 +169,7 @@ class Benchmarks
 			}
 			$write[$key] = [
 				'operations' => $writeOperations,
-				'time' => (int) ($writeOperations / (microtime(true) - $timeStart))
+				'time' => (int) ($writeOperations / (microtime(true) - $timeStart)),
 			];
 		}
 		foreach ([1, 10, 100] as $value) {
@@ -190,11 +190,16 @@ class Benchmarks
 			}
 			$read[$value] = [
 				'operations' => $readOperations,
-				'time' => (int) ($readOperations / (microtime(true) - $timeStart))
+				'time' => (int) ($readOperations / (microtime(true) - $timeStart)),
 			];
 		}
 		register_shutdown_function(function () {
-			\vtlib\Functions::recurseDelete('cache/speed');
+			try {
+				\vtlib\Functions::recurseDelete('cache/speed');
+			} catch (\Throwable $e) {
+				\App\Log::error($e->getMessage() . PHP_EOL . $e->__toString());
+				throw $e;
+			}
 		});
 		return [
 			'read' => $read,

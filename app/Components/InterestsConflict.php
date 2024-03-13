@@ -5,9 +5,10 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 namespace App\Components;
@@ -64,7 +65,6 @@ class InterestsConflict
 			if ($parent = self::getParent($record, $moduleName)) {
 				$record = $parent['id'];
 			} else {
-				\App\Log::warning("No parent record could be found |$record|$moduleName", __METHOD__);
 				return self::CHECK_STATUS_INACTIVE;
 			}
 		}
@@ -85,22 +85,19 @@ class InterestsConflict
 	 *
 	 * @return array|null
 	 */
-	private static function getLast(int $record, ?int $userId = null): ?array
+	public static function getLast(int $record, ?int $userId = null): ?array
 	{
 		if (null === $userId) {
 			$userId = \App\User::getCurrentUserRealId();
 		}
-		$cacheName = "InterestsConflict::getLast{$userId}_";
-		if (\App\Cache::has($cacheName, $record)) {
-			return \App\Cache::get($cacheName, $record);
+		$row = null;
+		foreach (self::getByRecord($record) as $value) {
+			if ($value['user_id'] == $userId && self::CONF_STATUS_CANCELED != $value['status']) {
+				$row = $value;
+				break;
+			}
 		}
-		$row = (new \App\Db\Query())
-			->from('u_#__interests_conflict_conf')
-			->where(['user_id' => $userId, 'related_id' => $record])
-			->andWhere(['<>', 'status', self::CONF_STATUS_CANCELED])
-			->orderBy(['id' => SORT_DESC])
-			->one() ?: null;
-		return \App\Cache::save($cacheName, $record, $row);
+		return $row;
 	}
 
 	/**
@@ -181,12 +178,6 @@ class InterestsConflict
 		], ['id' => $row['id']])
 			->execute();
 		\App\Cache::delete('InterestsConflict::getByRecord', $record);
-		$cacheName = "InterestsConflict::getLast{$userId}_";
-		if (\App\Cache::has($cacheName, $record)) {
-			$cache = \App\Cache::get($cacheName, $record);
-			$cache['status'] = self::CONF_STATUS_CANCELED;
-			\App\Cache::save($cacheName, $record, $cache);
-		}
 		$userCreateCommand->insert('u_#__interests_conflict_unlock', [
 			'date_time' => $row['date_time'],
 			'status' => self::UNLOCK_STATUS_CANCELED,
@@ -226,7 +217,7 @@ class InterestsConflict
 				'to' => \Config\Components\InterestsConflict::$notificationsEmails,
 				'dateTime' => date('Y-m-d H:i:s'),
 				'user' => \App\User::getCurrentUserModel()->getName(),
-				'record' => \App\Layout::getRecordLabel($baseRecord),
+				'record' => \App\Record::getHtmlLink($baseRecord),
 				'comment' => nl2br($comment),
 			]);
 		}
@@ -265,6 +256,7 @@ class InterestsConflict
 			'related_label' => \App\Record::getLabel($baseRecord),
 			'source_id' => $sourceRecord,
 		])->execute();
+		\App\Cache::delete('InterestsConflict::getByRecord', $baseRecord);
 	}
 
 	/**
@@ -296,6 +288,7 @@ class InterestsConflict
 						'modify_user_id' => \App\User::getCurrentUserRealId(),
 					], ['user_id' => $row['user_id'], 'related_id' => $row['related_id']])
 					->execute();
+				\App\Cache::delete('InterestsConflict::getByRecord', $row['related_id']);
 			}
 		}
 		if (\Config\Components\InterestsConflict::$sendMailAccessResponse) {
@@ -305,7 +298,7 @@ class InterestsConflict
 				'moduleName' => 'Users',
 				'recordId' => $row['user_id'],
 				'to' => $userModel->getDetail('email1'),
-				'record' => \App\Layout::getRecordLabel($row['related_id']),
+				'record' => \App\Record::getHtmlLink($row['related_id']),
 				'status' => \App\Language::translate(self::UNLOCK_STATUS_LABELS[$status], '_Base', $userModel->getDetail('language')),
 			]);
 		}
@@ -322,10 +315,8 @@ class InterestsConflict
 		if (\App\Cache::has($cacheName, '')) {
 			return \App\Cache::get($cacheName, '');
 		}
-		$allModules = array_map(function ($v) {
-			return 0 > $v ? 999 : sprintf('%03d', $v);
-		}, array_column(\vtlib\Functions::getAllModules(false, true), 'tabsequence', 'name'));
-		$excludedModules = ['SMSNotifier', 'ModComments'];
+		$allModules = array_map(fn ($v) => 0 > $v ? 999 : sprintf('%03d', $v), array_column(\vtlib\Functions::getAllModules(false, true), 'tabsequence', 'name'));
+		$excludedModules = ['ModComments'];
 		$baseModules = $return = $modules = $baseModules = [];
 		foreach (array_keys(\App\ModuleHierarchy::getModulesByLevel(0)) as $moduleName) {
 			if (\App\Module::isModuleActive($moduleName)) {
@@ -355,7 +346,7 @@ class InterestsConflict
 						'value' => \App\Json::encode([
 							'base' => $targetModuleName,
 							'related' => $sourceModuleName,
-							'relatedFieldName' => $field['fieldname']
+							'relatedFieldName' => $field['fieldname'],
 						]),
 						'map' => \App\Language::translateSingularModuleName($targetModuleName) . ' << ' . \App\Language::translateSingularModuleName($sourceModuleName) . ' (' . \App\Language::translate($field['fieldlabel'], $sourceModuleName) . ')',
 						'field' => $field,
@@ -378,7 +369,7 @@ class InterestsConflict
 								'intermediate' => $targetModuleName,
 								'intermediateFieldName' => $parent['field']['fieldname'],
 								'related' => $sourceModuleName,
-								'relatedFieldName' => $field['fieldname']
+								'relatedFieldName' => $field['fieldname'],
 							]),
 							'map' => $parent['map'] . ' << ' . \App\Language::translateSingularModuleName($sourceModuleName) . ' (' . \App\Language::translate($field['fieldlabel'], $sourceModuleName) . ')',
 						];

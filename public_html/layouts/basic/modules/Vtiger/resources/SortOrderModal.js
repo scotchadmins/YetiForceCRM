@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 $.Class(
@@ -65,7 +65,7 @@ $.Class(
 				element.find('.js-sort-order').val(element.find('.js-sort-icon-active').data('val'));
 			});
 			this.container.find('.js-modal__save').on('click', (e) => {
-				e.preventDefault;
+				e.preventDefault();
 				this.sourceContainer.find('.js-list-reload').trigger('click', { orderby: this.getSortData() });
 				app.hideModalWindow(null, this.source);
 			});
@@ -87,7 +87,9 @@ $.Class(
 		 * Gets basic container
 		 */
 		getSourceContainer: function () {
-			return $('[data-modalid=' + this.source + ']').closest('.listViewContentDiv,.relatedContainer');
+			return $('[data-modalid=' + this.source + ']').closest(
+				'.listViewContentDiv,.relatedContainer,.js-main-container'
+			);
 		},
 		/**
 		 * Register modal events

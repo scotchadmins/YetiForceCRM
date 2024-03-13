@@ -3,8 +3,8 @@
 /**
  * Switch Users Action Class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -20,19 +20,18 @@ class Users_SwitchUsers_Action extends \App\Controller\Action
 	public function checkPermission(App\Request $request)
 	{
 		$userId = $request->getInteger('id');
-		require 'user_privileges/switchUsers.php';
-		$currentUserModel = Users_Record_Model::getCurrentUserModel();
-		$baseUserId = $currentUserModel->getRealId();
-		if (!\array_key_exists($baseUserId, $switchUsers) || !\array_key_exists($userId, $switchUsers[$baseUserId])) {
+		$switchUsers = \Users_Module_Model::getSwitchUsers();
+		$baseUserId = \App\User::getCurrentUserRealId();
+		if ($userId != $baseUserId && (empty($switchUsers) || !\array_key_exists($userId, $switchUsers))) {
 			$db = \App\Db::getInstance('log');
 			$db->createCommand()->insert('l_#__switch_users', [
 				'baseid' => $baseUserId,
 				'destid' => $userId,
-				'busername' => $currentUserModel->getName(),
+				'busername' => \App\User::getUserModel($baseUserId)->getName(),
 				'dusername' => '',
 				'date' => date('Y-m-d H:i:s'),
-				'ip' => \App\TextParser::textTruncate(\App\RequestUtil::getRemoteIP(), 100, false),
-				'agent' => \App\TextParser::textTruncate(\App\Request::_getServer('HTTP_USER_AGENT', '-'), 500, false),
+				'ip' => \App\TextUtils::textTruncate(\App\RequestUtil::getRemoteIP(), 100, false),
+				'agent' => \App\TextUtils::textTruncate(\App\Request::_getServer('HTTP_USER_AGENT', '-'), 500, false),
 				'status' => 'Failed login - No permission',
 			])->execute();
 			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
@@ -51,7 +50,7 @@ class Users_SwitchUsers_Action extends \App\Controller\Action
 		$baseUserId = $currentUser->getId();
 		$userId = $request->getInteger('id');
 
-		if ($request->has('visitPurpose') && \App\Config::security('askAdminAboutVisitPurpose', true)) {
+		if ($request->has('visitPurpose') && \App\Config::security('askAdminAboutVisitSwitchUsers', true)) {
 			$db->createCommand()->insert('l_#__users_login_purpose', [
 				'userid' => $userId,
 				'datetime' => date('Y-m-d H:i:s'),
@@ -84,8 +83,8 @@ class Users_SwitchUsers_Action extends \App\Controller\Action
 			'busername' => $currentUser->getName(),
 			'dusername' => $name,
 			'date' => date('Y-m-d H:i:s'),
-			'ip' => \App\TextParser::textTruncate(\App\RequestUtil::getRemoteIP(), 100, false),
-			'agent' => \App\TextParser::textTruncate(\App\Request::_getServer('HTTP_USER_AGENT', '-'), 500, false),
+			'ip' => \App\TextUtils::textTruncate(\App\RequestUtil::getRemoteIP(), 100, false),
+			'agent' => \App\TextUtils::textTruncate(\App\Request::_getServer('HTTP_USER_AGENT', '-'), 500, false),
 			'status' => $status,
 		])->execute();
 		\App\CustomView::resetCurrentView();

@@ -7,8 +7,8 @@ namespace App;
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -74,12 +74,6 @@ class Privilege
 		$permission = false;
 		$tabId = Module::getModuleId($moduleName);
 		if ('Settings' !== Request::_get('parent')) {
-			if ('Home' === $moduleName) {
-				//These modules dont have security right now
-				static::$isPermittedLevel = 'SEC_MODULE_DONT_HAVE_SECURITY_RIGHT';
-				\App\Log::trace('Exiting isPermitted method ... - yes');
-				return true;
-			}
 			if ('Users' === $moduleName && $record == \App\User::getCurrentUserId()) {
 				static::$isPermittedLevel = 'SEC_IS_CURRENT_USER';
 				\App\Log::trace('Exiting isPermitted method ... - yes');
@@ -133,7 +127,7 @@ class Privilege
 			} else {
 				$permission = false;
 			}
-			static::$isPermittedLevel = 'SEC_USER_IS_ADMIN' . ($permission ? 'YES' : 'NO');
+			static::$isPermittedLevel = 'SEC_NO_ACTION_MODULE_PERMISSIONS' . ($permission ? 'YES' : 'NO');
 			\App\Log::trace('Exiting isPermitted method ... - ' . static::$isPermittedLevel);
 			return $permission;
 		}
@@ -178,8 +172,8 @@ class Privilege
 		}
 		//Checking and returning true if recorid is null
 		if (empty($record)) {
-			static::$isPermittedLevel = 'SEC_RECORID_IS_NULL';
-			\App\Log::trace('Exiting isPermitted method ... - SEC_RECORID_IS_NULL');
+			static::$isPermittedLevel = 'SEC_RECORD_ID_IS_NULL';
+			\App\Log::trace('Exiting isPermitted method ... - SEC_RECORD_ID_IS_NULL');
 			return true;
 		}
 		//If modules is Products,Vendors,Faq,PriceBook then no sharing
@@ -305,7 +299,7 @@ class Privilege
 			$role = $userPrivilegesModel->getRoleDetail();
 			if (((3 == $actionId || 4 == $actionId) && 0 != $role->get('previewrelatedrecord')) || ((0 == $actionId || 1 == $actionId) && 0 != $role->get('editrelatedrecord'))) {
 				$parentRecord = \Users_Privileges_Model::getParentRecord($record, $moduleName, $role->get('previewrelatedrecord'), $actionId);
-				if ($parentRecord) {
+				if ($parentRecord && Record::isExists($parentRecord)) {
 					$recordMetaData = \vtlib\Functions::getCRMRecordMetadata($parentRecord);
 					$permissionsRoleForRelatedField = $role->get('permissionsrelatedfield');
 					$permissionsRelatedField = '' === $permissionsRoleForRelatedField ? [] : explode(',', $role->get('permissionsrelatedfield'));

@@ -4,9 +4,10 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 namespace App\Mail;
@@ -21,11 +22,11 @@ class Message
 	 *
 	 * @param string $engineName
 	 *
-	 * @return \App\Mail\ScannerEngine\Base
+	 * @return \App\Mail\Message\Base
 	 */
-	public static function getScannerByEngine(string $engineName): ScannerEngine\Base
+	public static function getScannerByEngine(string $engineName): Message\Base
 	{
-		$class = "App\\Mail\\ScannerEngine\\{$engineName}";
+		$class = "App\\Mail\\Message\\{$engineName}";
 		if (!class_exists($class)) {
 			throw new \App\Exceptions\NotAllowedMethod('ERR_PARAMETER_DOES_NOT_EXIST|$engineName|' . $engineName, 406);
 		}
@@ -44,7 +45,7 @@ class Message
 		if (\App\Cache::staticHas('App\Mail\Message::findByCid', $cid)) {
 			return \App\Cache::staticGet('App\Mail\Message::findByCid', $cid);
 		}
-		$mailCrmId = (new \App\Db\Query())->select(['ossmailviewid'])->from('vtiger_ossmailview')->where(['cid' => $cid])->limit(1)->scalar();
+		$mailCrmId = (new \App\Db\Query())->select(['ossmailviewid'])->from('vtiger_ossmailview')->where(['cid' => $cid])->scalar();
 		\App\Cache::staticSave('App\Mail\Message::findByCid', $cid, $mailCrmId);
 		return $mailCrmId;
 	}
@@ -64,7 +65,7 @@ class Message
 		if (\App\Cache::staticHas('App\Mail\Message::findByMessageId', $key)) {
 			return \App\Cache::staticGet('App\Mail\Message::findByMessageId', $key);
 		}
-		$mailCrmId = (new \App\Db\Query())->select(['ossmailviewid'])->from('vtiger_ossmailview')->where(['uid' => $messageId, 'rc_user' => $rcUser])->limit(1)->scalar();
+		$mailCrmId = (new \App\Db\Query())->select(['ossmailviewid'])->from('vtiger_ossmailview')->where(['uid' => $messageId, 'rc_user' => $rcUser])->scalar();
 		\App\Cache::staticSave('App\Mail\Message::findByMessageId', $key, $mailCrmId);
 		return $mailCrmId;
 	}

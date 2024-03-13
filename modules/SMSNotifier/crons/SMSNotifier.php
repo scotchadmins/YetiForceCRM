@@ -1,31 +1,41 @@
 <?php
 /**
- * SMSNotifier cron.
+ * SMS Notifier cron.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @package Cron
+ *
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 /**
- * SMSNotifier_SMSNotifier_Cron class.
+ * SMS Notifier Cron class.
  */
 class SMSNotifier_SMSNotifier_Cron extends \App\CronHandler
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** @var string Status */
+	private const STATUS_QUEUE = 'PLL_QUEUE';
+	/** @var string Module name */
+	private $moduleName = 'SMSNotifier';
+
+	/** {@inheritdoc} */
 	public function process()
 	{
-		if (SMSNotifier_Module_Model::checkServer()) {
-			$db = \App\Db::getInstance('admin');
-			$dataReader = (new \App\Db\Query())->from('s_#__smsnotifier_queue')
-				->orderBy(['id' => SORT_ASC])
-				->limit(App\Config::performance('CRON_MAX_NUMBERS_SENDING_SMS'))
-				->createCommand($db)->query();
-			while ($rowQueue = $dataReader->read()) {
-				SMSNotifier_Record_Model::sendSMS($rowQueue['message'], $rowQueue['tonumbers'], explode(',', $rowQueue['records']), $rowQueue['module']);
-				$db->createCommand()->delete('s_#__smsnotifier_queue', ['id' => $rowQueue['id']])->execute();
+		if (\App\Integrations\SMSProvider::isActiveProvider()) {
+			$queryGenerator = new \App\QueryGenerator($this->moduleName);
+			$dataReader = $queryGenerator->setFields(['id'])
+				->addCondition('smsnotifier_status', static::STATUS_QUEUE, 'e')
+				->setLimit(\App\Config::module($this->moduleName, 'maxCronSentSMS'))
+				->createQuery()
+				->createCommand()->query();
+			while ($recordId = $dataReader->readColumn(0)) {
+				$recordModel = \SMSNotifier_Record_Model::getInstanceById($recordId, $this->moduleName);
+				$recordModel->send();
+				$this->updateLastActionTime();
+				if ($this->checkTimeout()) {
+					break;
+				}
 			}
 			$dataReader->close();
 		}

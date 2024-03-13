@@ -3,17 +3,17 @@
 /**
  * OSSMailView ListView model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class OSSMailView_ListView_Model extends Vtiger_ListView_Model
 {
+	/** {@inheritdoc} */
 	public function getBasicLinks()
 	{
 		$basicLinks = [];
 		$moduleModel = $this->getModule();
-		$createPermission = \App\Privilege::isPermitted($moduleModel->getName(), 'CreateView');
-		if ($createPermission && App\Config::main('isActiveSendingMails') && \App\Privilege::isPermitted('OSSMail')) {
+		if (\App\Mail::checkInternalMailClient() && \App\Privilege::isPermitted($moduleModel->getName(), 'CreateView')) {
 			$basicLinks[] = [
 				'linktype' => 'LISTVIEWBASIC',
 				'linklabel' => 'LBL_CREATEMAIL',
@@ -26,6 +26,7 @@ class OSSMailView_ListView_Model extends Vtiger_ListView_Model
 		return $basicLinks;
 	}
 
+	/** {@inheritdoc} */
 	public function getListViewMassActions($linkParams)
 	{
 		$currentUserModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();

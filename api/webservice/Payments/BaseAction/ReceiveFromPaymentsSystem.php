@@ -2,11 +2,12 @@
 /**
  * The file contains: Class to handling payment information.
  *
- * @package Api
+ * @package API
  *
- * @copyright YetiForce Sp. z o.o.
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Arkadiusz Adach <a.adach@yetiforce.com>
+ * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
 namespace Api\Payments\BaseAction;
@@ -20,13 +21,14 @@ class ReceiveFromPaymentsSystem extends \Api\Core\BaseAction
 	public $allowedMethod = ['PUT'];
 
 	/** {@inheritdoc}  */
-	public function checkPermission()
+	protected function checkPermission(): void
 	{
-		return true;
 	}
 
 	/**
 	 * Handling payment information.
+	 *
+	 * @throws \Api\Core\Exception
 	 *
 	 * @return array
 	 */
@@ -45,7 +47,7 @@ class ReceiveFromPaymentsSystem extends \Api\Core\BaseAction
 		$queryGenerator->setFields(['paymentsinid']);
 		$queryGenerator->addCondition('transaction_id', $transactionId, 'e');
 		$queryGenerator->addCondition('payment_system', $paymentSystem, 'e');
-		$paymentsInId = $queryGenerator->createQuery()->limit(1)->scalar();
+		$paymentsInId = $queryGenerator->createQuery()->scalar();
 		if ($paymentsInId) {
 			$recordModel = \Vtiger_Record_Model::getInstanceById($paymentsInId, 'PaymentsIn');
 		} else {

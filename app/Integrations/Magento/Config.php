@@ -2,12 +2,13 @@
 /**
  * Class to read and save configuration for integration with magento.
  *
- * The file is part of the paid functionality. Using the file is allowed only after purchasing a subscription. File modification allowed only with the consent of the system producer.
+ * The file is part of the paid functionality. Using the file is allowed only after purchasing a subscription.
+ * File modification allowed only with the consent of the system producer.
  *
  * @package Integration
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Tomasz Kur <t.kur@yetiforce.com>
  * @author    Arkadiusz Dudek <a.dudek@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
@@ -23,9 +24,7 @@ use App\Db\Query;
  */
 class Config extends \App\Base
 {
-	/**
-	 * Table name.
-	 */
+	/** @var string Table name. */
 	private const TABLE_NAME = 'i_#__magento_config';
 
 	/**
@@ -75,7 +74,7 @@ class Config extends \App\Base
 		$instance->setData(array_merge(
 			$servers[$serverId],
 			(new Query())->select(['name', 'value'])->from(self::TABLE_NAME)->where(['server_id' => $serverId])->createCommand()->queryAllByGroup()
-			));
+		));
 		return $instance;
 	}
 
@@ -94,12 +93,12 @@ class Config extends \App\Base
 		if (false !== $name) {
 			$data = [
 				'name' => "{$type}_last_scan_{$name}",
-				'value' => $id
+				'value' => $id,
 			];
 		} else {
 			$data = [
 				'name' => $type . '_start_scan_date',
-				'value' => date('Y-m-d H:i:s')
+				'value' => date('Y-m-d H:i:s'),
 			];
 		}
 		if (!(new Query())->from(self::TABLE_NAME)->where(['server_id' => $this->get('id'), 'name' => $data['name']])->exists()) {
@@ -127,11 +126,11 @@ class Config extends \App\Base
 		$saveData = [
 			[
 				'name' => $type . '_end_scan_date',
-				'value' => $date
+				'value' => $date,
 			], [
 				'name' => $type . '_last_scan_id',
-				'value' => 0
-			]
+				'value' => 0,
+			],
 		];
 		foreach ($saveData as $data) {
 			if (!(new Query())->from(self::TABLE_NAME)->where(['server_id' => $this->get('id'), 'name' => $data['name']])->exists()) {

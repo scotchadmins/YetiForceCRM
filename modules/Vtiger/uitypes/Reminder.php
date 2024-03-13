@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Vtiger_Reminder_UIType extends Vtiger_Date_UIType
@@ -31,7 +31,7 @@ class Vtiger_Reminder_UIType extends Vtiger_Date_UIType
 	/** {@inheritdoc} */
 	public function getEditViewDisplayValue($value, $recordModel = false)
 	{
-		if (0 != $value) {
+		if (!empty($value)) {
 			$days = floor($value / (24 * 60));
 			$hours = floor(($value - $days * 24 * 60) / 60);
 			$minutes = ($value - ($days * 24 * 60)) % 60;

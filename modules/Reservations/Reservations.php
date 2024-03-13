@@ -2,8 +2,8 @@
 /**
  * Reservations CRMEntity class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 include_once 'modules/Vtiger/CRMEntity.php';
 
@@ -91,7 +91,8 @@ class Reservations extends Vtiger_CRMEntity
 		}
 	}
 
-	public function retrieveEntityInfo($record, $module)
+	/** {@inheritdoc} */
+	public function retrieveEntityInfo(int $record, string $module)
 	{
 		parent::retrieveEntityInfo($record, $module);
 		$start = DateTimeField::convertToUserTimeZone($this->column_fields['date_start'] . ' ' . $this->column_fields['time_start']);

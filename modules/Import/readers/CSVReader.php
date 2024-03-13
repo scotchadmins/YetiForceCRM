@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Import_CSVReader_Reader extends Import_FileReader_Reader
@@ -32,7 +32,7 @@ class Import_CSVReader_Reader extends Import_FileReader_Reader
 		$csv->heading = false;
 		$csv->use_mb_convert_encoding = true;
 		$csv->encoding($this->request->get('file_encoding'), \App\Config::main('default_charset', 'UTF-8'));
-		$csv->parse($this->getFilePath());
+		$csv->parseFile($this->getFilePath());
 		$this->data = $csv->data;
 	}
 

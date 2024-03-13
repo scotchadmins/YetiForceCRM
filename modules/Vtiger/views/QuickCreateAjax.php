@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Vtiger_QuickCreateAjax_View extends Vtiger_IndexAjax_View
@@ -55,12 +55,25 @@ class Vtiger_QuickCreateAjax_View extends Vtiger_IndexAjax_View
 		$moduleModel = $this->recordModel->getModule();
 		$this->fields = $moduleModel->getFields();
 		$this->loadFieldValuesFromRequest($request);
+		$viewer = $this->getViewer($request);
+		$layout = $moduleModel->getLayoutTypeForQuickCreate();
+		$viewLinks = Vtiger_QuickCreateView_Model::getInstance($moduleName)->getLinks([]);
+
+		$eventHandler = new App\EventHandler();
+		$eventHandler->setRecordModel($this->recordModel);
+		$eventHandler->setModuleName($moduleName);
+		$eventHandler->setParams([
+			'mode' => 'QuickCreate',
+			'layout' => $layout,
+			'viewLinks' => $viewLinks,
+			'viewInstance' => $this,
+		]);
+		$eventHandler->trigger('EditViewBefore');
+		['layout' => $layout, 'viewLinks' => $viewLinks] = $eventHandler->getParams();
 
 		$recordStructureInstance = $this->getRecordStructure();
 		$this->recordStructure = $recordStructureInstance->getStructure();
 		$fieldValues = $this->loadFieldValuesFromSource($request);
-		$viewer = $this->getViewer($request);
-		$layout = $moduleModel->getLayoutTypeForQuickCreate();
 		if ('blocks' === $layout) {
 			$blockModels = $moduleModel->getBlocks();
 			$blockRecordStructure = $blockIdFieldMap = [];
@@ -78,10 +91,15 @@ class Vtiger_QuickCreateAjax_View extends Vtiger_IndexAjax_View
 		} else {
 			$viewer->assign('RECORD_STRUCTURE', $this->recordStructure);
 		}
+		$isRelationOperation = $request->getBoolean('relationOperation');
+		$viewer->assign('IS_RELATION_OPERATION', $isRelationOperation);
+		$viewer->assign('SOURCE_MODULE', $request->getByType('sourceModule', \App\Purifier::ALNUM));
+		if ($isRelationOperation) {
+			$viewer->assign('SOURCE_RECORD', $request->getInteger('sourceRecord'));
+		}
 		$viewer->assign('LAYOUT', $layout);
 		$viewer->assign('ADDRESS_BLOCK_LABELS', ['LBL_ADDRESS_INFORMATION', 'LBL_ADDRESS_MAILING_INFORMATION', 'LBL_ADDRESS_DELIVERY_INFORMATION', 'LBL_ADDRESS_BILLING', 'LBL_ADDRESS_SHIPPING']);
-		$viewer->assign('PICKIST_DEPENDENCY_DATASOURCE', \App\Json::encode(\App\Fields\Picklist::getPicklistDependencyDatasource($moduleName)));
-		$viewer->assign('QUICKCREATE_LINKS', Vtiger_QuickCreateView_Model::getInstance($moduleName)->getLinks([]));
+		$viewer->assign('QUICKCREATE_LINKS', $viewLinks);
 		$viewer->assign('MAPPING_RELATED_FIELD', \App\Json::encode(\App\ModuleHierarchy::getRelationFieldByHierarchy($moduleName)));
 		$viewer->assign('LIST_FILTER_FIELDS', \App\Json::encode(\App\ModuleHierarchy::getFieldsForListFilter($moduleName)));
 		$viewer->assign('SOURCE_RELATED_FIELD', $fieldValues);
@@ -97,8 +115,6 @@ class Vtiger_QuickCreateAjax_View extends Vtiger_IndexAjax_View
 		$viewer->assign('HIDDEN_INPUT', $this->hiddenInput);
 		$viewer->assign('FROM_VIEW', $this->fromView);
 		$viewer->assign('SCRIPTS', $this->getFooterScripts($request));
-		$viewer->assign('MAX_UPLOAD_LIMIT_MB', Vtiger_Util_Helper::getMaxUploadSize());
-		$viewer->assign('MAX_UPLOAD_LIMIT', \App\Config::main('upload_maxsize'));
 	}
 
 	/**
@@ -134,11 +150,11 @@ class Vtiger_QuickCreateAjax_View extends Vtiger_IndexAjax_View
 				continue;
 			}
 			if (isset($this->recordStructure[$fieldName])) {
-				if ($this->fields[$fieldName]->isEditable() && '' === $this->recordStructure[$fieldName]->get('fieldvalue')) {
+				if ($this->fields[$fieldName]->isEditable('Create') && ('' === $this->recordStructure[$fieldName]->get('fieldvalue') || null === $this->recordStructure[$fieldName]->get('fieldvalue'))) {
 					$this->recordStructure[$fieldName]->set('fieldvalue', $fieldValue);
 				}
 			} else {
-				if (isset($this->fields[$fieldName]) && $this->fields[$fieldName]->isEditable()) {
+				if (isset($this->fields[$fieldName]) && $this->fields[$fieldName]->isEditable('Create')) {
 					$fieldModel = $this->fields[$fieldName];
 					$fieldModel->set('fieldvalue', $fieldValue);
 					$fieldValues[$fieldName] = $fieldModel;

@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 $.Class(
@@ -30,7 +30,7 @@ $.Class(
 		},
 		/**
 		 * Get params for record list
-		 * @returns {{module: string, view: string, src_module: string, src_record: int, src_field: string, related_parent_module: string, related_parent_id: int|string, page: int, orderby: string, sortorder: string, multi_select: boolean, totalCount: int|string, noOfEntries: int, onlyBody: boolean}}
+		 * @returns {{module: string, view: string, src_module: string, src_record: int, src_field: string, related_parent_module: string, related_parent_id: int|string, page: int, orderby: string, multi_select: boolean, totalCount: int|string, noOfEntries: int, onlyBody: boolean}}
 		 */
 		getParams: function () {
 			let params = {
@@ -42,22 +42,28 @@ $.Class(
 				related_parent_module: this.container.find('.js-related-parent-module').val(),
 				related_parent_id: this.container.find('.js-related-parent-id').val(),
 				page: this.container.find('.js-page-number').val(),
-				orderby: this.container.find('.js-order-by').val(),
-				sortorder: this.container.find('.js-sort-order').val(),
+				orderby: this.container.find('#orderBy').val(),
 				multi_select: this.container.find('.js-multi-select').val(),
 				totalCount: this.container.find('.js-total-count').val(),
 				noOfEntries: this.container.find('.js-no-entries').val(),
 				filterFields: JSON.parse(this.container.find('.js-filter-fields').val()),
+				lockedFields: this.container.find('.js-locked-fields').val(),
+				lockedEmptyFields: this.container.find('.js-empty-fields').val(),
 				onlyBody: true,
-				cvId: this.getFilterSelectElement().val()
+				cvId: this.getCurrentCvId(),
+				selected_ids: this.readSelectedIds(true),
+				excluded_ids: this.readExcludedIds(true),
+				additionalData: this.container.find('.js-rl-additional_data').val() || null
 			};
 			let searchValue = this.listSearchInstance.getAlphabetSearchValue();
-			params['search_params'] = JSON.stringify(this.listSearchInstance.getListSearchParams(true));
+			params['search_params'] = this.listSearchInstance.getListSearchParams(true);
 			if (typeof searchValue !== 'undefined' && searchValue.length > 0) {
 				params['search_key'] = this.listSearchInstance.getAlphabetSearchField();
 				params['search_value'] = searchValue;
 				params['operator'] = 's';
 			}
+			this.listSearchInstance.parseConditions(params);
+			params.search_params = JSON.stringify(params.search_params);
 			return params;
 		},
 		/**
@@ -77,7 +83,7 @@ $.Class(
 			AppConnector.request($.extend(this.getParams(), params))
 				.done((responseData) => {
 					progressIndicatorElement.progressIndicator({ mode: 'hide' });
-					body.html($(responseData).html());
+					body.html(responseData);
 					this.registerBasicEvents();
 					aDeferred.resolve(responseData);
 				})
@@ -96,7 +102,9 @@ $.Class(
 		 */
 		registerHeadersClickEvent: function () {
 			YetiForce_ListSearch_Js.registerSearch(this.container, (data) => {
-				this.loadRecordList(data);
+				this.loadRecordList(data).done(() => {
+					this.updatePagination();
+				});
 			});
 		},
 		/**
@@ -221,6 +229,7 @@ $.Class(
 				}
 				let row = $(this);
 				let data = row.data();
+				self.writeSelectedIds([data.id]);
 				if (self.container.find('.js-multi-select').val()) {
 					let selected = {};
 					if (additional) {
@@ -236,15 +245,25 @@ $.Class(
 					} else {
 						selected[data.id] = data.name;
 					}
-					self.selectEvent(selected, e);
+					self.selectEvent(
+						$.extend(self.getParams(), {
+							selectedRecords: selected
+						}),
+						e
+					);
 				} else {
-					self.selectEvent(data, e);
+					self.selectEvent(
+						$.extend(self.getParams(), {
+							selectedRecords: data
+						}),
+						e
+					);
 				}
 				app.hideModalWindow(false, self.container.parent().attr('id'));
 			});
 			self.container.on('click', '.js-selected-rows', function (e) {
 				let selected = {};
-				self.container.find('table tr.js-select-row .js-select-checkbox').each(function (index, element) {
+				self.container.find('table tr.js-select-row .js-select-checkbox').each(function (_index, element) {
 					element = $(element);
 					if (!element.is(':checked')) {
 						return true;
@@ -273,49 +292,98 @@ $.Class(
 						type: 'error'
 					});
 				} else {
-					self.selectEvent(selected, e);
+					self.selectEvent(
+						$.extend(self.getParams(), {
+							selectedRecords: selected
+						}),
+						e
+					);
 					app.hideModalWindow($(e.target).closest('.js-modal-container'));
 				}
 			});
-			self.container.on('change', '.js-hierarchy-records', function () {
-				self.container.find('.js-related-parent-id').val(this.value);
-				self.container.find('.js-total-count').val('');
-				self.container.find('.js-page-number').val(1);
-				self.loadRecordList().done(function () {
-					self.updatePagination();
-				});
-			});
-			self.container.on('click', '.js-select-checkbox', function (e) {
-				let parentElem, element;
-				parentElem = element = $(this);
-				if (element.data('type') === 'all') {
-					parentElem = element.closest('table').find('.js-select-checkbox[data-type="row"]');
-				}
-				if (element.is(':checked')) {
-					parentElem.prop('checked', true).closest('tr').addClass('highlightBackgroundColor');
+			self.container.on('click', '.listViewHeaders .js-select-checkbox', function (_e) {
+				let parentElem, mainCheckbox;
+				mainCheckbox = $(this);
+				let selectedIds = self.readSelectedIds();
+				let excludedIds = self.readExcludedIds();
+				parentElem = mainCheckbox.closest('table').find('.js-select-checkbox[data-type="row"]');
+				let selectAllContainer = self.container.find('.js-check-all-records-container');
+				if (mainCheckbox.is(':checked')) {
+					selectAllContainer.removeClass('d-none');
+					parentElem.each(function (_index, element) {
+						$(this).prop('checked', true).closest('tr').addClass('highlightBackgroundColor');
+						if (selectedIds == 'all') {
+							if ($.inArray($(element).val(), excludedIds) != -1) {
+								excludedIds.splice($.inArray($(element).val(), excludedIds), 1);
+							}
+						} else if ($.inArray($(element).val(), selectedIds) == -1) {
+							selectedIds.push($(element).val());
+						}
+					});
 				} else {
-					parentElem.prop('checked', false).closest('tr').removeClass('highlightBackgroundColor');
+					selectAllContainer.addClass('d-none');
+					parentElem.each(function (_index, element) {
+						$(this).prop('checked', false).closest('tr').removeClass('highlightBackgroundColor');
+						if (selectedIds == 'all') {
+							if ($.inArray($(element).val(), excludedIds) != -1) {
+								excludedIds.splice($.inArray($(element).val(), excludedIds), 1);
+							}
+						} else if ($.inArray($(element).val(), selectedIds) == -1) {
+							selectedIds.push($(element).val());
+						}
+					});
 				}
+				self.checkSelectAll();
+				self.writeSelectedIds(selectedIds);
+				self.writeExcludedIds(excludedIds);
+			});
+			self.container.on('click', '.listViewEntriesTable tbody .js-select-checkbox', function (_e) {
+				let element = $(this);
+				let selectedIds = self.readSelectedIds();
+				let excludedIds = self.readExcludedIds();
+				let recordId = element.closest('tr').attr('data-id');
+				if (element.is(':checked')) {
+					element.closest('tr').addClass('highlightBackgroundColor');
+					if (selectedIds == 'all') {
+						excludedIds.splice($.inArray(recordId, excludedIds), 1);
+					} else if ($.inArray(recordId, selectedIds) == -1) {
+						selectedIds.push(recordId);
+					}
+				} else {
+					element.closest('tr').removeClass('highlightBackgroundColor');
+					if (selectedIds == 'all') {
+						excludedIds.push(recordId);
+						selectedIds = 'all';
+					} else {
+						selectedIds.splice($.inArray(recordId, selectedIds), 1);
+					}
+				}
+				self.checkSelectAll();
+				self.writeSelectedIds(selectedIds);
+				self.writeExcludedIds(excludedIds);
 			});
 		},
 		getFilterSelectElement: function () {
 			return this.container.find('#customFilter');
 		},
 		registerCustomFilter: function () {
-			var filterSelectElement = this.getFilterSelectElement();
-			if (filterSelectElement.length > 0) {
+			const filterSelectElement = this.getFilterSelectElement();
+			if (filterSelectElement.length > 0 && filterSelectElement.is('select')) {
 				App.Fields.Picklist.showSelect2ElementView(filterSelectElement, {
 					templateSelection: function (data) {
-						var resultContainer = $('<span></span>');
-						resultContainer.append($($('.filterImage').detach().get(0)).show());
-						resultContainer.append(data.text);
+						const resultContainer = document.createElement('span'),
+							span = document.createElement('span'),
+							image = $('.filterImage').detach();
+						image.removeAttr('style');
+						span.innerText = data.text;
+						resultContainer.appendChild(image.get(0));
+						resultContainer.appendChild(span);
 						return resultContainer;
 					},
 					customSortOptGroup: true,
 					closeOnSelect: true
 				});
-				var select2Instance = filterSelectElement.data('select2');
-				select2Instance.$dropdown.append(this.container.find('span.filterActionsDiv'));
+				filterSelectElement.data('select2').$dropdown.append(this.container.find('span.filterActionsDiv'));
 				this.registerChangeCustomFilterEvent(filterSelectElement);
 			}
 		},
@@ -325,6 +393,113 @@ $.Class(
 					this.updatePagination();
 				});
 			});
+		},
+		/**
+		 * Get selected record ids
+		 * @param boolean decode
+		 * @returns mixed
+		 */
+		readSelectedIds: function (decode = false) {
+			let selectedIdsDataAttr = this.getCurrentCvId() + 'selectedIds',
+				selectedIdsElementDataAttributes = this.container.find('#selectedIds').data(),
+				selectedIds = [];
+			if (!(selectedIdsDataAttr in selectedIdsElementDataAttributes)) {
+				this.writeSelectedIds(selectedIds);
+			} else {
+				selectedIds = selectedIdsElementDataAttributes[selectedIdsDataAttr];
+			}
+			if (decode == true && typeof selectedIds == 'object') {
+				return JSON.stringify(selectedIds);
+			}
+			return selectedIds;
+		},
+		/**
+		 * Get excluded record ids
+		 * @param boolean decode
+		 * @returns
+		 */
+		readExcludedIds: function (decode = false) {
+			let excludedIdsDataAttr = this.getCurrentCvId() + 'Excludedids',
+				excludedIdsElementDataAttributes = this.container.find('#excludedIds').data(),
+				excludedIds = [];
+			if (!(excludedIdsDataAttr in excludedIdsElementDataAttributes)) {
+				this.writeExcludedIds(excludedIds);
+			} else {
+				excludedIds = excludedIdsElementDataAttributes[excludedIdsDataAttr];
+			}
+			if (decode == true && typeof excludedIds == 'object') {
+				return JSON.stringify(excludedIds);
+			}
+			return excludedIds;
+		},
+		/**
+		 * Set selected record ids
+		 * @param mixed selectedIds
+		 */
+		writeSelectedIds: function (selectedIds) {
+			if (!Array.isArray(selectedIds)) {
+				selectedIds = [selectedIds];
+			}
+			this.container.find('#selectedIds').data(this.getCurrentCvId() + 'selectedIds', selectedIds);
+		},
+		/**
+		 * Set excluded record ids
+		 * @param array excludedIds
+		 */
+		writeExcludedIds: function (excludedIds) {
+			this.container.find('#excludedIds').data(this.getCurrentCvId() + 'Excludedids', excludedIds);
+		},
+		getCurrentCvId: function () {
+			return this.getFilterSelectElement().val() || 0;
+		},
+		/**
+		 * Select check all records
+		 */
+		registerSelectCheckAll: function () {
+			this.container.on('click', '.js-check-all-records-container', () => {
+				this.container.find('.js-check-all-records-container').addClass('d-none');
+				this.container.find('.js-uncheck-all-records-container').removeClass('d-none');
+				this.container
+					.find('.listViewEntriesTable tbody .js-select-checkbox')
+					.prop('checked', true)
+					.closest('tr')
+					.addClass('highlightBackgroundColor');
+
+				this.writeSelectedIds('all');
+			});
+		},
+		/**
+		 * Select uncheck all records
+		 */
+		registerSelectUncheckAll: function () {
+			this.container.on('click', '.js-uncheck-all-records-container', () => {
+				this.container.find('.js-uncheck-all-records-container').addClass('d-none');
+				this.container.find('.listViewHeaders .js-select-checkbox').prop('checked', false);
+				this.container
+					.find('.listViewEntriesTable tbody .js-select-checkbox')
+					.prop('checked', false)
+					.closest('tr')
+					.removeClass('highlightBackgroundColor');
+
+				this.writeSelectedIds([]);
+				this.writeExcludedIds([]);
+			});
+		},
+		/**
+		 * Check if all records from list are selected
+		 * @returns boolean
+		 */
+		checkSelectAll: function () {
+			let state = true;
+			this.container.find('.listViewEntriesTable tbody .js-select-checkbox').each(function (index, element) {
+				if ($(element).is(':checked') && state) {
+					state = true;
+				} else {
+					state = false;
+				}
+			});
+			this.container.find('.listViewHeaders .js-select-checkbox').prop('checked', state);
+			return state;
 		},
 		/**
 		 * Register modal basic events
@@ -344,6 +519,8 @@ $.Class(
 			this.registerBasicEvents();
 			this.registerListEvents();
 			this.registerHeadersClickEvent();
+			this.registerSelectCheckAll();
+			this.registerSelectUncheckAll();
 		}
 	}
 );

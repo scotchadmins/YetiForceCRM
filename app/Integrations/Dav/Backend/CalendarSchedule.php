@@ -4,8 +4,8 @@
  *
  * @package Integration
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -25,18 +25,6 @@ class CalendarSchedule extends DAV\ServerPlugin
 	 * @var DAV\Server
 	 */
 	protected $server;
-	/**
-	 * Debug file path.
-	 *
-	 * @var string
-	 */
-	const DEBUG_FILE = 'cache/logs/davDebug.log';
-	/**
-	 * Exception file path.
-	 *
-	 * @var string
-	 */
-	const EXCEPTION_FILE = 'cache/logs/davException.log';
 
 	/**
 	 * Initializes the schedule.

@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 Vtiger_Loader::includeOnce('~include/Webservices/ConvertLead.php');
 
@@ -32,8 +32,8 @@ class Leads_SaveConvertLead_View extends \App\Controller\View\Page
 		$moduleName = $request->getModule();
 		$recordId = $request->getInteger('record');
 
-		$currentUserPriviligesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
-		if (!$currentUserPriviligesModel->hasModuleActionPermission($moduleName, 'ConvertLead')) {
+		$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
+		if (!$userPrivilegesModel->hasModuleActionPermission($moduleName, 'ConvertLead')) {
 			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
 		}
 		$this->record = Vtiger_Record_Model::getInstanceById($recordId, $moduleName);
@@ -138,6 +138,7 @@ class Leads_SaveConvertLead_View extends \App\Controller\View\Page
 		$viewer->view('ConvertLeadError.tpl', $moduleName);
 	}
 
+	/** {@inheritdoc} */
 	public function validateRequest(App\Request $request)
 	{
 		$request->validateWriteAccess();

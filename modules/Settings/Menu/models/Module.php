@@ -3,8 +3,8 @@
 /**
  * Settings menu module model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class Settings_Menu_Module_Model
 {
@@ -15,18 +15,7 @@ class Settings_Menu_Module_Model
 	 */
 	protected $editFields = [
 		'id', 'role', 'parentid', 'type', 'sequence', 'module', 'label', 'newwindow',
-		'dataurl', 'showicon', 'icon', 'sizeicon', 'hotkey', 'filters', 'edit', 'source'
-	];
-	protected $types = [
-		0 => 'Module',
-		1 => 'Shortcut',
-		2 => 'Label',
-		3 => 'Separator',
-		5 => 'QuickCreate',
-		6 => 'HomeIcon',
-		7 => 'CustomFilter',
-		8 => 'Profile',
-		9 => 'RecycleBin',
+		'dataurl', 'showicon', 'icon', 'sizeicon', 'hotkey', 'filters', 'edit', 'source', 'countentries',
 	];
 
 	/**
@@ -54,53 +43,14 @@ class Settings_Menu_Module_Model
 	public function getMenuTypes($key = false)
 	{
 		if (false === $key) {
-			return $this->types;
+			return \App\Menu::TYPES;
 		}
-		return $this->types[$key];
+		return \App\Menu::TYPES[$key];
 	}
 
 	public function getMenuTypeKey($val)
 	{
-		return array_search($val, $this->types);
-	}
-
-	public function getMenuName($row, $settings = false)
-	{
-		$name = '';
-		switch ($row['type']) {
-			case 0:
-				$name = empty($row['label']) ? $row['name'] : $row['label'];
-				break;
-			case 3:
-				$name = 'LBL_SEPARATOR';
-				break;
-			case 5:
-				if ('' != $row['label']) {
-					$name = $row['label'];
-				} elseif ($settings) {
-					$name = \App\Language::translate('LBL_QUICK_CREATE_MODULE', 'Menu') . ': ' . Vtiger_Menu_Model::vtranslateMenu('SINGLE_' . $row['name'], $row['name']);
-				}
-				break;
-			case 6:
-				$name = 'LBL_HOME';
-				break;
-			case 7:
-				$query = (new \App\Db\Query())->select(['viewname', 'entitytype'])->from('vtiger_customview')->where(['cvid' => $row['dataurl']]);
-				$data = $query->one();
-				if ($settings) {
-					$name = Vtiger_Menu_Model::vtranslateMenu($data['entitytype'], $data['entitytype']) . ': ' . \App\Language::translate($data['viewname'], $data['entitytype']);
-				} else {
-					$name = Vtiger_Menu_Model::vtranslateMenu($data['viewname'], $data['entitytype']);
-				}
-				break;
-			case 9:
-				$name = $row['name'];
-				break;
-			default:
-				$name = $row['label'];
-				break;
-		}
-		return $name;
+		return array_search($val, \App\Menu::TYPES);
 	}
 
 	public function getMenuUrl($row)
@@ -120,7 +70,7 @@ class Settings_Menu_Module_Model
 				$url = 'index.php?module=' . $row['name'] . '&view=List&viewname=' . $row['dataurl'] . '&mid=' . $row['id'] . (empty($row['parentid']) ? '' : ('&parent=' . $row['parentid']));
 				break;
 			default:
-				$url = null;
+				$url = $row['dataurl'];
 				break;
 		}
 		return $url;
@@ -131,14 +81,31 @@ class Settings_Menu_Module_Model
 	 *
 	 * @return array
 	 */
-	public function getModulesList()
+	public function getModulesList(): array
 	{
 		return (new \App\Db\Query())->select(['tabid', 'name'])->from('vtiger_tab')
 			->where(['not in', 'name', ['Users', 'ModComments']])
-			->andWhere(['or', ['isentitytype' => 1], ['name' => ['Home', 'OSSMail', 'Portal', 'Rss']]])
+			->andWhere(['or', ['isentitytype' => 1], ['name' => ['OSSMail', 'Rss']]])
 			->andWhere(['presence' => 0])
 			->orderBy('tabsequence')
 			->all();
+	}
+
+	/**
+	 * Get a list of modules with quick create support.
+	 *
+	 * @return array
+	 */
+	public function getQuickCreateModuleList(): array
+	{
+		$modules = $this->getModulesList();
+		foreach ($modules as $key => $module) {
+			if (!Vtiger_Module_Model::getInstance($module['name'])->isQuickCreateSupported()) {
+				unset($modules[$key]);
+			}
+		}
+
+		return $modules;
 	}
 
 	public static function getLastId()

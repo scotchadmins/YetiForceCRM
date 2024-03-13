@@ -3,8 +3,8 @@
 /**
  * Wdiget to show new accounts.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Tomasz Kur <t.kur@yetiforce.com>
  */
 class Accounts_NewAccounts_Dashboard extends Vtiger_IndexAjax_View
@@ -21,6 +21,8 @@ class Accounts_NewAccounts_Dashboard extends Vtiger_IndexAjax_View
 	 */
 	private function getAccounts($moduleName, $user, $time, Vtiger_Paging_Model $pagingModel)
 	{
+		$time[0] .= ' 00:00:00';
+		$time[1] .= ' 23:59:59';
 		$queryGenerator = new App\QueryGenerator($moduleName);
 		$queryGenerator->setFields(['id', 'accountname', 'assigned_user_id', 'createdtime']);
 		$queryGenerator->addCondition('assigned_user_id', $user, 'e');
@@ -53,10 +55,10 @@ class Accounts_NewAccounts_Dashboard extends Vtiger_IndexAjax_View
 		$time = $request->getByType('time', 'DateRangeUserFormat');
 		$displayTime = [];
 		if (empty($time)) {
-			$time['start'] = App\Fields\Date::formatToDb('');
-			$time['end'] = $time['start'];
+			$time = [];
+			$time[0] = date('Y-m-d');
+			$time[1] = $time[0];
 		}
-
 		foreach ($time as $key => $timeValue) {
 			$displayTime[$key] = App\Fields\Date::formatToDisplay($timeValue);
 		}

@@ -3,9 +3,9 @@
 /**
  * Brute force model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
- * @author    YetiForce.com
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @author    YetiForce S.A.
  */
 class Settings_BruteForce_Module_Model extends Settings_Vtiger_Module_Model
 {
@@ -290,10 +290,13 @@ class Settings_BruteForce_Module_Model extends Settings_Vtiger_Module_Model
 				$recordModel = Vtiger_Record_Model::getInstanceById($id, 'Users');
 				$emails[] = $recordModel->get('email1');
 			}
+			$configBruteForce = self::getBruteForceSettings();
 			\App\Mailer::sendFromTemplate([
 				'template' => 'BruteForceSecurityRiskHasBeenDetected',
 				'moduleName' => 'Users',
 				'to' => $emails,
+				'ip' => \App\RequestUtil::getRemoteIP(true),
+				'time' => (new DateTime())->modify("-{$configBruteForce['timelock']} minutes")->format('Y-m-d H:i:s'),
 			]);
 		}
 		\App\Log::trace('End ' . __METHOD__);

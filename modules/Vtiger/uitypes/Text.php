@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Vtiger_Text_UIType extends Vtiger_Base_UIType
@@ -14,13 +14,13 @@ class Vtiger_Text_UIType extends Vtiger_Base_UIType
 	/** {@inheritdoc} */
 	public function getDBValue($value, $recordModel = false)
 	{
-		return \App\Utils\Completions::encodeAll(\App\Purifier::decodeHtml($value));
+		return null !== $value ? \App\Utils\Completions::encodeAll(\App\Purifier::decodeHtml($value)) : '';
 	}
 
 	/** {@inheritdoc} */
 	public function setValueFromRequest(App\Request $request, Vtiger_Record_Model $recordModel, $requestFieldName = false)
 	{
-		$fieldName = $this->getFieldModel()->getFieldName();
+		$fieldName = $this->getFieldModel()->getName();
 		if (!$requestFieldName) {
 			$requestFieldName = $fieldName;
 		}
@@ -36,11 +36,13 @@ class Vtiger_Text_UIType extends Vtiger_Base_UIType
 			return;
 		}
 		if (!\is_string($value)) {
-			throw new \App\Exceptions\Security('ERR_ILLEGAL_FIELD_VALUE||' . $this->getFieldModel()->getFieldName() . '||' . $this->getFieldModel()->getModuleName() . '||' . $value, 406);
+			throw new \App\Exceptions\Security('ERR_ILLEGAL_FIELD_VALUE||' . $this->getFieldModel()->getName() . '||' . $this->getFieldModel()->getModuleName() . '||' . $value, 406);
 		}
-		$maximumLength = $this->getFieldModel()->get('maximumlength');
-		if ($maximumLength && \strlen($value) > $maximumLength) {
-			throw new \App\Exceptions\Security('ERR_VALUE_IS_TOO_LONG||' . $this->getFieldModel()->getFieldName() . '||' . $this->getFieldModel()->getModuleName() . '||' . $value, 406);
+		$maximumLength = $this->getFieldModel()->getMaxValue();
+		if ($maximumLength && \App\TextUtils::getTextLength($value, true) > $maximumLength) {
+			throw new \App\Exceptions\Security('ERR_VALUE_IS_TOO_LONG||' . $this->getFieldModel()->getName() . '||' . $this->getFieldModel()->getModuleName() . '||' . $value, 406);
+		} elseif ($value && ($minLength = $this->getFieldModel()->getMinValue()) && \App\TextUtils::getTextLength($value, true) < $minLength){
+			throw new \App\Exceptions\Security('ERR_VALUE_IS_TOO_SHORT||' . $this->getFieldModel()->getName() . '||' . $this->getFieldModel()->getModuleName() . '||' . $value, 406);
 		}
 		$this->validate[$value] = true;
 	}
@@ -72,7 +74,7 @@ class Vtiger_Text_UIType extends Vtiger_Base_UIType
 		} else {
 			$value = \App\Purifier::purify($value);
 			if (!$rawText) {
-				$value = nl2br(\App\Layout::truncateText($value, $length));
+				$value = \App\Layout::truncateText($value, $length, true, true);
 			}
 		}
 		return $value;
@@ -99,6 +101,23 @@ class Vtiger_Text_UIType extends Vtiger_Base_UIType
 	}
 
 	/** {@inheritdoc} */
+	public function getApiDisplayValue($value, Vtiger_Record_Model $recordModel, array $params = [])
+	{
+		$value = \App\Utils\Completions::decode($value, \App\Utils\Completions::FORMAT_TEXT);
+		return $this->getDisplayValue($value, $recordModel->getId(), $recordModel, true, false);
+	}
+
+	/** {@inheritdoc} */
+	public function getHistoryDisplayValue($value, Vtiger_Record_Model $recordModel, $rawText = false)
+	{
+		if (\in_array(\App\Anonymization::MODTRACKER_DISPLAY, $this->getFieldModel()->getAnonymizationTarget())) {
+			return '****';
+		}
+		$value = \App\Utils\Completions::decode($value, \App\Utils\Completions::FORMAT_TEXT);
+		return $this->getDisplayValue($value, $recordModel->getId(), $recordModel, $rawText, \App\Config::module('ModTracker', 'TEASER_TEXT_LENGTH'));
+	}
+
+	/** {@inheritdoc} */
 	public function getTemplateName()
 	{
 		return 'Edit/Field/Text.tpl';
@@ -113,7 +132,7 @@ class Vtiger_Text_UIType extends Vtiger_Base_UIType
 	/** {@inheritdoc} */
 	public function getQueryOperators()
 	{
-		return ['e', 'n', 's', 'ew', 'c', 'k', 'y', 'ny'];
+		return ['e', 'n', 's', 'ew', 'c', 'k', 'y', 'ny', 'ef', 'nf'];
 	}
 
 	/** {@inheritdoc} */

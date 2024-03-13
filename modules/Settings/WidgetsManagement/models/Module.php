@@ -2,29 +2,22 @@
 /**
  * Settings OSSMailView index view class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class Settings_WidgetsManagement_Module_Model extends Settings_Vtiger_Module_Model
 {
-	/**
-	 * Exclude defined values from filters.
-	 *
-	 * @return array
-	 */
-	public function getRestrictFilter(): array
-	{
-		return [
-			'LBL_CREATED_BY_ME_BUT_NOT_MINE_ACTIVITIES' => ['mine'],
-			'LBL_CREATED_BY_ME_BUT_NOT_MINE_OVERDUE_ACTIVITIES' => ['mine'],
-		];
-	}
+	/** {@inheritdoc} */
+	public $name = 'WidgetsManagement';
 
 	public function getWidgetsWithLimit(): array
 	{
-		return ['History', 'Upcoming Activities', 'Overdue Activities', 'Mini List', 'Delegated project tasks', 'Delegated (overdue) project tasks',
-			'LBL_EXPIRING_SOLD_PRODUCTS', 'LBL_CREATED_BY_ME_BUT_NOT_MINE_ACTIVITIES', 'LBL_CREATED_BY_ME_BUT_NOT_MINE_OVERDUE_ACTIVITIES',
-			'LBL_NEW_ACCOUNTS', 'LBL_NEGLECTED_ACCOUNTS', 'Multifilter', 'LBL_UPDATES', 'Upcoming events'
+		return ['History', 'Upcoming Activities', 'Overdue Activities', 'Delegated project tasks', 'Delegated (overdue) project tasks',
+			'LBL_EXPIRING_SOLD_PRODUCTS',
+			'LBL_NEW_ACCOUNTS', 'LBL_NEGLECTED_ACCOUNTS', 'LBL_UPDATES',
+			'LBL_NOTIFICATION_BY_SENDER', 'LBL_NOTIFICATION_BY_RECIPIENT', 'DW_SUMMATION_BY_USER', 'Leads by Status',
+			'Leads by Industry', 'Leads by Source', 'Employees Time Control', 'LBL_ALL_TIME_CONTROL',
+			'LBL_CLOSED_TICKETS_BY_PRIORITY', 'LBL_CLOSED_TICKETS_BY_USER', 'LBL_ACCOUNTS_BY_INDUSTRY', 'Mails List'
 		];
 	}
 
@@ -55,7 +48,7 @@ class Settings_WidgetsManagement_Module_Model extends Settings_Vtiger_Module_Mod
 	 */
 	public function getFilterSelect(): array
 	{
-		return ['LBL_MINE' => 'mine', 'LBL_ALL' => 'all', 'LBL_USERS' => 'users', 'LBL_GROUPS' => 'groups'];
+		return ['LBL_MINE' => 'mine', 'LBL_ALL' => 'all', 'LBL_USERS' => 'users', 'LBL_GROUPS' => 'groups', 'LBL_GROUP_USERS' => 'groupUsers', 'LBL_ROLE_USERS' => 'roleUsers', 'LBL_ROLE_AND_SUBORDINATES_USERS' => 'rsUsers'];
 	}
 
 	public function getFilterSelectDefault(): array
@@ -63,43 +56,22 @@ class Settings_WidgetsManagement_Module_Model extends Settings_Vtiger_Module_Mod
 		return ['LBL_MINE' => 'mine', 'LBL_ALL' => 'all'];
 	}
 
-	/**
-	 * Function to get filters with customizable title.
-	 *
-	 * @return string[]
-	 */
-	public static function getWidgetsWithTitle(): array
-	{
-		return [
-			'Multifilter', 'Upcoming events'
-		];
-	}
-
-	public static function getWidgetsWithDate(): array
+	public function getWidgetsWithDate(): array
 	{
 		return [
 			'LBL_NOTIFICATION_BY_SENDER', 'LBL_NOTIFICATION_BY_RECIPIENT', 'DW_SUMMATION_BY_USER', 'Leads by Status',
-			'Leads by Industry', 'Leads by Source', 'Leads by Status Converted', 'Employees Time Control', 'LBL_ALL_TIME_CONTROL',
+			'Leads by Industry', 'Leads by Source', 'Employees Time Control', 'LBL_ALL_TIME_CONTROL',
 			'LBL_CLOSED_TICKETS_BY_PRIORITY', 'LBL_CLOSED_TICKETS_BY_USER', 'LBL_ACCOUNTS_BY_INDUSTRY'
-		];
-	}
-
-	public static function getWidgetsWithRecordLimit(): array
-	{
-		return [
-			'LBL_NOTIFICATION_BY_SENDER', 'LBL_NOTIFICATION_BY_RECIPIENT', 'DW_SUMMATION_BY_USER', 'Leads by Status',
-			'Leads by Industry', 'Leads by Source', 'Leads by Status Converted', 'Employees Time Control', 'LBL_ALL_TIME_CONTROL',
-			'LBL_CLOSED_TICKETS_BY_PRIORITY', 'LBL_CLOSED_TICKETS_BY_USER', 'LBL_ACCOUNTS_BY_INDUSTRY', 'Upcoming events'
 		];
 	}
 
 	public function getWidgetsWithFilterUsers(): array
 	{
 		return [
-			'Leads by Status Converted', 'Graf', 'Tickets by Status', 'Leads by Industry',
+			'Tickets by Status', 'Leads by Industry',
 			'Leads by Source', 'Leads by Status', 'Funnel', 'Upcoming Activities', 'Overdue Activities',
-			'Mini List', 'Delegated project tasks', 'Delegated (overdue) project tasks', 'Calendar',
-			'LBL_CREATED_BY_ME_BUT_NOT_MINE_ACTIVITIES', 'LBL_CREATED_BY_ME_BUT_NOT_MINE_OVERDUE_ACTIVITIES', 'DW_SUMMATION_BY_MONTHS', 'LBL_ALL_TIME_CONTROL',
+			'Delegated project tasks', 'Delegated (overdue) project tasks',
+			'LBL_ALL_TIME_CONTROL',
 			'LBL_NEW_ACCOUNTS', 'LBL_NEGLECTED_ACCOUNTS', 'LBL_CLOSED_TICKETS_BY_PRIORITY', 'LBL_ACCOUNTS_BY_INDUSTRY',
 			'LBL_TOTAL_ESTIMATED_VALUE_BY_STATUS', 'LBL_UPCOMING_PROJECT_TASKS', 'LBL_COMPLETED_PROJECT_TASKS', 'LBL_UPDATES', 'DW_TEAMS_ESTIMATED_SALES', 'DW_ACTUAL_SALES_OF_TEAM',
 		];
@@ -142,26 +114,6 @@ class Settings_WidgetsManagement_Module_Model extends Settings_Vtiger_Module_Mod
 	}
 
 	/**
-	 * Get a date field.
-	 *
-	 * @return array
-	 */
-	public function getFieldsByTypeDate(): array
-	{
-		$query = (new \App\Db\Query())->select(['vtiger_field.fieldid', 'vtiger_field.fieldlabel', 'vtiger_field.tabid'])
-			->from('vtiger_field')
-			->innerJoin('vtiger_tab', 'vtiger_tab.tabid = vtiger_field.tabid')
-			->where(['vtiger_field.presence' => [0, 2], 'vtiger_field.uitype' => [5, 6, 23]])
-			->andWhere(['<>', 'vtiger_tab.presence', 1]);
-		$dataReader = $query->createCommand()->query();
-		$fields = [];
-		while ($row = $dataReader->read()) {
-			$fields[App\Module::getModuleName($row['tabid'])][$row['fieldid']] = $row['fieldlabel'];
-		}
-		return $fields;
-	}
-
-	/**
 	 * Function to get all dashboard.
 	 *
 	 * @return array
@@ -171,7 +123,7 @@ class Settings_WidgetsManagement_Module_Model extends Settings_Vtiger_Module_Mod
 		if (App\Cache::has('WidgetsDashboard', 'AllTypes')) {
 			return App\Cache::get('WidgetsDashboard', 'AllTypes');
 		}
-		$types = (new App\Db\Query())->from('u_#__dashboard_type')->all();
+		$types = (new App\Db\Query())->from('u_#__dashboard_type')->indexBy('dashboard_id')->all();
 		App\Cache::save('WidgetsDashboard', 'AllTypes', $types);
 
 		return $types;
@@ -290,7 +242,6 @@ class Settings_WidgetsManagement_Module_Model extends Settings_Vtiger_Module_Mod
 
 	public function getSelectableDashboard()
 	{
-		\App\Log::trace('Entering Settings_WidgetsManagement_Module_Model::getSelectableDashboard() method ...');
 		$dataReader = (new \App\Db\Query())->from('vtiger_links')
 			->innerJoin('vtiger_tab', 'vtiger_links.tabid = vtiger_tab.tabid')
 			->where(['linktype' => 'DASHBOARDWIDGET', 'vtiger_tab.presence' => 0])
@@ -301,61 +252,29 @@ class Settings_WidgetsManagement_Module_Model extends Settings_Vtiger_Module_Mod
 			$widgets[$moduleName][] = Vtiger_Widget_Model::getInstanceFromValues($row);
 		}
 		$dataReader->close();
-		\App\Log::trace('Exiting Settings_WidgetsManagement_Module_Model::getSelectableDashboard() method ...');
 
 		return $widgets;
 	}
 
-	/**
-	 * Save data.
-	 *
-	 * @param array  $data
-	 * @param string $moduleName
-	 *
-	 * @return Array(success:true/false)
-	 * */
-	public function saveDetails($data, $moduleName)
+	public function getPredefinedWidgetsByBlock(int $blockId)
 	{
-		\App\Log::trace("Entering Settings_WidgetsManagement_Module_Model::saveDetails($moduleName) method ...");
-		$db = \App\Db::getInstance();
-		$isWidgetExists = (new \App\Db\Query())
-			->from('vtiger_module_dashboard')
-			->where(['id' => $data['id']])
-			->exists();
-		if ($isWidgetExists) {
-			$size = \App\Json::encode(['width' => $data['width'], 'height' => $data['height']]);
-			$insert = [
-				'isdefault' => $data['isdefault'] ?? 0,
-				'size' => $size,
-				'limit' => $data['limit'] ?? '',
-				'cache' => $data['cache'] ?? 0,
-				'date' => $data['default_date'] ?? '',
-			];
-			if (!empty($data['default_owner']) && !empty($data['owners_all'])) {
-				$insert['owners'] = \App\Json::encode(['default' => $data['default_owner'], 'available' => $data['owners_all']]);
-			}
-			$dataType = $data['type'] ?? null;
-			if ('DW_SUMMATION_BY_MONTHS' === $dataType) {
-				$insert['data'] = \App\Json::encode(['plotLimit' => $data['plotLimit'], 'plotTickSize' => $data['plotTickSize']]);
-			} elseif ('DW_SUMMATION_BY_USER' === $dataType) {
-				$insert['data'] = \App\Json::encode(['showUsers' => isset($data['showUsers']) ? 1 : 0]);
-			} elseif ('Multifilter' === $dataType) {
-				if (empty($data['customMultiFilter']) || !\is_array($data['customMultiFilter'])) {
-					$data['customMultiFilter'] = [$data['customMultiFilter'] ?? ''];
-				}
-				$insert['data'] = \App\Json::encode(['customMultiFilter' => $data['customMultiFilter'], 'showFullName' => $data['showFullName'] ?? '']);
-			} elseif ('Calendar' === $dataType) {
-				$insert['data'] = \App\Json::encode(['defaultFilter' => $data['defaultFilter'] ?? '']);
-			}
-			$db->createCommand()->update('vtiger_module_dashboard', $insert, ['id' => $data['id']])
-				->execute();
-
-			$insert['active'] = isset($data['isdefault']) ? 1 : 0;
-			$db->createCommand()->update('vtiger_module_dashboard_widgets', $insert, ['templateid' => $data['id']])
-				->execute();
+		$subQuery = (new \App\Db\Query())->from('vtiger_module_dashboard')->select(['vtiger_links.linkid'])
+			->innerJoin('vtiger_links', 'vtiger_module_dashboard.linkid = vtiger_links.linkid')
+			->where(['blockid' => $blockId])->andWhere(['not', ['linklabel' => ['Multifilter', 'Upcoming events', 'Upcoming Activities', 'Overdue Activities']]]);
+		$dataReader = (new \App\Db\Query())->from('vtiger_links')
+			->select(['vtiger_links.*', 'blockid' => 'vtiger_module_dashboard_blocks.id'])
+			->innerJoin('vtiger_tab', 'vtiger_links.tabid = vtiger_tab.tabid')
+			->innerJoin('vtiger_module_dashboard_blocks', 'vtiger_tab.tabid = vtiger_module_dashboard_blocks.tabid')
+			->where(['vtiger_module_dashboard_blocks.id' => $blockId, 'linktype' => 'DASHBOARDWIDGET', 'vtiger_tab.presence' => 0])
+			->andWhere(['not', ['or', ['linklabel' => self::getWidgetSpecial()], ['vtiger_links.linkid' => $subQuery]]])
+			->createCommand()->query();
+		$widgets = [];
+		while ($row = $dataReader->read()) {
+			$widgets[] = Vtiger_Widget_Model::getInstanceFromValues($row);
 		}
-		\App\Log::trace('Exiting Settings_WidgetsManagement_Module_Model::saveData() method ...');
-		return ['success' => true];
+		$dataReader->close();
+
+		return $widgets;
 	}
 
 	public function addBlock($data, $moduleName, $addToUser)
@@ -389,7 +308,7 @@ class Settings_WidgetsManagement_Module_Model extends Settings_Vtiger_Module_Mod
 		\App\Log::trace('Entering Settings_WidgetsManagement_Module_Model::addWidget(' . $moduleName . ') method ...');
 		$db = App\Db::getInstance();
 		$status = false;
-		$widgetWithLimit = self::getWidgetsWithLimit();
+		$widgetWithLimit = $this->getWidgetsWithLimit();
 		if (!empty($data['name']) && \in_array($data['name'], $widgetWithLimit)) {
 			$status = true;
 		}
@@ -406,11 +325,7 @@ class Settings_WidgetsManagement_Module_Model extends Settings_Vtiger_Module_Mod
 				$filters = $data['filterid'];
 			}
 			if (\count($filters) > \App\Config::performance('CHART_MULTI_FILTER_LIMIT')) {
-				throw new App\Exceptions\IllegalValue('ERR_VALUE_IS_TOO_LONG||filterid||' . $data['filterid'], 406);
-			}
-			// if filters total length will be longer than database column
-			if (\strlen(implode(',', $filters)) > \App\Config::performance('CHART_MULTI_FILTER_STR_LEN')) {
-				throw new App\Exceptions\IllegalValue('ERR_VALUE_IS_TOO_LONG||filterid||' . $data['filterid'], 406);
+				throw new App\Exceptions\IllegalValue("ERR_VALUE_IS_TOO_LONG||filterid||{$moduleName}||" . implode(',', $filters), 406);
 			}
 		}
 		$data['data'] = App\Json::decode(\App\Purifier::decodeHtml($data['data'] ?? ''));
@@ -452,7 +367,9 @@ class Settings_WidgetsManagement_Module_Model extends Settings_Vtiger_Module_Mod
 				$active = 1;
 			}
 			$db->createCommand()->insert('vtiger_module_dashboard_widgets', [
-				'linkid' => $data['linkid'], 'userid' => \App\User::getCurrentUserId(), 'templateid' => $templateId,
+				'linkid' => $data['linkid'],
+				'userid' => \App\User::getCurrentUserId(),
+				'templateid' => $templateId,
 				'filterid' => $data['filterid'],
 				'title' => $data['title'],
 				'data' => $data['data'],
@@ -460,7 +377,7 @@ class Settings_WidgetsManagement_Module_Model extends Settings_Vtiger_Module_Mod
 				'owners' => $owners,
 				'isdefault' => $data['isdefault'],
 				'active' => $active,
-				'module' => \App\Module::getModuleId($moduleName),
+				'module' => \vtlib\Link::getLinkData($data['linkid'])['tabid'] ?? \App\Module::getModuleId($moduleName),
 				'cache' => $data['cache'] ?? null,
 				'date' => $data['default_date'] ?? null,
 				'dashboardid' => empty($data['dashboardId']) ? self::getDefaultDashboard() : $data['dashboardId'],
@@ -533,6 +450,7 @@ class Settings_WidgetsManagement_Module_Model extends Settings_Vtiger_Module_Mod
 		$query = (new \App\Db\Query())->from('vtiger_links')
 			->where(['tabid' => $tabId, 'linklabel' => self::getWidgetSpecial()]);
 		$dataReader = $query->createCommand()->query();
+		$widgets = [];
 		while ($row = $dataReader->read()) {
 			$widgets[$row['linklabel']] = Vtiger_Widget_Model::getInstanceFromValues($row);
 		}
@@ -565,21 +483,7 @@ class Settings_WidgetsManagement_Module_Model extends Settings_Vtiger_Module_Mod
 			->where(['vtiger_links.tabid' => $tabId])
 			->createCommand()->query();
 		while ($row = $dataReader->read()) {
-			if ('Mini List' == $row['linklabel']) {
-				$minilistWidget = Vtiger_Widget_Model::getInstanceFromValues($row);
-				$minilistWidgetModel = new Vtiger_MiniList_Model();
-				$minilistWidgetModel->setWidgetModel($minilistWidget);
-				$minilistWidget->set('title', $minilistWidgetModel->getTitle());
-				$data[$row['blockid']][] = $minilistWidget;
-			} elseif ('ChartFilter' == $row['linklabel']) {
-				$chartFilterWidget = Vtiger_Widget_Model::getInstanceFromValues($row);
-				$chartFilterWidgetModel = new Vtiger_ChartFilter_Model();
-				$chartFilterWidgetModel->setWidgetModel($chartFilterWidget);
-				$chartFilterWidget->set('title', $chartFilterWidgetModel->getTitle());
-				$data[$row['blockid']][] = $chartFilterWidget;
-			} else {
-				$data[$row['blockid']][] = Vtiger_Widget_Model::getInstanceFromValues($row);
-			}
+			$data[$row['blockid']][] = Vtiger_Widget_Model::getInstanceFromValues($row);
 		}
 		$dataReader->close();
 		\App\Log::trace('Exiting Settings_WidgetsManagement_Module_Model::getDashboardForModule() method ...');
@@ -619,5 +523,65 @@ class Settings_WidgetsManagement_Module_Model extends Settings_Vtiger_Module_Mod
 		\App\Log::trace('Exiting Settings_WidgetsManagement_Module_Model::removeBlock() method ...');
 
 		return ['success' => true];
+	}
+
+	/**
+	 * Manage widgets between roles.
+	 *
+	 * @param array $data
+	 *
+	 * @return void
+	 */
+	public function transfer(array $data): bool
+	{
+		$result = true;
+		$block = self::getBlocksFromModule($data['sourceModule'], $data['authorized'], $data['dashboardId']);
+		$newBlockId = reset($block);
+		if (!$newBlockId) {
+			$newBlockId = $this->addBlock(['authorized' => $data['authorized'], 'dashboardId' => $data['dashboardId']], $data['sourceModule'], null)['id'];
+		}
+		$db = App\Db::getInstance();
+		$transaction = $db->beginTransaction();
+		try {
+			$widgetLinkId = $data['widgetLinkId'];
+			foreach ($widgetLinkId as $id) {
+				$moduleDashboardRow = (new App\Db\Query())->from('vtiger_module_dashboard')->where(['id' => $id])->one();
+				if ($moduleDashboardRow && !$this->exists($moduleDashboardRow, $newBlockId)) {
+					if ('copy' === $data['actionOption']) {
+						$moduleDashboardRow['blockid'] = $newBlockId;
+						unset($moduleDashboardRow['id']);
+						$db->createCommand()->insert('vtiger_module_dashboard', $moduleDashboardRow)->execute();
+					} else {
+						$db->createCommand()->update('vtiger_module_dashboard', ['blockid' => $newBlockId], ['id' => $id])->execute();
+						$db->createCommand()->delete('vtiger_module_dashboard_widgets', ['templateid' => $id])->execute();
+					}
+				} else {
+					$result = false;
+				}
+			}
+			$transaction->commit();
+		} catch (Throwable $e) {
+			$result = false;
+			$transaction->rollBack();
+		}
+		return $result;
+	}
+
+	/**
+	 * Check if widget exists.
+	 *
+	 * @param array $data
+	 * @param int   $dashboardId
+	 *
+	 * @return bool
+	 */
+	public function exists(array $data, int $dashboardId): bool
+	{
+		return (new App\Db\Query())->from('vtiger_module_dashboard')->where([
+			'linkid' => $data['linkid'],
+			'filterid' => $data['filterid'],
+			'data' => $data['data'],
+			'blockid' => $dashboardId,
+		])->exists();
 	}
 }

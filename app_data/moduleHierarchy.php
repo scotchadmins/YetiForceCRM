@@ -26,60 +26,106 @@ return [
 		'ProjectTask' => ['level' => 3, 'parentModule' => 'ProjectMilestone'],
 		'Contacts' => ['level' => 4],
 	],
+	/*
+	 * 'Base module' => [
+	 * 		['From module' => ['dest field name' => ['source field name']]],
+	 * ],
+	 */
 	'modulesMapRelatedFields' => [//Map links between modules
+		'ServiceContracts' => [
+			'parent_id' => ['ServiceContracts' => ['sc_related_to' => ['parent_id', 'Accounts']]],
+		],
 		'ProjectTask' => [
 			'projectmilestoneid' => ['ProjectMilestone' => ['projectid' => ['projectid']]],
-			'parentid' => ['ProjectTask' => ['projectid' => ['projectid'], 'projectmilestoneid' => ['projectmilestoneid']]]
+			'parentid' => ['ProjectTask' => ['projectid' => ['projectid'], 'projectmilestoneid' => ['projectmilestoneid']]],
+		],
+		'Project' => [
+			'servicecontractsid' => ['ServiceContracts' => ['linktoaccountscontacts' => ['sc_related_to', 'Accounts']]],
+			'ssalesprocessesid' => ['SSalesProcesses' => ['linktoaccountscontacts' => ['related_to', 'Accounts']]],
+			'parentid' => [
+				'Project' => ['linktoaccountscontacts' => ['linktoaccountscontacts'], 'servicecontractsid' => ['servicecontractsid']]
+			],
 		],
 		'HelpDesk' => [
 			'projectid' => ['Project' => ['parent_id' => ['linktoaccountscontacts']]],
 			'contact_id' => ['Contacts' => ['parent_id' => ['parent_id']]],
 			'pssold_id' => ['Assets' => ['product_id' => ['product', 'Products'], 'parent_id' => ['parent_id', 'Accounts']], 'OSSSoldServices' => ['product_id' => ['serviceid', 'Services']]],
-			'servicecontractsid' => ['ServiceContracts' => ['parent_id' => ['sc_related_to', 'Accounts'], 'ticketpriorities' => ['contract_priority']]]
+			'servicecontractsid' => ['ServiceContracts' => ['parent_id' => ['sc_related_to', 'Accounts'], 'ticketpriorities' => ['contract_priority']]],
 		],
 		'OSSTimeControl' => [
 			'process' => ['Project' => ['link' => ['linktoaccountscontacts']]],
-			'subprocess' => ['HelpDesk' => ['name' => ['ticket_title']]]
+			'subprocess' => [
+				'HelpDesk' => ['name' => ['ticket_title'], 'link' => ['parent_id'], 'process' => ['servicecontractsid'], 'linkextend' => ['contact_id']],
+			],
+			'subprocess_sl' => [
+				'ProjectTask' => ['process' => ['projectid'], 'name' => ['projecttaskname']],
+			]
 		],
 		'SRequirementsCards' => [
-			'salesprocessid' => ['SSalesProcesses' => ['accountid' => ['related_to']]]
+			'salesprocessid' => ['SSalesProcesses' => ['accountid' => ['related_to']]],
 		],
 		'SCalculations' => [
-			'salesprocessid' => ['SSalesProcesses' => ['accountid' => ['related_to']]]
+			'salesprocessid' => ['SSalesProcesses' => ['accountid' => ['related_to']]],
 		],
 		'SVendorEnquiries' => [
-			'salesprocessid' => ['SSalesProcesses' => ['accountid' => ['related_to']]]
+			'salesprocessid' => ['SSalesProcesses' => ['accountid' => ['related_to']]],
 		],
 		'SQuotes' => [
 			'accountid' => ['Accounts' => ['company' => ['accountname']]],
-			'salesprocessid' => ['SSalesProcesses' => ['accountid' => ['related_to']]]
+			'salesprocessid' => ['SSalesProcesses' => ['accountid' => ['related_to']]],
 		],
 		'SSingleOrders' => [
 			'salesprocessid' => ['SSalesProcesses' => ['accountid' => ['related_to']]],
-			'squotesid' => ['SQuotes' => ['accountid' => ['accountid']]]
+			'squotesid' => ['SQuotes' => ['accountid' => ['accountid']]],
+			'accountid' => [
+				'Accounts' => [
+					'company_name_a' => ['accountname'],
+					'vat_id_a' => ['vat_id'],
+					'addresslevel8a' => ['addresslevel8a'],
+					'addresslevel7a' => ['addresslevel7a'],
+					'addresslevel6a' => ['addresslevel6a'],
+					'addresslevel5a' => ['addresslevel5a'],
+					'addresslevel4a' => ['addresslevel4a'],
+					'addresslevel3a' => ['addresslevel3a'],
+					'addresslevel2a' => ['addresslevel2a'],
+					'addresslevel1a' => ['addresslevel1a'],
+				],
+			],
 		],
 		'SRecurringOrders' => [
 			'accountid' => ['Accounts' => ['company' => ['accountname']]],
-			'salesprocessid' => ['SSalesProcesses' => ['accountid' => ['related_to']]]
+			'salesprocessid' => ['SSalesProcesses' => ['accountid' => ['related_to']]],
+			'accountid' => [
+				'Accounts' => [
+					'addresslevel8a' => ['addresslevel8a'],
+					'addresslevel7a' => ['addresslevel7a'],
+					'addresslevel6a' => ['addresslevel6a'],
+					'addresslevel5a' => ['addresslevel5a'],
+					'addresslevel4a' => ['addresslevel4a'],
+					'addresslevel3a' => ['addresslevel3a'],
+					'addresslevel2a' => ['addresslevel2a'],
+					'addresslevel1a' => ['addresslevel1a'],
+				],
+			],
 		],
 		'SQuoteEnquiries' => [
-			'salesprocessid' => ['SSalesProcesses' => ['accountid' => ['related_to']]]
+			'salesprocessid' => ['SSalesProcesses' => ['accountid' => ['related_to']]],
 		],
 		'SSalesProcesses' => [
-			'projectid' => ['Project' => ['accountid' => ['linktoaccountscontacts']]]
+			'projectid' => ['Project' => ['accountid' => ['linktoaccountscontacts']]],
 		],
 		'IGRNC' => [
-			'igrnid' => ['IGRN' => ['vendorid' => ['vendorid'], 'storageid' => ['storageid']]]
+			'igrnid' => ['IGRN' => ['vendorid' => ['vendorid'], 'storageid' => ['storageid']]],
 		],
 		'IGDNC' => [
-			'igdnid' => ['IGDN' => ['storageid' => ['storageid'], 'accountid' => ['accountid']]]
+			'igdnid' => ['IGDN' => ['storageid' => ['storageid'], 'accountid' => ['accountid']]],
 		],
 		'Assets' => [
 			'contactid' => ['Contacts' => ['parent_id' => ['parent_id']]],
 		],
 		'FCorectingInvoice' => [
-			'finvoiceid' => ['FInvoice' => ['accountid' => ['accountid']]]
-		]
+			'finvoiceid' => ['FInvoice' => ['accountid' => ['accountid']]],
+		],
 	],
 	'modulesMap1M' => [// Base => Parent
 		'OSSEmployees' => ['MultiCompany'],
@@ -104,7 +150,6 @@ return [
 		'OSSOutsourcedServices' => ['Accounts', 'Leads'],
 		'Assets' => ['Accounts', 'Leads'],
 		'OutsourcedProducts' => ['Accounts', 'Leads'],
-		'OSSPasswords' => ['Accounts', 'Leads', 'HelpDesk', 'Vendors'],
 		'Calendar' => ['Accounts', 'Contacts', 'OSSEmployees', 'Leads', 'Vendors', 'HelpDesk', 'Project', 'HelpDesk', 'ServiceContracts', 'Campaigns'],
 	],
 	'modulesMapMMBase' => ['Services', 'Reservations'],
@@ -112,5 +157,5 @@ return [
 		'Documents' => ['table' => 'vtiger_senotesrel', 'rel' => 'crmid', 'base' => 'notesid'],
 		'Products' => ['table' => 'vtiger_seproductsrel', 'rel' => 'crmid', 'base' => 'productid'],
 		'OSSMailView' => ['table' => 'vtiger_ossmailview_relation', 'rel' => 'crmid', 'base' => 'ossmailviewid'],
-	]
+	],
 ];

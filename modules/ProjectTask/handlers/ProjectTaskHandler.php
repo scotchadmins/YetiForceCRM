@@ -5,8 +5,8 @@
  *
  * @package   Handler
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class ProjectTask_ProjectTaskHandler_Handler
 {
@@ -19,7 +19,12 @@ class ProjectTask_ProjectTaskHandler_Handler
 	{
 		$recordModel = $eventHandler->getRecordModel();
 		if ($recordModel->isNew()) {
-			(new \App\BatchMethod(['method' => 'Project_Module_Model::updateProgress', 'params' => [$recordModel->get('projectmilestoneid')]]))->save();
+			if ($recordModel->get('projectmilestoneid')) {
+				(new \App\BatchMethod([
+					'method' => 'Project_Module_Model::updateProgress',
+					'params' => [$recordModel->get('projectmilestoneid')]
+				]))->save();
+			}
 		} else {
 			$delta = $recordModel->getPreviousValue();
 			$calculateMilestone = $calculateProject = [];
@@ -38,10 +43,20 @@ class ProjectTask_ProjectTaskHandler_Handler
 				}
 			}
 			foreach ($calculateMilestone as $milestoneId => $val) {
-				(new \App\BatchMethod(['method' => 'ProjectMilestone_Module_Model::updateProgress', 'params' => [$milestoneId]]))->save();
+				if ($milestoneId) {
+					(new \App\BatchMethod([
+						'method' => 'ProjectMilestone_Module_Model::updateProgress',
+						'params' => [$milestoneId]
+					]))->save();
+				}
 			}
 			foreach ($calculateProject as $projectId => $val) {
-				(new \App\BatchMethod(['method' => 'Project_Module_Model::updateProgress', 'params' => [$projectId]]))->save();
+				if ($projectId) {
+					(new \App\BatchMethod([
+						'method' => 'Project_Module_Model::updateProgress',
+						'params' => [$projectId]
+					]))->save();
+				}
 			}
 		}
 	}
@@ -54,7 +69,12 @@ class ProjectTask_ProjectTaskHandler_Handler
 	public function entityAfterDelete(App\EventHandler $eventHandler)
 	{
 		$recordModel = $eventHandler->getRecordModel();
-		(new \App\BatchMethod(['method' => 'ProjectMilestone_Module_Model::updateProgress', 'params' => [$recordModel->get('projectmilestoneid')]]))->save();
+		if ($recordModel->get('projectmilestoneid')) {
+			(new \App\BatchMethod([
+				'method' => 'ProjectMilestone_Module_Model::updateProgress',
+				'params' => [$recordModel->get('projectmilestoneid')]
+			]))->save();
+		}
 	}
 
 	/**
@@ -65,6 +85,11 @@ class ProjectTask_ProjectTaskHandler_Handler
 	public function entityChangeState(App\EventHandler $eventHandler)
 	{
 		$recordModel = $eventHandler->getRecordModel();
-		(new \App\BatchMethod(['method' => 'ProjectMilestone_Module_Model::updateProgress', 'params' => [$recordModel->get('projectmilestoneid')]]))->save();
+		if ($recordModel->get('projectmilestoneid')) {
+			(new \App\BatchMethod([
+				'method' => 'ProjectMilestone_Module_Model::updateProgress',
+				'params' => [$recordModel->get('projectmilestoneid')]
+			]))->save();
+		}
 	}
 }

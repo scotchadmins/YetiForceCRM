@@ -15,6 +15,10 @@
 	}
 }
 
+.fieldValue {
+	border-radius: 0.25rem;
+}
+
 .user-info--active {
 	.c-form__action-panel {
 		bottom: $h-footer-user-info;
@@ -61,7 +65,7 @@
 }
 .o-register-error + .o-register-warning + .mainContainer {
 	.verticalScroll {
-		height: calc(100vh -#{$h-edit-offset} - #{$h-register-panel} - #{$h-register-panel});
+		height: calc(100vh - #{$h-edit-offset} - #{$h-register-panel} - #{$h-register-panel});
 	}
 }
 
@@ -115,5 +119,11 @@
 	//reboot correction for hidden list in table
 	.subProductsContainer ul {
 		margin-bottom: 0;
+	}
+
+	.inventoryRowGroup td,
+	.inventoryRowGroup td:hover {
+		background-color: #d1d1db !important;
+		color: #000 !important;
 	}
 }

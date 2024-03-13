@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce Sp. z o.o.
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Settings_Groups_Edit_View extends Settings_Vtiger_Index_View
@@ -25,18 +25,17 @@ class Settings_Groups_Edit_View extends Settings_Vtiger_Index_View
 		if ($record) {
 			$recordModel = Settings_Groups_Record_Model::getInstance($record);
 		} else {
-			$recordModel = new Settings_Groups_Record_Model();
+			$recordModel = Settings_Groups_Record_Model::getCleanInstance();
 		}
+		$viewer->assign('STRUCTURE', $recordModel->getModule()->getEditViewStructure($recordModel));
 		$viewer->assign('MEMBER_GROUPS', Settings_Groups_Member_Model::getAll(true));
 		$viewer->assign('RECORD_MODEL', $recordModel);
 		$viewer->assign('RECORD_ID', $record);
 		$viewer->assign('MODULE', $moduleName);
-		$viewer->view('EditView.tpl', $qualifiedModuleName);
+		$viewer->view('Edit.tpl', $qualifiedModuleName);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getFooterScripts(App\Request $request)
 	{
 		return array_merge(parent::getFooterScripts($request), $this->checkAndConvertJsScripts([

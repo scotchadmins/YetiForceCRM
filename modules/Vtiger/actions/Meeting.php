@@ -5,8 +5,8 @@
  *
  * @package   Action
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
@@ -22,15 +22,13 @@ class Vtiger_Meeting_Action extends \App\Controller\Action
 	 */
 	protected $record;
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		$moduleName = $request->getModule();
 		if ($request->isEmpty('record', true)) {
 			$this->record = \Vtiger_Record_Model::getCleanInstance($moduleName);
-			$permission = $this->record->isCreateable();
+			$permission = $this->record->isCreatable();
 		} else {
 			$this->record = Vtiger_Record_Model::getInstanceById($request->getInteger('record'), $moduleName);
 			$permission = $this->record->isEditable();
@@ -41,9 +39,7 @@ class Vtiger_Meeting_Action extends \App\Controller\Action
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$meeting = \App\MeetingService::getInstance();
@@ -52,10 +48,10 @@ class Vtiger_Meeting_Action extends \App\Controller\Action
 		try {
 			$moduleModel = Vtiger_Module_Model::getInstance($request->getModule());
 			$room = $meeting->generateRoomName((string) $request->getByType('roomName', \App\Purifier::TEXT, ''));
-			if ($request->has('exp') && ($expFieldName = $request->getByType('expField', \App\Purifier::ALNUM)) &&
-				($expField = $moduleModel->getFieldByName($expFieldName)) && $expField->isActiveField()
+			if ($request->has('exp') && ($expFieldName = $request->getByType('expField', \App\Purifier::ALNUM))
+				&& ($expField = $moduleModel->getFieldByName($expFieldName)) && $expField->isActiveField()
 			) {
-				$date = $request->getByType('exp', 'DateInUserFormat', true);
+				$date = $request->getByType('exp', \App\Purifier::DATE_USER_FORMAT, true);
 			}
 			$url = $meeting->getUrl(['room' => $room, 'exp' => strtotime($date . ' 23:59:59')]);
 		} catch (\Throwable $e) {

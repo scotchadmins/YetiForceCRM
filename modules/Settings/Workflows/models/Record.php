@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 // Workflow Record Model Class
 require_once 'modules/com_vtiger_workflow/include.php';
@@ -17,6 +17,9 @@ require_once 'modules/com_vtiger_workflow/expression_engine/VTExpressionsManager
  */
 class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model
 {
+	/** @var Workflow object */
+	public $workflowObject;
+
 	/**
 	 * Get record id.
 	 *
@@ -68,27 +71,13 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model
 	}
 
 	/**
-	 * Set workflow object.
-	 *
-	 * @param object $wf
-	 *
-	 * @return $this
-	 */
-	protected function setWorkflowObject($wf)
-	{
-		$this->workflow_object = $wf;
-
-		return $this;
-	}
-
-	/**
 	 * Get workflow object.
 	 *
 	 * @return object
 	 */
 	public function getWorkflowObject()
 	{
-		return $this->workflow_object;
+		return $this->workflowObject;
 	}
 
 	/**
@@ -122,7 +111,7 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model
 	 *
 	 * @return array
 	 */
-	public function getTasks($active = false)
+	public function getTasks($active = true)
 	{
 		return Settings_Workflows_TaskRecord_Model::getAllForWorkflow($this, $active);
 	}
@@ -134,7 +123,14 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model
 	 */
 	public function getTaskTypes()
 	{
-		return Settings_Workflows_TaskType_Model::getAllForModule($this->getModule());
+		$taskTypes = [];
+		foreach (Settings_Workflows_TaskType_Model::getAllForModule($this->getModule()) as $taskType) {
+			$taskModel = Settings_Workflows_TaskRecord_Model::getCleanInstance($this, $taskType->get('classname'))->setTaskType($taskType);
+			if ($taskModel->isEditable()) {
+				$taskTypes[] = $taskModel;
+			}
+		}
+		return $taskTypes;
 	}
 
 	/**
@@ -149,6 +145,21 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * Gets params value.
+	 *
+	 * @param string|null $key
+	 *
+	 * @return mixed
+	 */
+	public function getParams(string $key = null)
+	{
+		if ($params = $this->get('params') ?: []) {
+			$params = \App\Json::decode($params);
+		}
+		return $key ? ($params[$key] ?? null) : $params;
 	}
 
 	/**
@@ -167,11 +178,12 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model
 		$wf->schtime = $this->get('schtime');
 		$wf->schdayofmonth = $this->get('schdayofmonth');
 		$wf->schdayofweek = $this->get('schdayofweek');
-		$wf->schmonth = $this->get('schmonth');
 		$wf->schannualdates = $this->get('schannualdates');
 		$wf->nexttrigger_time = $this->get('nexttrigger_time');
 		$wf->params = $this->get('params');
-
+		if (!isset($wf->id)) {
+			$wf->sequence = $this->getNextSequenceNumber($this->get('module_name'));
+		}
 		$wm->save($wf);
 
 		$this->set('workflow_id', $wf->id);
@@ -196,12 +208,8 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model
 		return (new VTEntityMethodManager())->methodsForModule($this->get('module_name'));
 	}
 
-	/**
-	 * Function to get the list view actions for the record.
-	 *
-	 * @return Vtiger_Link_Model[]
-	 */
-	public function getRecordLinks()
+	/** {@inheritdoc} */
+	public function getRecordLinks(): array
 	{
 		$links = [];
 
@@ -268,7 +276,7 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model
 	 *
 	 * @return \Self
 	 */
-	public static function getCleanInstance($moduleName)
+	public static function getCleanInstance(string $moduleName)
 	{
 		$wm = new VTWorkflowManager();
 		$wf = $wm->newWorkflow($moduleName);
@@ -293,6 +301,7 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model
 		$workflowModel->set('module_name', $wf->moduleName);
 		$workflowModel->set('workflow_id', $wf->id ?? false);
 		$workflowModel->set('filtersavedinnew', $wf->filtersavedinnew);
+		$workflowModel->set('params', $wf->params);
 		$workflowModel->setWorkflowObject($wf);
 		$workflowModel->setModule($wf->moduleName);
 
@@ -311,57 +320,7 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model
 		if (null === $executionCondition) {
 			$executionCondition = $this->get('execution_condition');
 		}
-		$arr = ['ON_FIRST_SAVE', 'ONCE', 'ON_EVERY_SAVE', 'ON_MODIFY', 'ON_DELETE', 'ON_SCHEDULE', 'MANUAL', 'TRIGGER', 'BLOCK_EDIT', 'ON_RELATED'];
-		return $arr[$executionCondition - 1] ?? '';
-	}
-
-	/**
-	 * Function to get the count of active workflows.
-	 *
-	 * @return int count of acive workflows
-	 */
-	public static function getActiveCount()
-	{
-		Vtiger_Loader::includeOnce('~modules/com_vtiger_workflow/VTTaskManager.php');
-		$taskManager = new VTTaskManager();
-		$taskList = $taskManager->getTasks();
-
-		$examinedIdList = [];
-		foreach ($taskList as $taskDetails) {
-			$workFlowId = $taskDetails->workflowId;
-			if (\in_array($workFlowId, $examinedIdList)) {
-				continue;
-			}
-			if ($taskDetails->active) {
-				array_push($examinedIdList, $workFlowId);
-			}
-		}
-		return \count($examinedIdList);
-	}
-
-	/**
-	 * Get active workflows from task list.
-	 *
-	 * @param array $taskList
-	 *
-	 * @return int
-	 */
-	public static function getActiveCountFromRecord($taskList = [])
-	{
-		$examinedIdList = [];
-		if (!\is_array($taskList)) {
-			$taskList = [];
-		}
-		foreach ($taskList as $taskDetails) {
-			$workFlowId = $taskDetails->getId();
-			if (\in_array($workFlowId, $examinedIdList)) {
-				continue;
-			}
-			if ($taskDetails->isActive()) {
-				array_push($examinedIdList, $workFlowId);
-			}
-		}
-		return \count($examinedIdList);
+		return Settings_Workflows_Module_Model::TRIGGER_TYPES[$executionCondition] ?? '';
 	}
 
 	/**
@@ -394,7 +353,7 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model
 
 		if (!empty($conditions)) {
 			foreach ($conditions as $info) {
-				if (!($info['groupid'])) {
+				if (!$info['groupid']) {
 					$firstGroup[] = ['columnname' => $info['fieldname'], 'comparator' => $info['operation'], 'value' => $info['value'],
 						'column_condition' => $info['joincondition'], 'valuetype' => $info['valuetype'], 'groupid' => $info['groupid'], ];
 				} else {
@@ -456,46 +415,6 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model
 		$this->set('conditions', $wfCondition);
 	}
 
-	/**
-	 * Function returns all the related modules for workflows create entity task.
-	 *
-	 * @return JSON
-	 */
-	public function getDependentModules()
-	{
-		$dependentFields = [];
-		$filterModules = ['Calendar', 'Accounts', 'Notification'];
-		foreach (\App\Field::getRelatedFieldForModule(false, $this->getModule()->getName()) as $module => $value) {
-			if (\in_array($module, $filterModules)) {
-				continue;
-			}
-			$dependentFields[$module] = ['fieldname' => $value['fieldname'], 'modulelabel' => \App\Language::translate($module, $module)];
-		}
-		return $dependentFields;
-	}
-
-	/**
-	 * Function to get reference field name.
-	 *
-	 * @param string $relatedModule
-	 *
-	 * @return string fieldname
-	 */
-	public function getReferenceFieldName($relatedModule)
-	{
-		if ($relatedModule) {
-			$relatedModuleModel = Vtiger_Module_Model::getInstance($relatedModule);
-			$referenceFieldsList = $relatedModuleModel->getFieldsByType('reference');
-
-			foreach ($referenceFieldsList as $fieldName => $fieldModel) {
-				if (\in_array($this->getModule()->getName(), $fieldModel->getReferenceList())) {
-					return $fieldName;
-				}
-			}
-		}
-		return false;
-	}
-
 	public function updateNextTriggerTime()
 	{
 		$wm = new VTWorkflowManager();
@@ -521,5 +440,56 @@ class Settings_Workflows_Record_Model extends Settings_Vtiger_Record_Model
 	public static function getAllAmountWorkflowsAmount()
 	{
 		return (new App\Db\Query())->from('com_vtiger_workflows')->count();
+	}
+
+	/**
+	 * Get next workflow action sequence number.
+	 *
+	 * @param string $moduleName
+	 *
+	 * @return int
+	 */
+	public function getNextSequenceNumber(string $moduleName): int
+	{
+		return (new \App\Db\Query())
+			->from('com_vtiger_workflows')
+			->where(['module_name' => $moduleName])
+			->max('sequence') + 1;
+	}
+
+	/**
+	 * Get module relations by type.
+	 *
+	 * @return array
+	 */
+	public function getModuleRelationsByType(): array
+	{
+		$moduleRelations = App\Relation::getByModule($this->getModule()->getName());
+		$moduleRelationsByType = [];
+		foreach ($moduleRelations as $relationId => $relationInfo) {
+			$relationType = \Vtiger_Relation_Model::getInstanceById($relationId)->getRelationType();
+			if (\Vtiger_Relation_Model::RELATION_O2M === $relationType) {
+				$moduleRelationsByType['LBL_ONE_TO_MANY_RELATIONS'][] = $relationInfo;
+			} elseif (\Vtiger_Relation_Model::RELATION_M2M === $relationType) {
+				$moduleRelationsByType['LBL_MANY_TO_MANY_RELATIONS'][] = $relationInfo;
+			} else {
+				$moduleRelationsByType['LBL_WORKFLOW_CUSTOM_RELATIONS'][] = $relationInfo;
+			}
+		}
+		return $moduleRelationsByType;
+	}
+
+	/**
+	 * Set workflow object.
+	 *
+	 * @param object $wf
+	 *
+	 * @return $this
+	 */
+	protected function setWorkflowObject($wf)
+	{
+		$this->workflowObject = $wf;
+
+		return $this;
 	}
 }

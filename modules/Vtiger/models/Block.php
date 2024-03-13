@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Vtiger_Block_Model extends vtlib\Block
@@ -63,9 +63,14 @@ class Vtiger_Block_Model extends vtlib\Block
 		return $this;
 	}
 
+	/**
+	 * Check if block is customizable.
+	 *
+	 * @return bool
+	 */
 	public function isCustomized()
 	{
-		return (0 != $this->iscustom) ? true : false;
+		return 0 !== (int) $this->iscustom;
 	}
 
 	/**
@@ -131,21 +136,14 @@ class Vtiger_Block_Model extends vtlib\Block
 	/**
 	 * Function to retrieve block instances for a module.
 	 *
-	 * @param <type> $moduleModel - module instance
+	 * @param vtlib\ModuleBasic $moduleModel - module instance
 	 *
-	 * @return <array> - list of Vtiger_Block_Model
+	 * @return Vtiger_Block_Model[] List of Vtiger_Block_Model
 	 */
 	public static function getAllForModule(vtlib\ModuleBasic $moduleModel)
 	{
-		$blockObjects = Vtiger_Cache::get('ModuleBlock', $moduleModel->getName());
-
-		if (!$blockObjects) {
-			$blockObjects = parent::getAllForModule($moduleModel);
-			Vtiger_Cache::set('ModuleBlock', $moduleModel->getName(), $blockObjects);
-		}
 		$blockModelList = [];
-
-		if ($blockObjects) {
+		if ($blockObjects = parent::getAllForModule($moduleModel)) {
 			foreach ($blockObjects as $blockObject) {
 				$blockModelList[] = self::getInstanceFromBlockObject($blockObject);
 			}
@@ -153,6 +151,14 @@ class Vtiger_Block_Model extends vtlib\Block
 		return $blockModelList;
 	}
 
+	/**
+	 * Get block instance.
+	 *
+	 * @param int|string             $value
+	 * @param vtlib\ModuleBasic|bool $moduleInstance
+	 *
+	 * @return self
+	 */
 	public static function getInstance($value, $moduleInstance = false)
 	{
 		return self::getInstanceFromBlockObject(parent::getInstance($value, $moduleInstance));

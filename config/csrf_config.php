@@ -6,6 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
+ * Contributor(s): YetiForce S.A.
  * ****************************************************************************** */
 
 class CSRFConfig
@@ -15,15 +16,19 @@ class CSRFConfig
 	 */
 	public static function startup()
 	{
-		//Override the default expire time of token
-		\CsrfMagic\Csrf::$expires = 259200;
+		// Override the default expire time of token
+		\CsrfMagic\Csrf::$expires = \App\Config::security('csrfLifetimeToken', 7200);
 		\CsrfMagic\Csrf::$callback = function ($tokens) {
-			throw new \App\Exceptions\AppException('Invalid request - Response For Illegal Access', 403);
+			throw new \App\Exceptions\Csrf('Invalid request - Response For Illegal Access', 403);
 		};
 		$js = 'vendor/yetiforce/csrf-magic/src/Csrf.min.js';
 		if (!IS_PUBLIC_DIR) {
 			$js = 'public_html/' . $js;
 		}
+		if ('Install' === \App\Process::$requestMode) {
+			$js = '../' . $js;
+		}
+		\CsrfMagic\Csrf::$defer = true;
 		\CsrfMagic\Csrf::$dirSecret = __DIR__;
 		\CsrfMagic\Csrf::$rewriteJs = $js;
 		\CsrfMagic\Csrf::$cspToken = \App\Session::get('CSP_TOKEN');

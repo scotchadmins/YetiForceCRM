@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce Sp. z o.o
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 // Settings Module Model Class
@@ -25,6 +25,8 @@ class Settings_Vtiger_Module_Model extends \App\Base
 
 	/** @var string Module name. */
 	public $name = 'Vtiger';
+	/** @var array list field models. */
+	public $listFieldModels;
 
 	public function getName($includeParentIfExists = false)
 	{
@@ -116,14 +118,13 @@ class Settings_Vtiger_Module_Model extends \App\Base
 	/**
 	 * Function to get the instance of Settings module model.
 	 *
-	 * @param mixed $name
+	 * @param string $name
 	 *
-	 * @return Settings_Vtiger_Module_Model instance
+	 * @return $this instance
 	 */
 	public static function getInstance($name = 'Settings:Vtiger')
 	{
 		$modelClassName = Vtiger_Loader::getComponentClassName('Model', 'Module', $name);
-
 		return new $modelClassName();
 	}
 

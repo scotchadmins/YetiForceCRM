@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 class MultiImage {
@@ -29,6 +29,8 @@ class MultiImage {
 		this.fieldInfo = this.elements.values.data('fieldinfo');
 		this.options.formats = this.fieldInfo.formats;
 		this.options.limit = this.fieldInfo.limit;
+		this.options.maxFileSize = this.fieldInfo.maxFileSize || CONFIG.maxUploadLimit;
+		this.options.maxFileSizeDisplay = this.fieldInfo.maxFileSizeDisplay || '';
 		if (!this.detailView) {
 			this.files = JSON.parse(this.elements.values.val());
 		} else {
@@ -56,7 +58,7 @@ class MultiImage {
 			this.elements.fileInput.fileupload('option', 'dropZone', $(this.elements.component));
 			this.enableDragNDrop();
 		}
-		this.elements.component.on('click', '.js-multi-image__popover-img', function (e) {
+		this.elements.component.on('click', '.js-multi-image__popover-img', function () {
 			thisInstance.zoomPreview($(this).data('hash'));
 		});
 		this.elements.component.on('click', '.js-multi-image__popover-btn-zoom', function (e) {
@@ -85,7 +87,7 @@ class MultiImage {
 			e.preventDefault();
 			e.stopPropagation();
 			e.stopImmediatePropagation();
-			bootbox.alert(app.vtranslate('JS_WAIT_FOR_FILE_UPLOAD'));
+			app.showAlert(app.vtranslate('JS_WAIT_FOR_FILE_UPLOAD'));
 			return false;
 		}
 		return true;
@@ -107,11 +109,18 @@ class MultiImage {
 	 * @param {Event} e
 	 * @param {Object} data
 	 */
-	submit(e, data) {
+	submit(_e, data) {
 		data.formData = {
 			hash: data.files[0].hash
 		};
 		App.Fields.MultiImage.currentFileUploads++;
+		this.progressInstance = $.progressIndicator({
+			position: 'replace',
+			blockInfo: {
+				enabled: true,
+				elementToBlock: this.elements.component
+			}
+		});
 	}
 
 	/**
@@ -154,19 +163,15 @@ class MultiImage {
 	 * @param {Event} e
 	 * @param {Object} data
 	 */
-	uploadError(e, data) {
+	uploadError(_e, data) {
+		this.progressInstance.progressIndicator({ mode: 'hide' });
 		app.errorLog('File upload error.');
 		const { jqXHR, files } = data;
-		if (typeof jqXHR.responseJSON === 'undefined' || jqXHR.responseJSON === null) {
-			App.Fields.MultiImage.currentFileUploads--;
-			return app.showNotify({
-				text: app.vtranslate('JS_FILE_UPLOAD_ERROR'),
-				type: 'error'
-			});
-		}
 		const response = jqXHR.responseJSON;
 		// first try to show error for concrete file
 		if (
+			response !== null &&
+			typeof response !== 'undefined' &&
 			typeof response.result !== 'undefined' &&
 			typeof response.result.attach !== 'undefined' &&
 			Array.isArray(response.result.attach)
@@ -176,12 +181,15 @@ class MultiImage {
 				this.deleteFile(fileAttach.hash, false);
 				if (typeof fileAttach.error === 'string') {
 					app.showNotify({
-						text: fileAttach.error + ` [${fileAttach.name}]`,
+						textTrusted: false,
+						text: fileAttach.error,
 						type: 'error'
 					});
 				} else {
 					app.showNotify({
-						text: app.vtranslate('JS_FILE_UPLOAD_ERROR') + ` [${fileAttach.name}]`,
+						textTrusted: false,
+						title: app.vtranslate('JS_FILE_UPLOAD_ERROR'),
+						text: fileAttach.name,
 						type: 'error'
 					});
 				}
@@ -194,7 +202,9 @@ class MultiImage {
 			App.Fields.MultiImage.currentFileUploads--;
 			this.deleteFile(file.hash, false);
 			app.showNotify({
-				text: app.vtranslate('JS_FILE_UPLOAD_ERROR') + ` [${file.name}]`,
+				textTrusted: false,
+				title: app.vtranslate('JS_FILE_UPLOAD_ERROR'),
+				text: file.name,
 				type: 'error'
 			});
 		});
@@ -208,28 +218,35 @@ class MultiImage {
 	 * @param {Object} data
 	 */
 	uploadSuccess(e, data) {
+		this.progressInstance.progressIndicator({ mode: 'hide' });
 		const { result } = data;
 		const attach = result.result.attach;
 		attach.forEach((fileAttach) => {
 			const hash = fileAttach.hash;
 			if (!hash) {
-				return app.errorLog(new Error(app.vtranslate('JS_INVALID_FILE_HASH') + ` [${hash}]`));
+				return app.errorLog(new Error(app.vtranslate('JS_INVALID_FILE_HASH')));
 			}
 			if (typeof fileAttach.key === 'undefined') {
 				return this.uploadError(e, data);
 			}
 			if (typeof fileAttach.info !== 'undefined' && fileAttach.info) {
 				app.showNotify({
+					textTrusted: false,
 					type: 'notice',
-					text: fileAttach.info + ` [${fileAttach.name}]`
+					title: fileAttach.info,
+					text: fileAttach.name
 				});
 			}
 			const fileInfo = this.getFileInfo(hash);
 			this.addFileInfoProperty(hash, 'key', fileAttach.key);
 			this.addFileInfoProperty(hash, 'size', fileAttach.size);
+			this.addFileInfoProperty(hash, 'sizeDisplay', fileAttach.sizeDisplay || fileAttach.size);
 			this.addFileInfoProperty(hash, 'name', fileAttach.name);
-			this.removePreviewPopover(hash);
-			this.addPreviewPopover(fileInfo.file, fileInfo.previewElement, fileInfo.imageSrc);
+			this.addFileInfoProperty(hash, 'type', fileAttach.type || '');
+			this.generatePreviewFromFile(fileInfo.file, (template, imageSrc) => {
+				this.addFileInfoProperty(hash, 'previewElement', this.addPreviewPopover(fileInfo, template, imageSrc));
+				this.redraw();
+			});
 			App.Fields.MultiImage.currentFileUploads--;
 		});
 		this.updateFormValues();
@@ -241,7 +258,7 @@ class MultiImage {
 	updateFormValues() {
 		this.elements.fileInput.val(null);
 		const formValues = this.files.map((file) => {
-			return { key: file.key, name: file.name, size: file.size };
+			return { key: file.key, name: file.name, size: file.size, type: file.type || '' };
 		});
 		this.elements.values.val(JSON.stringify(formValues));
 	}
@@ -252,7 +269,7 @@ class MultiImage {
 	 * @param {Object} file
 	 * @returns {boolean}
 	 */
-	validateFile(file) {
+	validateFormat(file) {
 		let valid = false;
 		this.options.formats.forEach((format) => {
 			if (file.type === 'image/' + format) {
@@ -261,13 +278,28 @@ class MultiImage {
 		});
 		if (!valid) {
 			app.showNotify({
-				text: `${app.vtranslate('JS_INVALID_FILE_TYPE')} [${file.name}]\n${app.vtranslate(
-					'JS_AVAILABLE_FILE_TYPES'
-				)}  [${this.options.formats.join(', ')}]`,
+				title: `${app.vtranslate('JS_INVALID_FILE_TYPE')}`,
+				text: `${app.vtranslate('JS_AVAILABLE_FILE_TYPES')}: ${this.options.formats.join(', ')}`,
 				type: 'error'
 			});
 		}
 		return valid;
+	}
+
+	/**
+	 * Validate maximum file size
+	 * @param {Object} file
+	 * @returns {Boolean}
+	 */
+	validateSize(file) {
+		let result = typeof file.size === 'number' && file.size < this.options.maxFileSize;
+		if (!result) {
+			app.showNotify({
+				text: `${app.vtranslate('JS_UPLOADED_FILE_SIZE_EXCEEDS')} <br> [${this.options.maxFileSizeDisplay}]`,
+				type: 'error'
+			});
+		}
+		return result;
 	}
 
 	/**
@@ -293,7 +325,7 @@ class MultiImage {
 			return [];
 		}
 		return files.filter((file) => {
-			return this.validateFile(file);
+			return this.validateFormat(file) && this.validateSize(file);
 		});
 	}
 
@@ -326,7 +358,7 @@ class MultiImage {
 	 * @param {Event} e
 	 * @param {object} data
 	 */
-	add(e, data) {
+	add(_e, data) {
 		if (data.files.length > 0) {
 			data.submit();
 		}
@@ -338,7 +370,7 @@ class MultiImage {
 	 * @param {Event} e
 	 * @param {Object} data
 	 */
-	progressAll(e, data) {
+	progressAll(_e, data) {
 		const progress = parseInt((data.loaded / data.total) * 100, 10);
 		this.elements.progressBar.css({ width: progress + '%' });
 		if (progress === 100) {
@@ -356,7 +388,7 @@ class MultiImage {
 	 *
 	 * @param {Event} e
 	 */
-	dragOver(e) {
+	dragOver(_e) {
 		this.elements.component.addClass('c-multi-image__drop-effect');
 	}
 
@@ -364,7 +396,7 @@ class MultiImage {
 	 * Dragleave event handler
 	 * @param {Event} e
 	 */
-	dragLeave(e) {
+	dragLeave(_e) {
 		this.elements.component.removeClass('c-multi-image__drop-effect');
 	}
 
@@ -429,48 +461,62 @@ class MultiImage {
 	 * @param {string} hash
 	 */
 	zoomPreview(hash) {
-		const thisInstance = this;
+		const self = this;
 		let fileInfo = this.getFileInfo(hash);
-		const titleTemplate = () => `<i class="fa fa-image"></i> ${fileInfo.name}`;
-		const bootboxOptions = {
-			size: 'large',
-			backdrop: true,
-			onEscape: true,
-			title: `<span id="bootbox-title-${hash}">${titleTemplate()}</span>`,
-			message: `<img src="${fileInfo.imageSrc}" class="w-100" />`,
-			buttons: {}
+		const titleTemplate = () => {
+			const titleObject = document.createElement('span');
+			const icon = document.createElement('i');
+			icon.setAttribute('class', `fa fa-image`);
+			titleObject.appendChild(icon);
+			titleObject.appendChild(document.createTextNode(` ${fileInfo.name}`));
+			return titleObject.innerHTML;
 		};
-		if (this.options.showCarousel) {
-			bootboxOptions.message = this.generateCarousel(hash);
-		}
-		if (!this.detailView) {
-			bootboxOptions.buttons.Delete = {
-				label: `<i class="fa fa-trash-alt"></i> ${app.vtranslate('JS_DELETE')}`,
-				className: 'float-left btn btn-danger',
-				callback() {
-					thisInstance.deleteFile(fileInfo.hash);
-				}
-			};
-		}
-		bootboxOptions.buttons.Download = {
-			label: `<i class="fa fa-download"></i> ${app.vtranslate('JS_DOWNLOAD')}`,
-			className: 'float-left btn btn-success',
-			callback() {
-				thisInstance.download(fileInfo.hash);
-			}
-		};
-		bootboxOptions.buttons.Close = {
-			label: `<i class="fa fa-times"></i> ${app.vtranslate('JS_CLOSE')}`,
-			className: 'btn btn-warning',
-			callback: () => {}
-		};
-		bootbox.dialog(bootboxOptions);
-		if (this.options.showCarousel) {
-			$(`#carousel-${hash}`).on('slid.bs.carousel', (e) => {
-				fileInfo = this.getFileInfo($(e.relatedTarget).data('hash'));
-				$(`#bootbox-title-${hash}`).html(titleTemplate());
+
+		let buttons = [];
+		if (!self.detailView) {
+			buttons.push({
+				text: app.vtranslate('JS_DELETE'),
+				icon: 'fa fa-trash-alt',
+				class: 'float-left btn btn-danger js-delete'
 			});
 		}
+		buttons.push(
+			{
+				text: app.vtranslate('JS_DOWNLOAD'),
+				icon: 'fa fa-download',
+				class: 'float-left btn btn-success js-success'
+			},
+			{
+				text: app.vtranslate('JS_CLOSE'),
+				icon: 'fa fa-times',
+				class: 'btn btn-warning',
+				data: { dismiss: 'modal' }
+			}
+		);
+		app.showModalHtml({
+			class: 'modal-lg',
+			header: titleTemplate(),
+			footerButtons: buttons,
+			body: self.options.showCarousel
+				? self.generateCarousel(hash)
+				: `<img src="${fileInfo.imageSrc}" class="w-100" />`,
+			cb: (modal) => {
+				modal.on('click', '.js-delete', function () {
+					self.deleteFile(fileInfo.hash);
+					app.hideModalWindow();
+				});
+				modal.on('click', '.js-success', function () {
+					self.download(fileInfo.hash);
+					app.hideModalWindow();
+				});
+				if (self.options.showCarousel) {
+					modal.find(`#carousel-${hash}`).on('slid.bs.carousel', (e) => {
+						fileInfo = self.getFileInfo($(e.relatedTarget).data('hash'));
+						modal.find('.js-modal-title').html(titleTemplate());
+					});
+				}
+			}
+		});
 	}
 
 	/**
@@ -480,7 +526,9 @@ class MultiImage {
 	 */
 	deleteFileCallback(hash) {
 		const fileInfo = this.getFileInfo(hash);
-		fileInfo.previewElement.popover('dispose').remove();
+		if (fileInfo.previewElement) {
+			fileInfo.previewElement.popover('dispose').remove();
+		}
 		this.files = this.files.filter((file) => file.hash !== fileInfo.hash);
 		this.updateFormValues();
 	}
@@ -495,15 +543,13 @@ class MultiImage {
 	deleteFile(hash, showConfirmation = true) {
 		if (showConfirmation) {
 			const fileInfo = this.getFileInfo(hash);
-			bootbox.confirm({
-				title: `<i class="fa fa-trash-alt"></i> ${app.vtranslate('JS_DELETE_FILE')}`,
-				message: `${app.vtranslate('JS_DELETE_FILE_CONFIRMATION')} <span class="font-weight-bold">${
-					fileInfo.name
-				}</span>?`,
-				callback: (result) => {
-					if (result) {
-						this.deleteFileCallback(hash);
-					}
+			app.showConfirmModal({
+				title: fileInfo.name,
+				text: app.vtranslate('JS_DELETE_FILE_CONFIRMATION'),
+				titleTrusted: false,
+				icon: 'fa fa-trash-alt',
+				confirmedCallback: () => {
+					this.deleteFileCallback(hash);
 				}
 			});
 		} else {
@@ -521,11 +567,6 @@ class MultiImage {
 		data.files = this.filterValidFiles(data.files);
 		data.files = this.setFilesHash(data.files);
 		this.dragLeave(e);
-		if (data.files.length) {
-			this.generatePreviewElements(data.files, (element) => {
-				this.redraw();
-			});
-		}
 	}
 
 	/**
@@ -540,8 +581,9 @@ class MultiImage {
 		const thisInstance = this;
 		let fileSize = '';
 		const fileInfo = this.getFileInfo(file.hash);
-		if (typeof fileInfo.size !== 'undefined') {
-			fileSize = `<div class="p-1 bg-white border rounded small position-absolute">${fileInfo.size}</div>`;
+		let size = fileInfo.sizeDisplay || fileInfo.size;
+		if (size) {
+			fileSize = `<div class="p-1 bg-white border rounded small position-absolute">${size}</div>`;
 		}
 		let deleteBtn = '';
 		if (!this.detailView) {
@@ -551,9 +593,13 @@ class MultiImage {
 				'JS_DELETE'
 			)}</span></button>`;
 		}
+
+		const titleObject = document.createElement('span');
+		titleObject.appendChild(document.createTextNode(fileInfo.name));
+
 		return $(template).popover({
 			container: thisInstance.elements.component,
-			title: `<div class="u-text-ellipsis"><i class="fa fa-image"></i> ${file.name}</div>`,
+			title: `<div class="u-text-ellipsis"><i class="fa fa-image"></i> ` + titleObject.innerHTML + `</div>`,
 			html: true,
 			sanitize: false,
 			trigger: 'focus',
@@ -599,7 +645,7 @@ class MultiImage {
 	 * @param {Event} e
 	 * @param {Object} ui
 	 */
-	sortOver(e, ui) {
+	sortOver(_e, _ui) {
 		this.elements.result.find('.js-multi-image__preview').popover('hide');
 	}
 
@@ -609,7 +655,7 @@ class MultiImage {
 	 * @param {Event} e
 	 * @param {Object} ui
 	 */
-	sortStop(e, ui) {
+	sortStop(_e, _ui) {
 		const actualElements = this.elements.result.find('.js-multi-image__preview').toArray();
 		this.files = actualElements.map((element) => {
 			for (let i = 0, len = this.files.length; i < len; i++) {
@@ -644,7 +690,7 @@ class MultiImage {
 				stop: this.sortStop.bind(this)
 			})
 			.disableSelection()
-			.on('mousedown', '.js-multi-image__preview-img', function (e) {
+			.on('mousedown', '.js-multi-image__preview-img', function () {
 				this.focus(); // focus to show popover
 			});
 	}
@@ -656,18 +702,19 @@ class MultiImage {
 	 * @param {function} callback
 	 */
 	generatePreviewElements(files, callback) {
+		let preview = (file, template, imageSrc) => {
+			file.preview = this.addPreviewPopover(file, template, imageSrc);
+			this.addFileInfoProperty(file.hash, 'previewElement', file.preview);
+			callback(file.preview);
+		};
 		files.forEach((file) => {
 			if (file instanceof File) {
 				this.generatePreviewFromFile(file, (template, imageSrc) => {
-					file.preview = this.addPreviewPopover(file, template, imageSrc);
-					this.addFileInfoProperty(file.hash, 'previewElement', file.preview);
-					callback(file.preview);
+					preview(file, template, imageSrc);
 				});
 			} else {
 				this.generatePreviewFromValue(file, (template, imageSrc) => {
-					file.preview = this.addPreviewPopover(file, template, imageSrc);
-					this.addFileInfoProperty(file.hash, 'previewElement', file.preview);
-					callback(file.preview);
+					preview(file, template, imageSrc);
 				});
 			}
 		});
@@ -684,12 +731,7 @@ class MultiImage {
 		fr.onload = () => {
 			file.imageSrc = fr.result;
 			this.addFileInfoProperty(file.hash, 'imageSrc', file.imageSrc);
-			callback(
-				`<div class="d-inline-block mr-1 js-multi-image__preview" id="js-multi-image__preview-hash-${file.hash}" data-hash="${file.hash}" data-js="container|click">
-					<div class="img-thumbnail js-multi-image__preview-img c-multi-image__preview-img" data-hash="${file.hash}" data-js="drag" style="background-image:url(${fr.result})" tabindex="0" title="${file.name}"></div>
-			</div>`,
-				fr.result
-			);
+			callback(this.createPreview(file), fr.result);
 		};
 		fr.readAsDataURL(file);
 	}
@@ -701,12 +743,30 @@ class MultiImage {
 	 * @param {function} callback
 	 */
 	generatePreviewFromValue(file, callback) {
-		callback(
-			`<div class="d-inline-block mr-1 js-multi-image__preview" id="js-multi-image__preview-hash-${file.hash}" data-hash="${file.hash}" data-js="container|click">
-				<div class="img-thumbnail js-multi-image__preview-img c-multi-image__preview-img" data-hash="${file.hash}" data-js="drag" style="background-image:url(${file.imageSrc})" tabindex="0" title="${file.name}"></div>
-		</div>`,
-			file.imageSrc
-		);
+		callback(this.createPreview(file), file.imageSrc);
+	}
+	/**
+	 * Create Preview element
+	 * @param {Object} file
+	 * @returns {String}
+	 */
+	createPreview(file) {
+		const container = document.createElement('div');
+		const item = document.createElement('div');
+		item.setAttribute('class', 'd-inline-block mr-1 js-multi-image__preview');
+		item.setAttribute('id', `js-multi-image__preview-hash-${file.hash}`);
+		item.setAttribute('data-hash', file.hash);
+
+		const subElement = document.createElement('div');
+		subElement.setAttribute('class', 'img-thumbnail js-multi-image__preview-img c-multi-image__preview-img');
+		subElement.setAttribute('data-hash', file.hash);
+		subElement.setAttribute('style', `background-image:url(${file.imageSrc})`);
+		subElement.setAttribute('tabindex', '0');
+		subElement.setAttribute('title', file.name);
+		item.appendChild(subElement);
+		container.appendChild(item);
+
+		return container.innerHTML;
 	}
 
 	/**

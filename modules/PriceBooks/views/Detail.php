@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class PriceBooks_Detail_View extends Vtiger_Detail_View
@@ -77,6 +77,7 @@ class PriceBooks_Detail_View extends Vtiger_Detail_View
 		$queryGenerator = $relationListView->getQueryGenerator();
 		$transformedSearchParams = $queryGenerator->parseBaseSearchParamsToCondition($searchParams);
 		$relationListView->set('search_params', $transformedSearchParams);
+		$relationListView->loadSearchLockedFields($request);
 		//To make smarty to get the details easily accesible
 		foreach ($request->getArray('search_params') as $fieldListGroup) {
 			$searchParamsRaw[] = $fieldListGroup;
@@ -111,7 +112,9 @@ class PriceBooks_Detail_View extends Vtiger_Detail_View
 		$models = $relationListView->getEntries($pagingModel);
 		$header = $relationListView->getHeaders();
 		$relationModel = $relationListView->getRelationModel();
-
+		if ($request->has('sortEnabled')) {
+			$relationListView->set('advSortEnabled', $request->getBoolean('sortEnabled'));
+		}
 		$viewer->assign('VIEW_MODEL', $relationListView);
 		$viewer->assign('RELATED_RECORDS', $models);
 		$viewer->assign('PARENT_RECORD', $parentRecordModel);
@@ -147,15 +150,15 @@ class PriceBooks_Detail_View extends Vtiger_Detail_View
 		}
 		$viewer->assign('IS_FAVORITES', $isFavorites);
 		$viewer->assign('IS_EDITABLE', $relationModel->isEditable());
-		$viewer->assign('IS_DELETABLE', $relationModel->privilegeToDelete());
 		$viewer->assign('USER_MODEL', Users_Record_Model::getCurrentUserModel());
 		$viewer->assign('SEARCH_DETAILS', $searchParams);
 		$viewer->assign('SEARCH_PARAMS', $searchParamsRaw);
 		$viewer->assign('VIEW', $request->getByType('view'));
 		$viewer->assign('SHOW_RELATED_WIDGETS', \in_array($relationModel->getId(), App\Config::module($moduleName, 'showRelatedWidgetsByDefault', [])));
+		$viewer->assign('LOCKED_EMPTY_FIELDS', $request->isEmpty('lockedEmptyFields', true) ? [] : $request->getArray('lockedEmptyFields'));
 		if ($relationListView->isWidgetsList()) {
 			$viewer->assign('IS_WIDGETS', true);
-			$viewer->assign('HIERARCHY_VALUE', App\Config::module('ModComments', 'DEFAULT_SOURCE'));
+			$viewer->assign('HIERARCHY_VALUE', \Config\Modules\ModComments::$defaultSource);
 			$viewer->assign('HIERARCHY', \App\ModuleHierarchy::getModuleLevel($relatedModuleName));
 		} else {
 			$viewer->assign('IS_WIDGETS', false);

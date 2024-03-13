@@ -3,8 +3,8 @@
 /**
  * Advanced permission record model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class Settings_AdvancedPermission_Record_Model extends Settings_Vtiger_Record_Model
@@ -167,6 +167,7 @@ class Settings_AdvancedPermission_Record_Model extends Settings_Vtiger_Record_Mo
 				}
 				break;
 			default:
+				$value = \App\Purifier::encodeHtml($value);
 				break;
 		}
 		return $value;
@@ -191,12 +192,8 @@ class Settings_AdvancedPermission_Record_Model extends Settings_Vtiger_Record_Mo
 		return $delete;
 	}
 
-	/**
-	 * Function to get the list view actions for the record.
-	 *
-	 * @return Vtiger_Link_Model[] - Associate array of Vtiger_Link_Model instances
-	 */
-	public function getRecordLinks()
+	/** {@inheritdoc} */
+	public function getRecordLinks(): array
 	{
 		$links = [];
 		$recordLinks = [

@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 /**
@@ -32,9 +32,7 @@ class Leads_Record_Model extends Vtiger_Record_Model
 		return $returnVal;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function save()
 	{
 		parent::save();
@@ -43,35 +41,27 @@ class Leads_Record_Model extends Vtiger_Record_Model
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function delete()
 	{
 		parent::delete();
 		\App\Cache::delete('Leads.converted', $this->getId());
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function isViewable()
 	{
 		return parent::isViewable() && !$this->getConverted();
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function isPermitted(string $action)
 	{
 		return parent::isPermitted($action) && !$this->getConverted();
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
-	public function isEditable()
+	/** {@inheritdoc} */
+	public function isEditable(): bool
 	{
 		return parent::isEditable() && !$this->getConverted();
 	}

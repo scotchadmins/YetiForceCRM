@@ -1,44 +1,70 @@
 <?php
 
+/**
+ * System warnings template abstract file.
+ *
+ * @package App
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ */
+
 namespace App\SystemWarnings;
 
 /**
  * System warnings template abstract class.
- *
- * @package App
- *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
- * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 abstract class Template
 {
 	/**
-	 * Status value - 2 = ignored.
+	 * Status value
+	 * 0 - active, 2 - ignored.
 	 *
 	 * @var int
 	 */
 	protected $statusValue = 0;
+
+	/** @var string Modal header title */
 	protected $title;
+
+	/** @var string|null Modal description */
 	protected $description;
+
+	/** @var int Warning priority code */
 	protected $priority = 0;
 	protected $color;
+	/**
+	 * Status
+	 * 0 - warning occurred, 1 - no warning.
+	 *
+	 * @var int
+	 */
 	protected $status = 0;
 	protected $folder;
+
+	/** @var string|null Link URL */
 	protected $link;
+	/** @var string|null Link title */
+	public $linkTitle;
+
+	/** @var bool Template flag */
 	protected $tpl = false;
 
 	/**
 	 * Checking whether there is a warning.
+	 *
+	 * @return void
 	 */
-	abstract public function process();
+	abstract public function process(): void;
 
 	/**
 	 * Whether a warning is active.
 	 *
 	 * @return bool
 	 */
-	public function preProcess()
+	public function preProcess(): bool
 	{
 		return true;
 	}
@@ -48,7 +74,7 @@ abstract class Template
 	 *
 	 * @return int
 	 */
-	public function getPriority()
+	public function getPriority(): int
 	{
 		return $this->priority;
 	}
@@ -58,7 +84,7 @@ abstract class Template
 	 *
 	 * @return string
 	 */
-	public function getTitle()
+	public function getTitle(): string
 	{
 		return $this->title;
 	}
@@ -68,7 +94,7 @@ abstract class Template
 	 *
 	 * @return string
 	 */
-	public function getColor()
+	public function getColor(): string
 	{
 		return $this->color;
 	}
@@ -86,35 +112,19 @@ abstract class Template
 	/**
 	 * Returns the warning status.
 	 *
-	 * @param mixed $returnText
-	 *
-	 * @return int|string
+	 * @return int
 	 */
-	public function getStatus($returnText = false)
+	public function getStatus()
 	{
-		if (!$returnText) {
-			return $this->status;
-		}
-		$error = '';
-		switch ($this->status) {
-			case 1:
-				$error = 'OK';
-				break;
-			case 2:
-				$error = 'Error';
-				break;
-			default:
-				break;
-		}
-		return $error;
+		return $this->status;
 	}
 
 	/**
 	 * Returns the warning description.
 	 *
-	 * @return string
+	 * @return string|null
 	 */
-	public function getDescription()
+	public function getDescription(): ?string
 	{
 		return $this->description;
 	}
@@ -122,9 +132,9 @@ abstract class Template
 	/**
 	 * Returns the warning link.
 	 *
-	 * @return string
+	 * @return string|null
 	 */
-	public function getLink()
+	public function getLink(): ?string
 	{
 		return $this->link;
 	}
@@ -191,6 +201,8 @@ abstract class Template
 			$fileContent = preg_replace('/{/', $replacement, $fileContent, 1);
 		}
 		file_put_contents($filePath, $fileContent);
+		\App\Cache::resetFileCache($filePath);
+
 		return ['result' => true, 'message' => \App\Language::translate('LBL_DATA_SAVE_OK', 'Settings::SystemWarnings')];
 	}
 }

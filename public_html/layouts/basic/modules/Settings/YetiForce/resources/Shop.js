@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 /**
@@ -21,6 +21,7 @@ window.Settings_YetiForce_Shop_Js = class Settings_YetiForce_Shop_Js {
 		this.registerBuyModalClick();
 		this.registerShopSearch();
 		this.registerCategories();
+		this.registerSwitch();
 		this.showInitialModal();
 	}
 	showInitialModal() {
@@ -61,8 +62,39 @@ window.Settings_YetiForce_Shop_Js = class Settings_YetiForce_Shop_Js {
 	 */
 	registerProductModalClick() {
 		this.container.find('.js-product').on('click', (e) => {
+			const target = $(e.target);
+			if (target.hasClass('js-product-switch') || target.closest('.js-stop-parent-trigger').length) {
+				return;
+			}
 			const currentTarget = $(e.currentTarget);
 			this.showProductModal(currentTarget.data('product'), this.getDepartment(currentTarget));
+		});
+	}
+	/**
+	 * Register switch
+	 */
+	registerSwitch() {
+		this.container.find('.js-product-switch').on('change', (e) => {
+			const currentTarget = $(e.currentTarget);
+			let isChecked = currentTarget.is(':checked');
+			let confirm = currentTarget.data('confirm');
+			if (confirm) {
+				app.showConfirmModal({
+					title: confirm,
+					confirmedCallback: () => {
+						let url = isChecked ? currentTarget.data('url-on') : currentTarget.data('url-off');
+						if (url) {
+							$.progressIndicator({ blockInfo: { enabled: true } });
+							AppConnector.request(url).done((_) => {
+								window.location.reload();
+							});
+						}
+					},
+					rejectedCallback: () => {
+						currentTarget.prop('checked', !isChecked);
+					}
+				});
+			}
 		});
 	}
 	/**

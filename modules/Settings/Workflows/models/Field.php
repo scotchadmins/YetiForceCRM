@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Settings_Workflows_Field_Model extends Vtiger_Field_Model
@@ -29,24 +29,6 @@ class Settings_Workflows_Field_Model extends Vtiger_Field_Model
 	public static function getAdvancedFilterOpsByFieldType()
 	{
 		return Vtiger_AdvancedFilter_Helper::getAdvancedFilterOpsByFieldType();
-	}
-
-	/**
-	 * Function to get comment field which will useful in creating conditions.
-	 *
-	 * @param Vtiger_Module_Model $moduleModel
-	 *
-	 * @return <Vtiger_Field_Model>
-	 */
-	public static function getCommentFieldForFilterConditions($moduleModel)
-	{
-		$commentField = new Vtiger_Field_Model();
-		$commentField->set('name', '_VT_add_comment');
-		$commentField->set('label', 'Comment');
-		$commentField->setModule($moduleModel);
-		$commentField->fieldDataType = 'comment';
-
-		return $commentField;
 	}
 
 	/**

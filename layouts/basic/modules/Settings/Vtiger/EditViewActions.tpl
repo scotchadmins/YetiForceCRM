@@ -1,4 +1,4 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
 	<div class="tpl-EditViewActions c-form__action-panel">
 		{assign var=SINGLE_MODULE_NAME value='SINGLE_'|cat:$MODULE}
@@ -10,11 +10,13 @@
 			<span class="fas fa-times mr-1"></span>
 			<strong>{\App\Language::translate('LBL_CANCEL', $MODULE)}</strong>
 		</button>
-		{foreach item=LINK from=$EDITVIEW_LINKS['EDIT_VIEW_HEADER']}
-			{include file=\App\Layout::getTemplatePath('ButtonLink.tpl', $MODULE) BUTTON_VIEW='editViewHeader' BTN_CLASS="ml-1"}
-		{/foreach}
+		{if isset($EDITVIEW_LINKS['EDIT_VIEW_HEADER'])}
+			{foreach item=LINK from=$EDITVIEW_LINKS['EDIT_VIEW_HEADER']}
+				{include file=\App\Layout::getTemplatePath('ButtonLink.tpl', $MODULE) BUTTON_VIEW='editViewHeader'}
+			{/foreach}
+		{/if}
 	</div>
-</form>
-</div>
-</div>
+	</form>
+	</div>
+	</div>
 {/strip}

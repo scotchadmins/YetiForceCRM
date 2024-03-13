@@ -6,36 +6,79 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
 class Settings_PickListDependency_IndexAjax_View extends Settings_PickListDependency_Edit_View
 {
-	use \App\Controller\ExposeMethod;
 	use App\Controller\ClearProcess;
+	use \App\Controller\ExposeMethod;
 
+	/** {@inheritdoc} */
 	public function __construct()
 	{
 		parent::__construct();
 		$this->exposeMethod('getDependencyGraph');
+		$this->exposeMethod('dependentFields');
 	}
 
+	/**
+	 * Get dependency graph.
+	 *
+	 * @param App\Request $request
+	 *
+	 * @return void
+	 */
 	public function getDependencyGraph(App\Request $request)
 	{
 		$qualifiedName = $request->getModule(false);
-		$module = $request->getByType('sourceModule', 2);
-		$sourceField = $request->getByType('sourcefield', 2);
-		$targetField = $request->getByType('targetfield', 2);
-		$recordModel = Settings_PickListDependency_Record_Model::getInstance($module, $sourceField, $targetField);
+		$recordModel = Settings_PickListDependency_Record_Model::getCleanInstance();
+		foreach (['tabid', 'source_field'] as $fieldName) {
+			if ($request->has($fieldName)) {
+				$recordModel->set($fieldName, $request->getByType($fieldName, $recordModel->getFieldInstanceByName($fieldName)->get('purifyType')));
+			}
+		}
+
 		$valueMapping = $recordModel->getPickListDependency();
-		$nonMappedSourceValues = $recordModel->getNonMappedSourcePickListValues();
+		$picklistValues = [];
+		$selectedFieldName = '';
+		$sourceModuleModel = $recordModel->getSourceModule();
+		$sourceField = $recordModel->getFieldInstanceByName('source_field');
+		$picklistValues = $recordModel->getPickListValuesByField($sourceField->getName());
+		if ($sourceValue = $recordModel->get($sourceField->getName())) {
+			$selectedFieldName = $sourceValue ? $sourceModuleModel->getFieldByName($sourceValue)->getName() : '';
+		}
 
 		$viewer = $this->getViewer($request);
 		$viewer->assign('MAPPED_VALUES', $valueMapping);
-		$viewer->assign('SOURCE_PICKLIST_VALUES', $recordModel->getSourcePickListValues());
-		$viewer->assign('TARGET_PICKLIST_VALUES', $recordModel->getTargetPickListValues());
-		$viewer->assign('NON_MAPPED_SOURCE_VALUES', $nonMappedSourceValues);
+		$viewer->assign('SOURCE_PICKLIST_VALUES', $picklistValues);
+		$viewer->assign('SOURCE_MODULE', $sourceModuleModel->getName());
+		$viewer->assign('OPERATORS', ['e']);
+		$viewer->assign('RECORD_STRUCTURE_RELATED_MODULES', []);
+		$viewer->assign('RECORD_STRUCTURE', Settings_PickListDependency_Module_Model::getConditionBuilderStructure($sourceModuleModel, $selectedFieldName));
+		$viewer->assign('SELECTED_MODULE', $sourceModuleModel->getName());
 		$viewer->assign('QUALIFIED_MODULE', $qualifiedName);
 		$viewer->assign('RECORD_MODEL', $recordModel);
-		$viewer->view('DependencyGraph.tpl', $qualifiedName);
+		$viewer->view('ConditionList.tpl', $qualifiedName);
+	}
+
+	/**
+	 * Get dependency fields.
+	 *
+	 * @param App\Request $request
+	 *
+	 * @return void
+	 */
+	public function dependentFields(App\Request $request)
+	{
+		$qualifiedModuleName = $request->getModule(false);
+		$selectedModule = $request->getByType('tabid', App\Purifier::ALNUM);
+		$recordModel = Settings_PickListDependency_Record_Model::getCleanInstance();
+		$recordModel->set('tabid', $selectedModule);
+
+		$viewer = $this->getViewer($request);
+		$viewer->assign('RECORD_MODEL', $recordModel);
+		$viewer->assign('STRUCTURE', $recordModel->getModule()->getEditViewStructure($recordModel));
+		$viewer->view('DependentFields.tpl', $qualifiedModuleName);
 	}
 }

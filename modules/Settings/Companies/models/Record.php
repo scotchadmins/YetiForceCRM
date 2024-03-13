@@ -3,8 +3,8 @@
 /**
  * Companies record model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -86,9 +86,7 @@ class Settings_Companies_Record_Model extends Settings_Vtiger_Record_Model
 		return new static();
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function get($key)
 	{
 		if ('newsletter' === $key && !empty(parent::get('email'))) {
@@ -145,7 +143,7 @@ class Settings_Companies_Record_Model extends Settings_Vtiger_Record_Model
 	 */
 	public function getDisplayValue(string $key)
 	{
-		$value = $this->get($key);
+		$value = $this->get($key) ?? '';
 		switch ($key) {
 			case 'type':
 				$value = \App\Language::translate(self::TYPES[$value], 'Settings::Companies');
@@ -154,7 +152,7 @@ class Settings_Companies_Record_Model extends Settings_Vtiger_Record_Model
 				$value = \App\Language::translate(\App\YetiForce\Register::STATUS_MESSAGES[(int) $value], 'Settings::Companies');
 				break;
 			case 'tabid':
-				$value = \App\Module::getModuleName($value);
+				$value = \App\Module::getModuleName((int) $value);
 				break;
 			case 'industry':
 				$value = App\Language::translate($value);
@@ -167,6 +165,7 @@ class Settings_Companies_Record_Model extends Settings_Vtiger_Record_Model
 				$value = $src ? "<img src='$src' class='img-thumbnail sad'/>" : \App\Language::translate('LBL_COMPANY_LOGO', 'Settings::Companies');
 				break;
 			default:
+				$value = \App\Purifier::encodeHtml($value);
 				break;
 		}
 		return $value;
@@ -188,12 +187,8 @@ class Settings_Companies_Record_Model extends Settings_Vtiger_Record_Model
 		return $delete;
 	}
 
-	/**
-	 * Function to get the list view actions for the record.
-	 *
-	 * @return Vtiger_Link_Model[] - Associate array of Vtiger_Link_Model instances
-	 */
-	public function getRecordLinks()
+	/** {@inheritdoc} */
+	public function getRecordLinks(): array
 	{
 		$links = [];
 		$recordLinks = [];
@@ -280,6 +275,7 @@ class Settings_Companies_Record_Model extends Settings_Vtiger_Record_Model
 			case 'industry':
 				$params['uitype'] = 16;
 				$params['maximumlength'] = '50';
+				$params['picklistValues'] = [];
 				foreach (Settings_Companies_Module_Model::getIndustryList() as $industry) {
 					$params['picklistValues'][$industry] = \App\Language::translate($industry, $moduleName);
 				}
@@ -291,6 +287,7 @@ class Settings_Companies_Record_Model extends Settings_Vtiger_Record_Model
 			case 'country':
 				$params['uitype'] = 16;
 				$params['maximumlength'] = '100';
+				$params['picklistValues'] = [];
 				foreach (\App\Fields\Country::getAll() as $country) {
 					$params['picklistValues'][$country['name']] = \App\Language::translateSingleMod($country['name'], 'Other.Country');
 				}
@@ -302,7 +299,11 @@ class Settings_Companies_Record_Model extends Settings_Vtiger_Record_Model
 				unset($params['validator']);
 				break;
 			case 'website':
+			case 'facebook':
+			case 'linkedin':
+			case 'twitter':
 				$params['uitype'] = 17;
+				$params['typeofdata'] = 'V~O';
 				unset($params['validator']);
 				break;
 			case 'firstname':
@@ -316,13 +317,6 @@ class Settings_Companies_Record_Model extends Settings_Vtiger_Record_Model
 			case 'newsletter':
 				$params['typeofdata'] = 'V~O';
 				$params['uitype'] = 56;
-				unset($params['validator']);
-				break;
-			case 'facebook':
-			case 'linkedin':
-			case 'twitter':
-				$params['uitype'] = 17;
-				$params['typeofdata'] = 'V~O';
 				unset($params['validator']);
 				break;
 			default:

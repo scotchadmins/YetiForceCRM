@@ -5,8 +5,8 @@
  *
  * @package Model
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class Vtiger_RelatedCommentModal_Model extends \App\Base
@@ -69,7 +69,7 @@ class Vtiger_RelatedCommentModal_Model extends \App\Base
 			->where(['crmid' => $this->get('record'), 'tree' => $this->get('relatedRecord'), 'relmodule' => App\Module::getModuleId($this->get('relatedModuleName'))]);
 	}
 
-	public function isEditable()
+	public function isEditable(): bool
 	{
 		return $this->get('relationListView')->getRelationModel()->get('relation_comment');
 	}

@@ -2,8 +2,8 @@
 /**
  * Watchdog Task Class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -17,6 +17,16 @@ class VTWatchdog extends VTTask
 	public function getFieldNames()
 	{
 		return ['type', 'message', 'recipients', 'title', 'skipCurrentUser'];
+	}
+
+	/**
+	 * Get request method name for field name.
+	 *
+	 * @return array
+	 */
+	public function getFieldsNamesRequestMethod(): array
+	{
+		return ['message' => 'getForHtml'];
 	}
 
 	/**
@@ -39,17 +49,20 @@ class VTWatchdog extends VTTask
 			case 'owner_and_showner':
 				$users = array_merge([$recordModel->get('assigned_user_id')], explode(',', $recordModel->get('shownerid')));
 				break;
+			case 'showner':
+				$users = explode(',', $recordModel->get('shownerid'));
+				break;
 			default:
 				$users = \App\PrivilegeUtil::getUserByMember($this->recipients);
 				break;
 		}
-		if (empty($users)) {
-			return false;
-		}
+		$users = array_filter($users);
 		if (!empty($this->skipCurrentUser) && false !== ($key = array_search(\App\User::getCurrentUserId(), $users))) {
 			unset($users[$key]);
 		}
-
+		if (empty($users)) {
+			return false;
+		}
 		$textParser = \App\TextParser::getInstanceByModel($recordModel);
 		$relatedField = \App\ModuleHierarchy::getMappingRelatedField($moduleName);
 		$notification = Vtiger_Record_Model::getCleanInstance('Notification');

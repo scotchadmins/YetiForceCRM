@@ -2,11 +2,12 @@
 /**
  * The file contains: Record operations.
  *
- * @package Api
+ * @package API
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
 namespace Api\ManageConsents\ApprovalsRegister;
@@ -29,12 +30,12 @@ class Record extends \Api\ManageConsents\BaseAction
 	protected $recordModel;
 
 	/** {@inheritdoc}  */
-	public function checkPermission()
+	protected function checkPermission(): void
 	{
 		parent::checkPermission();
 		$moduleName = $this->controller->request->getModule();
 		$this->recordModel = \Vtiger_Record_Model::getCleanInstance($moduleName);
-		if (!$this->recordModel->isCreateable()) {
+		if (!$this->recordModel->isCreatable()) {
 			throw new \Api\Core\Exception('No permissions to create record', 403);
 		}
 	}
@@ -44,35 +45,33 @@ class Record extends \Api\ManageConsents\BaseAction
 	 *
 	 * @return array
 	 *
-	 * @OA\POST(
-	 *		path="/webservice/ApprovalsRegister/Record",
+	 * @OA\Post(
+	 *		path="/webservice/ManageConsents/ApprovalsRegister/Record",
 	 *		summary="Adds an consent entry",
-	 *		tags={"Consents"},
-	 *    security={
-	 *			{"basicAuth" : "", "ApiKeyAuth" : "", "token" : ""}
-	 *    },
+	 *		tags={"ApprovalsRegister"},
+	 * 		security={{"basicAuth" : {}, "ApiKeyAuth" : {}, "token" : {}}},
 	 *		@OA\RequestBody(
 	 *				required=true,
 	 *				description="Required data for communication",
-	 *				@OA\JsonContent(ref="#/components/schemas/ApprovalsRegisterRequestBody"),
+	 *				@OA\JsonContent(ref="#/components/schemas/ApprovalsRegister_Post_Record_Request"),
 	 *     		@OA\MediaType(
 	 *         		mediaType="multipart/form-data",
-	 *         		@OA\Schema(ref="#/components/schemas/ApprovalsRegisterRequestBody")
+	 *         		@OA\Schema(ref="#/components/schemas/ApprovalsRegister_Post_Record_Request")
 	 *     		),
 	 *     		@OA\MediaType(
 	 *         		mediaType="application/x-www-form-urlencoded",
-	 *         		@OA\Schema(ref="#/components/schemas/ApprovalsRegisterRequestBody")
+	 *         		@OA\Schema(ref="#/components/schemas/ApprovalsRegister_Post_Record_Request")
 	 *     		),
 	 *		),
 	 *		@OA\Response(
 	 *				response=200,
 	 *				description="Result of adding entry",
-	 *				@OA\JsonContent(ref="#/components/schemas/ApprovalsRegisterResponseBody"),
-	 *				@OA\XmlContent(ref="#/components/schemas/ApprovalsRegisterResponseBody"),
+	 *				@OA\JsonContent(ref="#/components/schemas/ApprovalsRegister_Post_Record_Response"),
+	 *				@OA\XmlContent(ref="#/components/schemas/ApprovalsRegister_Post_Record_Response"),
 	 *		),
 	 *		@OA\Response(
 	 *				response=401,
-	 *				description="No sent token OR Invalid token",
+	 *				description="`No sent token` OR `Invalid token`",
 	 *		),
 	 *		@OA\Response(
 	 *				response=403,
@@ -84,7 +83,7 @@ class Record extends \Api\ManageConsents\BaseAction
 	 *		),
 	 * ),
 	 * @OA\Schema(
-	 *		schema="ApprovalsRegisterRequestBody",
+	 *		schema="ApprovalsRegister_Post_Record_Request",
 	 *		title="A list of fields required while creating an entry",
 	 *		description="The list is based on fields in the Consent register module. Accepting or declining consent takes place based on the value in the approvals_register_status field.",
 	 *		type="object",
@@ -98,17 +97,11 @@ class Record extends \Api\ManageConsents\BaseAction
 	 * 		}
 	 *	),
 	 * @OA\Schema(
-	 *		schema="ApprovalsRegisterResponseBody",
+	 *		schema="ApprovalsRegister_Post_Record_Response",
 	 *		title="Adding an entry",
 	 *		description="Result of adding entry",
 	 *		type="object",
-	 *		@OA\Property(
-	 *				property="status",
-	 *				description="A numeric value of 0 or 1 that indicates whether the communication is valid. 1 - success , 0 - error",
-	 *				enum={0, 1},
-	 *				type="integer",
-	 *        example=1
-	 *		),
+	 *		@OA\Property(property="status", type="integer", enum={0, 1}, description="A numeric value of 0 or 1 that indicates whether the communication is valid. 1 - success , 0 - error"),
 	 *		@OA\Property(
 	 *				property="result",
 	 *				description="Result of adding entry",

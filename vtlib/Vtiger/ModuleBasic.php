@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
 namespace vtlib;
@@ -131,7 +131,7 @@ class ModuleBasic
 
 		Profile::initForModule($this);
 
-		self::syncfile();
+		\App\Module::createModuleMetaFile();
 
 		if ($this->isentitytype) {
 			Access::initSharing($this);
@@ -156,7 +156,9 @@ class ModuleBasic
 		if ($this->isentitytype) {
 			$this->unsetEntityIdentifier();
 		}
-		\App\Db::getInstance()->createCommand()->delete('vtiger_tab', ['tabid' => $this->id])->execute();
+		$dbCommand = \App\Db::getInstance()->createCommand();
+		$dbCommand->delete('vtiger_tab', ['tabid' => $this->id])->execute();
+		$dbCommand->delete('a_#__settings_modules', ['name' => $this->name])->execute();
 		\App\Log::trace("Deleting Module $this->name ... DONE", __METHOD__);
 	}
 
@@ -207,7 +209,6 @@ class ModuleBasic
 		Access::deleteSharing($moduleInstance);
 		$this->deleteFromModentityNum();
 		Cron::deleteForModule($moduleInstance);
-		Profile::deleteForModule($moduleInstance);
 		\Settings_Workflows_Module_Model::deleteForModule($moduleInstance);
 		Menu::deleteForModule($moduleInstance);
 		$this->deleteGroup2Modules();
@@ -219,7 +220,7 @@ class ModuleBasic
 		\Settings_Vtiger_Module_Model::deleteSettingsFieldBymodule($this->name);
 		$this->__delete();
 		$this->deleteDir($moduleInstance);
-		self::syncfile();
+		\App\Module::createModuleMetaFile();
 		\App\Cache::clear();
 	}
 
@@ -294,6 +295,7 @@ class ModuleBasic
 					'entityidfield' => $this->entityidfield,
 					'entityidcolumn' => $this->entityidcolumn,
 					'searchcolumn' => $fieldInstance->name,
+					'sequence' => $this->id,
 				])->execute();
 				\App\Log::trace('Setting entity identifier ... DONE', __METHOD__);
 			} else {
@@ -432,16 +434,6 @@ class ModuleBasic
 	}
 
 	/**
-	 * Synchronize the menu information to flat file.
-	 */
-	public static function syncfile()
-	{
-		\App\Log::trace('Updating tabdata file ... ', __METHOD__);
-		\App\Module::createModuleMetaFile();
-		\App\Log::trace('DONE', __METHOD__);
-	}
-
-	/**
 	 * Unset related list information that exists with other module.
 	 */
 	public function unsetAllRelatedList()
@@ -452,10 +444,8 @@ class ModuleBasic
 		$db->createCommand()->delete('vtiger_relatedlists', ['or', ['tabid' => $this->id], ['related_tabid' => $this->id]])->execute();
 		if ($relations) {
 			$ids = array_keys($relations);
-			$db->createCommand()->delete('vtiger_relatedlists_fields', ['relation_id' => $ids])->execute();
-			$db->createCommand()->delete('a_#__relatedlists_inv_fields', ['relation_id' => $ids])->execute();
 			foreach ($ids as $id) {
-				\App\Relation::clearCacheById((int) $id, false);
+				\Vtiger_Relation_Model::removeRelationById($id);
 			}
 			foreach (array_unique($relations) as $tabId) {
 				\App\Relation::clearCacheByModule((string) \App\Module::getModuleName($tabId), false);
@@ -560,9 +550,10 @@ class ModuleBasic
 	{
 		\App\Log::trace('Start', __METHOD__);
 		$iconSize = ['', 48, 64, 128];
-		foreach ($iconSize as $value) {
-			foreach (\App\Layout::getAllLayouts() as $name => $label) {
-				$fileName = "layouts/$name/images/{$this->name}{$value}.png";
+		$layouts = array_keys(\App\Layout::getAllLayouts());
+		foreach ($layouts as $name) {
+			foreach ($iconSize as $value) {
+				$fileName = ROOT_DIRECTORY . "/public_html/layouts/$name/images/{$this->name}{$value}.png";
 				if (file_exists($fileName)) {
 					@unlink($fileName);
 				}

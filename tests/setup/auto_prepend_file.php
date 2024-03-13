@@ -6,9 +6,11 @@ declare(strict_types=1);
  *
  * @package   Tests
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ *
+ * @codeCoverageIgnore
  */
 $path = getcwd();
 chdir(__DIR__ . '/../../');
@@ -16,8 +18,10 @@ chdir(__DIR__ . '/../../');
 if (!file_exists('vendor')) {
 	return;
 }
-
-include_once 'include/main/WebUI.php';
+if (PHP_SAPI !== 'cli') {
+	\define('IS_PUBLIC_DIR', true);
+}
+require_once 'include/ConfigUtils.php';
 
 $codeCoverage = Tests\Coverage::getInstance();
 $codeCoverage->start();

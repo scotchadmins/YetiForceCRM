@@ -4,11 +4,14 @@
  *
  * The file is part of the paid functionality. Using the file is allowed only after purchasing a subscription. File modification allowed only with the consent of the system producer.
  *
+ * @see https://api.stat.gov.pl/Home/RegonApi
+ *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Adrian Kon <a.kon@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
 namespace App\RecordCollectors;
@@ -19,31 +22,37 @@ namespace App\RecordCollectors;
 class Gus extends Base
 {
 	/** {@inheritdoc} */
-	public static $allowedModules = ['Accounts', 'Leads', 'Vendors', 'Competition'];
+	public $allowedModules = ['Accounts', 'Leads', 'Vendors', 'Competition', 'Partners'];
 
 	/** {@inheritdoc} */
-	public $icon = 'yfi yfi-gus';
+	public $icon = 'yfi-gus-regon-pl';
 
 	/** {@inheritdoc} */
-	public $label = 'GUS';
+	public $label = 'LBL_PL_GUS';
+
+	/** {@inheritdoc} */
+	public $description = 'LBL_PL_GUS_DESC';
 
 	/** {@inheritdoc} */
 	public $displayType = 'FillFields';
 
 	/** {@inheritdoc} */
+	public $docUrl = 'https://api.stat.gov.pl/Home/RegonApi';
+
+	/** {@inheritdoc} */
 	protected $fields = [
 		'vatId' => [
 			'labelModule' => '_Base',
-			'label' => 'Vat ID'
+			'label' => 'Vat ID',
 		],
 		'ncr' => [
 			'labelModule' => '_Base',
-			'label' => 'Registration number 1'
+			'label' => 'Registration number 1',
 		],
 		'taxNumber' => [
 			'labelModule' => '_Base',
-			'label' => 'Registration number 2'
-		]
+			'label' => 'Registration number 2',
+		],
 	];
 
 	/** {@inheritdoc} */
@@ -51,99 +60,109 @@ class Gus extends Base
 		'Accounts' => [
 			'vatId' => 'vat_id',
 			'taxNumber' => 'registration_number_2',
-			'ncr' => 'registration_number_1'
+			'ncr' => 'registration_number_1',
 		],
 		'Leads' => [
 			'vatId' => 'vat_id',
 			'taxNumber' => 'registration_number_2',
-			'ncr' => 'registration_number_1'
+			'ncr' => 'registration_number_1',
 		],
 		'Vendors' => [
 			'vatId' => 'vat_id',
 			'taxNumber' => 'registration_number_2',
-			'ncr' => 'registration_number_1'
+			'ncr' => 'registration_number_1',
 		],
 		'Competition' => [
 			'vatId' => 'vat_id',
 			'taxNumber' => 'registration_number_2',
-			'ncr' => 'registration_number_1'
-		]
+			'ncr' => 'registration_number_1',
+		],
+		'Partners' => [
+			'vatId' => 'vat_id',
+		],
 	];
 
 	/** {@inheritdoc} */
 	public $formFieldsToRecordMap = [
 		'Accounts' => [
 			'Nazwa' => 'accountname',
-			'SzczegolnaFormaPrawnaNazwa' => 'legal_form',
 			'Regon' => 'registration_number_2',
 			'Krs' => 'registration_number_1',
 			'Nip' => 'vat_id',
-			'Wojewodztwo' => 'addresslevel2a',
-			'Powiat' => 'addresslevel3a',
-			'Gmina' => 'addresslevel4a',
-			'Miejscowosc' => 'addresslevel5a',
-			'KodPocztowy' => 'addresslevel7a',
-			'Ulica' => 'addresslevel8a',
 			'NumerBudynku' => 'buildingnumbera',
 			'NumerLokalu' => 'localnumbera',
+			'Ulica' => 'addresslevel8a',
+			'KodPocztowy' => 'addresslevel7a',
+			'Miejscowosc' => 'addresslevel5a',
+			'Gmina' => 'addresslevel4a',
+			'Powiat' => 'addresslevel3a',
+			'Wojewodztwo' => 'addresslevel2a',
 			'Kraj' => 'addresslevel1a',
 			'NumerTelefonu' => 'phone',
 			'NumerFaksu' => 'fax',
 			'AdresEmail' => 'email1',
+			'AdresStronyInternetowej' => 'website',
 		],
 		'Leads' => [
 			'Nazwa' => 'company',
-			'SzczegolnaFormaPrawnaNazwa' => 'legal_form',
+			'Nip' => 'vat_id',
 			'Regon' => 'registration_number_2',
-			'Wojewodztwo' => 'addresslevel2a',
-			'Powiat' => 'addresslevel3a',
-			'Gmina' => 'addresslevel4a',
-			'Miejscowosc' => 'addresslevel5a',
-			'KodPocztowy' => 'addresslevel7a',
+			'NumerBudynku' => 'buildingnumbera',
+			'NumerLokalu' => 'localnumbera',
 			'Ulica' => 'addresslevel8a',
+			'KodPocztowy' => 'addresslevel7a',
+			'Miejscowosc' => 'addresslevel5a',
+			'Gmina' => 'addresslevel4a',
+			'Powiat' => 'addresslevel3a',
+			'Wojewodztwo' => 'addresslevel2a',
+			'Kraj' => 'addresslevel1a',
 			'NumerBudynku' => 'buildingnumbera',
 			'NumerTelefonu' => 'phone',
 			'NumerFaksu' => 'fax',
 			'AdresEmail' => 'email',
+			'AdresStronyInternetowej' => 'website',
 		],
 		'Partners' => [
 			'Nazwa' => 'subject',
-			'Wojewodztwo' => 'addresslevel2a',
-			'Powiat' => 'addresslevel3a',
-			'Gmina' => 'addresslevel4a',
-			'Miejscowosc' => 'addresslevel5a',
-			'KodPocztowy' => 'addresslevel7a',
+			'Nip' => 'vat_id',
+			'NumerBudynku' => 'buildingnumbera',
+			'NumerLokalu' => 'localnumbera',
 			'Ulica' => 'addresslevel8a',
-			'NumerBudynku' => 'buildingnumbera'
+			'KodPocztowy' => 'addresslevel7a',
+			'Miejscowosc' => 'addresslevel5a',
+			'Gmina' => 'addresslevel4a',
+			'Powiat' => 'addresslevel3a',
+			'Wojewodztwo' => 'addresslevel2a',
+			'Kraj' => 'addresslevel1a',
 		],
 		'Vendors' => [
 			'Nazwa' => 'vendorname',
+			'Nip' => 'vat_id',
 			'Regon' => 'registration_number_2',
-			'Wojewodztwo' => 'addresslevel2a',
-			'Powiat' => 'addresslevel3a',
-			'Gmina' => 'addresslevel4a',
-			'Miejscowosc' => 'addresslevel5a',
-			'KodPocztowy' => 'addresslevel7a',
+			'NumerBudynku' => 'buildingnumbera',
+			'NumerLokalu' => 'localnumbera',
 			'Ulica' => 'addresslevel8a',
-			'NumerBudynku' => 'buildingnumbera'
+			'KodPocztowy' => 'addresslevel7a',
+			'Miejscowosc' => 'addresslevel5a',
+			'Gmina' => 'addresslevel4a',
+			'Powiat' => 'addresslevel3a',
+			'Wojewodztwo' => 'addresslevel2a',
+			'Kraj' => 'addresslevel1a',
 		],
 		'Competition' => [
 			'Nazwa' => 'subject',
-			'Wojewodztwo' => 'addresslevel2a',
-			'Powiat' => 'addresslevel3a',
-			'Gmina' => 'addresslevel4a',
-			'Miejscowosc' => 'addresslevel5a',
-			'KodPocztowy' => 'addresslevel7a',
+			'Nip' => 'vat_id',
+			'NumerBudynku' => 'buildingnumbera',
+			'NumerLokalu' => 'localnumbera',
 			'Ulica' => 'addresslevel8a',
-			'NumerBudynku' => 'buildingnumbera'
+			'KodPocztowy' => 'addresslevel7a',
+			'Miejscowosc' => 'addresslevel5a',
+			'Gmina' => 'addresslevel4a',
+			'Powiat' => 'addresslevel3a',
+			'Wojewodztwo' => 'addresslevel2a',
+			'Kraj' => 'addresslevel1a',
 		],
 	];
-
-	/** {@inheritdoc} */
-	public function isActive(): bool
-	{
-		return parent::isActive() && \App\YetiForce\Shop::check('YetiForcePlGus');
-	}
 
 	/** {@inheritdoc} */
 	public function search(): array
@@ -151,62 +170,92 @@ class Gus extends Base
 		if (!$this->isActive()) {
 			return [];
 		}
-		$vatId = str_replace([' ', ',', '.', '-'], '', $this->request->getByType('vatId', 'Text'));
+		$vatId = preg_replace('/[^0-9]/', '', $this->request->getByType('vatId', 'Text'));
 		$taxNumber = str_replace([' ', ',', '.', '-'], '', $this->request->getByType('taxNumber', 'Text'));
 		$ncr = str_replace([' ', ',', '.', '-'], '', $this->request->getByType('ncr', 'Text'));
 		$response = [];
-		$client = \App\RecordCollectors\Helper\GusClient::getInstance();
+		$moduleName = $this->request->getModule();
+		$client = \App\RecordCollectors\Helper\GusClient::getInstance($this->getClientParams($moduleName));
 		try {
 			$infoFromGus = $client->search($vatId, $ncr, $taxNumber);
-			$moduleName = $this->request->getModule();
-			if ($recordId = $this->request->getInteger('record')) {
-				$recordModel = \Vtiger_Record_Model::getInstanceById($recordId, $moduleName);
-				$response['recordModel'] = $recordModel;
-				$fields = $recordModel->getModule()->getFields();
-			} else {
-				$fields = \Vtiger_Module_Model::getInstance($moduleName)->getFields();
-			}
+			$response['recordModel'] = $this->getRecordModel();
+			$fieldsModel = $response['recordModel']->getModule()->getFields();
 			if ($infoFromGus && isset($this->formFieldsToRecordMap[$moduleName])) {
-				$additional = $data = $skip = [];
+				$additional = $fieldsData = $skip = $dataCounter = [];
 				foreach ($infoFromGus as $key => &$row) {
-					foreach ($this->formFieldsToRecordMap[$moduleName] as $apiName => $fieldName) {
-						if (empty($fields[$fieldName]) || !$fields[$fieldName]->isActiveField()) {
-							if (isset($fields[$fieldName]) && empty($skip[$fieldName]['label'])) {
-								$skip[$fieldName]['label'] = \App\Language::translate($fields[$fieldName]->getFieldLabel(), $moduleName);
-							} else {
-								$skip[$fieldName]['label'] = $fieldName;
+					$dataCounter[$key] = 0;
+					if (empty($row)) {
+						continue;
+					}
+					foreach ($this->formFieldsToRecordMap[$moduleName] as $apiKey => $fieldName) {
+						if (empty($fieldsModel[$fieldName]) || !$fieldsModel[$fieldName]->isActiveField()) {
+							if (isset($row[$apiKey]) && '' !== $row[$apiKey]) {
+								$skip[$fieldName]['data'][$key] = $row[$apiKey];
+								if (isset($fieldsModel[$fieldName]) && empty($skip[$fieldName]['label'])) {
+									$skip[$fieldName]['label'] = \App\Language::translate($fieldsModel[$fieldName]->getFieldLabel(), $moduleName);
+								} else {
+									$skip[$fieldName]['label'] = $fieldName;
+								}
 							}
-							$skip[$fieldName]['data'][$key]['display'] = $row[$apiName] ?? '';
-							unset($row[$apiName]);
+							unset($row[$apiKey]);
 							continue;
 						}
-						if (isset($row[$apiName])) {
-							$fieldModel = $fields[$fieldName];
-							if (isset($fields[$fieldName]) && empty($data[$fieldName]['label'])) {
-								$data[$fieldName]['label'] = \App\Language::translate($fieldModel->getFieldLabel(), $moduleName);
-							} else {
-								$skip[$fieldName]['label'] = $fieldName;
-							}
-							$data[$fieldName]['data'][$key] = [
-								'raw' => $fieldModel->getEditViewDisplayValue($row[$apiName]),
-								'display' => $fieldModel->getDisplayValue($row[$apiName]),
-							];
-							unset($row[$apiName]);
+						$value = '';
+						if (isset($row[$apiKey])) {
+							$value = trim($row[$apiKey]);
+							unset($row[$apiKey]);
 						}
+						$fieldModel = $fieldsModel[$fieldName];
+						if ($value) {
+							++$dataCounter[$key];
+							if ('phone' === $fieldModel->getFieldDataType()) {
+								$details = $fieldModel->getUITypeModel()->getPhoneDetails($value, 'PL');
+								$value = $details['number'];
+								if ($fieldName !== $details['fieldName']) {
+									$fieldName = $details['fieldName'];
+									$fieldModel = $fieldsModel[$fieldName];
+								}
+							}
+						}
+						$fieldsData[$fieldName]['label'] = \App\Language::translate($fieldModel->getFieldLabel(), $moduleName);
+						$fieldsData[$fieldName]['data'][$key] = [
+							'raw' => $value,
+							'edit' => $fieldModel->getEditViewDisplayValue($value),
+							'display' => $fieldModel->getDisplayValue($value),
+						];
 					}
 					foreach ($row as $name => $value) {
-						$additional[$name][$key] = \App\Purifier::encodeHtml($value);
+						if ('' !== $value) {
+							$additional[$name][$key] = $value;
+						}
 					}
 				}
-				$response['fields'] = $data;
+				$response['fields'] = $fieldsData;
 				$response['additional'] = $additional;
 				$response['keys'] = array_keys($infoFromGus);
 				$response['skip'] = $skip;
+				$response['dataCounter'] = $dataCounter;
 			}
 		} catch (\SoapFault $e) {
 			\App\Log::warning($e->faultstring, 'RecordCollectors');
 			$response['error'] = $e->faultstring;
 		}
 		return $response;
+	}
+
+	/**
+	 * Get params.
+	 *
+	 * @param string $moduleName
+	 *
+	 * @return string[]
+	 */
+	public function getClientParams(string $moduleName): array
+	{
+		$params = [];
+		if (isset($this->formFieldsToRecordMap[$moduleName]['PKDPodstawowyKod']) || isset($this->formFieldsToRecordMap[$moduleName]['PKDPozostaleNazwy']) || isset($this->formFieldsToRecordMap[$moduleName]['PKDPozostaleKodyNazwy'])) {
+			$params[] = 'pkd';
+		}
+		return $params;
 	}
 }

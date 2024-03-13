@@ -56,10 +56,11 @@ Vtiger_List_Js(
 				record: id
 			});
 			if (showConfirmation) {
-				Vtiger_Helper_Js.showConfirmationBox({
-					message: app.vtranslate('JS_DELETE_RECORD_CONFIRMATION')
-				}).done((e) => {
-					this.makeDeleteRequest(params, aDeferred, instance);
+				app.showConfirmModal({
+					title: app.vtranslate('JS_DELETE_RECORD_CONFIRMATION'),
+					confirmedCallback: () => {
+						this.makeDeleteRequest(params, aDeferred, instance);
+					}
 				});
 			} else {
 				this.makeDeleteRequest(params, aDeferred, instance);
@@ -80,7 +81,7 @@ Vtiger_List_Js(
 		 */
 		getListViewContainer() {
 			if (this.listViewContainer == false) {
-				this.listViewContainer = $('div.listViewPageDiv');
+				this.listViewContainer = $('div.contentsDiv');
 			}
 			return this.listViewContainer;
 		},
@@ -147,12 +148,29 @@ Vtiger_List_Js(
 			}
 			return pageCountParams;
 		},
+		/**
+		 * Register button to create record
+		 */
+		registerButtons: function () {
+			this.getListViewContainer().on('click', '.js-add-record-modal, .js-edit-record-modal', (e) => {
+				app.showModalWindow({
+					url: e.currentTarget.dataset.url,
+					sendByAjaxCb: () => {
+						this.getListViewRecords();
+					}
+				});
+			});
+		},
+		/**
+		 * Function to register events
+		 */
 		registerEvents: function () {
 			this.registerRowClickEvent();
 			this.registerCheckBoxClickEvent();
 			this.registerHeadersClickEvent();
 			this.registerPageNavigationEvents();
 			this.registerEventForTotalRecordsCount();
+			this.registerButtons();
 		}
 	}
 );

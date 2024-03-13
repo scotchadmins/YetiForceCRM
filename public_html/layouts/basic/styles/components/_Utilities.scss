@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 
 //--- TEXT ---//
 .u-text-small-bold {
@@ -159,6 +159,21 @@
 	background-color: darken($light, 10%) !important;
 	@include u-transition(background-color 275ms ease);
 }
+
+.u-bg-light-blue {
+	background-color: #bbdefb !important;
+}
+
+.u-bg-light-green {
+	background-color: #b2dfdb !important;
+}
+.u-bg-light-orange {
+	background-color: #ffe0b2 !important;
+}
+.u-bg-light-brown {
+	background-color: #d7ccc8 !important;
+}
+
 .u-hover-container {
 	.u-hover-display-inline {
 		display: none;
@@ -175,7 +190,7 @@
 }
 
 .u-word-break {
-	word-break: break-word !important;
+	overflow-wrap: anywhere !important;
 }
 
 .u-word-break-keep-all {
@@ -356,6 +371,10 @@
 	min-width: 18rem;
 }
 
+.u-min-w-45per {
+	min-width: 45% !important;
+}
+
 .u-min-w-300px {
 	min-width: 300px !important;
 }
@@ -518,11 +537,12 @@
 //--- COLORS ---//
 .u-bg-twilight {
 	background-color: #404952 !important;
-	color: #fff;
+	color: #fff !important;
 }
 
-.u-bg-modern {
-	background-color: #0d9605 !important;
+.u-bg-blue {
+	background-color: #0078d4 !important;
+	color: #fff !important;
 }
 
 .u-bg-gray {
@@ -532,6 +552,11 @@
 
 .u-text-gray {
 	color: #d1d1db !important;
+}
+
+.u-bg-default {
+	background-color: #fff;
+	color: $black;
 }
 
 .u-text-inherit {
@@ -561,6 +586,14 @@
 
 .u-cursor-auto {
 	cursor: auto;
+}
+
+.u-cursor-move {
+	cursor: move;
+}
+
+.u-cursor-no-move {
+	cursor: no-drop;
 }
 
 .u-cursor-grab {
@@ -606,6 +639,12 @@ body:not(.desktop) {
 		.dropdown-toggle::after {
 			display: none;
 		}
+	}
+}
+
+@include media-breakpoint-down(xl) {
+	.u-overflow-auto-xl-down {
+		overflow: auto !important;
 	}
 }
 
@@ -770,6 +809,9 @@ body:not(.desktop) {
 	-ms-flex: 0 1 auto;
 	flex: 0 1 auto;
 }
+.u-flex-b100 {
+	flex-basis: 100%;
+}
 
 // --- COLORS --- //
 
@@ -823,4 +865,10 @@ body:not(.desktop) {
 		position: static;
 		display: block;
 	}
+}
+.u-pre {
+	white-space: pre-wrap;
+	font-size: 1em;
+	margin: 0;
+	font-family: inherit;
 }

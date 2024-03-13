@@ -4,7 +4,7 @@
  *
  * @package App
  *
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author  Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author  Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -64,9 +64,9 @@ class PrivilegeFile
 	{
 		$file = ROOT_DIRECTORY . \DIRECTORY_SEPARATOR . 'user_privileges' . \DIRECTORY_SEPARATOR . "user_privileges_$userId.php";
 		$user = [];
-		$userInstance = \CRMEntity::getInstance('Users');
+		$userInstance = clone \CRMEntity::getInstance('Users');
 		$userInstance->retrieveEntityInfo($userId, 'Users');
-		$userInstance->column_fields['is_admin'] = 'on' === $userInstance->is_admin;
+		$userInstance->column_fields['is_admin'] = 'on' === $userInstance->column_fields['is_admin'];
 
 		$exclusionEncodeHtml = ['currency_symbol', 'date_format', 'currency_id', 'currency_decimal_separator', 'currency_grouping_separator', 'othereventduration', 'imagename'];
 		foreach ($userInstance->column_fields as $field => $value) {
@@ -84,6 +84,8 @@ class PrivilegeFile
 		$user['displayName'] = trim($displayName);
 		$user['profiles'] = PrivilegeUtil::getProfilesByRole($userInstance->column_fields['roleid']);
 		$user['groups'] = PrivilegeUtil::getAllGroupsByUser($userId);
+		$user['leadersByGroup'] = PrivilegeUtil::getLeadersGroupByUserId($userId);
+		$user['leader'] = PrivilegeUtil::getGroupsWhereUserIsLeader($userId);
 		$user['parent_roles'] = $userRoleInfo['parentRoles'];
 		$user['parent_role_seq'] = $userRoleInfo['parentrole'];
 		$user['roleName'] = $userRoleInfo['rolename'];

@@ -5,8 +5,8 @@
  *
  * @package   Tests
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Adach <a.adach@yetiforce.com>
  */
 
@@ -109,35 +109,13 @@ class Z_Chat extends \Tests\Base
 	}
 
 	/**
-	 * Is room pinned.
-	 *
-	 * @param string $roomType
-	 * @param int    $recordId
-	 * @param int    $userId
-	 *
-	 * @return bool
-	 */
-	private static function isRoomPinned(string $roomType, int $recordId, int $userId): bool
-	{
-		return (new \App\Db\Query())
-			->select('userid')
-			->from(\App\Chat::TABLE_NAME['room'][$roomType])
-			->where(['and', ['userid' => $userId], [\App\Chat::COLUMN_NAME['room'][$roomType] => $recordId]])
-			->exists();
-	}
-
-	/**
-	 * @codeCoverageIgnore
 	 * Setting of tests.
 	 */
 	public static function setUpBeforeClass(): void
 	{
 		self::$chatActive = \App\Module::isModuleActive('Chat');
-		if (!self::$chatActive) {
-			(new \Settings_ModuleManager_Module_Model())->enableModule('Chat');
-		}
 		\App\User::setCurrentUserId(\App\User::getActiveAdminId());
-		$recordModel = C_RecordActions::createContactRecord();
+		$recordModel = C_RecordActions::createContactRecord(false);
 		self::$listId[] = $recordModel->getId();
 		self::$users[] = A_User::createUsersRecord('test_1')->getId();
 		self::$users[] = A_User::createUsersRecord('test_2')->getId();
@@ -450,8 +428,9 @@ class Z_Chat extends \Tests\Base
 	}
 
 	/**
-	 * @codeCoverageIgnore
 	 * Cleaning after tests.
+	 *
+	 * @codeCoverageIgnore
 	 */
 	public static function tearDownAfterClass(): void
 	{

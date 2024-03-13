@@ -5,8 +5,8 @@
  *
  * @package View
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -17,13 +17,14 @@ class Vtiger_RecordCollector_View extends \App\Controller\Modal
 {
 	/** {@inheritdoc} */
 	public $showFooter = false;
+
 	/** {@inheritdoc} */
-	public $modalSize = 'modal-xl';
-	/**
-	 * Record collector instance.
-	 *
-	 * @var \App\RecordCollectors\Base
-	 */
+	public $modalId = 'record-collector-modal';
+
+	/** {@inheritdoc} */
+	public $modalSize = 'c-modal-xxl';
+
+	/** @var \App\RecordCollectors\Base Record collector instance. */
 	private $recordCollector;
 
 	/** {@inheritdoc} */
@@ -40,7 +41,7 @@ class Vtiger_RecordCollector_View extends \App\Controller\Modal
 		$this->recordCollector = \App\RecordCollector::getInstance($request->getByType('collectorType', 'ClassName'), $request->getModule());
 		$this->recordCollector->setRequest($request);
 		$this->modalIcon = $this->recordCollector->icon;
-		$this->pageTitle = $this->recordCollector->label;
+		$this->pageTitle = \App\Language::translate($this->recordCollector->label, 'Other.RecordCollector');
 		if (!$request->getMode()) {
 			parent::preProcessAjax($request);
 		}

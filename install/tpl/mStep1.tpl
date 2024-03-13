@@ -1,4 +1,4 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
 	<div class="main-container">
 		<div class="inner-container">
@@ -15,9 +15,11 @@
 							</p>
 						</div>
 						<div class="float-right col-md-2">
-							<input type="checkbox" id="checkBox3" name="checkBox3"  required><div class="chkbox"></div> {\App\Language::translate('LBL_ACCEPT', 'Install')}</a>
+							<input type="checkbox" id="checkBox3" name="checkBox3" required>
+							<div class="chkbox"></div> {\App\Language::translate('LBL_ACCEPT', 'Install')}</a>
 						</div>
-						<div class="clearfix"></div><hr><br>
+						<div class="clearfix"></div>
+						<hr><br>
 					</div>
 				</div>
 				<div class="row">

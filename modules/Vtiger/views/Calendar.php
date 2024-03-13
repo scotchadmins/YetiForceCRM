@@ -1,22 +1,24 @@
 <?php
 
 /**
- * Calendar view class.
+ * Calendar view file.
  *
  * @package View
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ * @author	Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 /**
- * Vtiger_Calendar_View class.
+ * Calendar view class.
  */
 class Vtiger_Calendar_View extends Vtiger_Index_View
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** @var string[] Filters */
+	protected $filters = ['Filter'];
+
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		$moduleName = $request->getModule();
@@ -25,25 +27,13 @@ class Vtiger_Calendar_View extends Vtiger_Index_View
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
-	protected function getTpl(string $tplFile)
-	{
-		return "Calendar/{$tplFile}";
-	}
-
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	protected function preProcessTplName(App\Request $request)
 	{
-		return $this->getTpl('PreProcess.tpl');
+		return 'Calendar/PreProcess.tpl';
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function preProcess(App\Request $request, $display = true)
 	{
 		parent::preProcess($request, $display);
@@ -51,9 +41,7 @@ class Vtiger_Calendar_View extends Vtiger_Index_View
 		$this->getViewer($request)->assign('CUSTOM_VIEWS', CustomView_Record_Model::getAllByGroup($request->getModule(), $mid));
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$viewer = $this->getViewer($request);
@@ -68,46 +56,40 @@ class Vtiger_Calendar_View extends Vtiger_Index_View
 		$viewer->assign('EVENT_CREATE', \App\Privilege::isPermitted($request->getModule(), 'CreateView'));
 		$viewer->assign('EVENT_EDIT', \App\Privilege::isPermitted($request->getModule(), 'EditView'));
 		$viewer->assign('WEEK_COUNT', App\Config::module('Calendar', 'WEEK_COUNT'));
-		$viewer->assign('WEEK_VIEW', App\Config::module('Calendar', 'SHOW_TIMELINE_WEEK') ? 'agendaWeek' : 'basicWeek');
-		$viewer->assign('DAY_VIEW', App\Config::module('Calendar', 'SHOW_TIMELINE_DAY') ? 'agendaDay' : 'basicDay');
+		$viewer->assign('WEEK_VIEW', App\Config::module('Calendar', 'SHOW_TIMELINE_WEEK') ? 'timeGridWeek' : 'dayGridWeek');
+		$viewer->assign('DAY_VIEW', App\Config::module('Calendar', 'SHOW_TIMELINE_DAY') ? 'timeGridDay' : 'dayGridDay');
 		$viewer->assign('ALL_DAY_SLOT', App\Config::module('Calendar', 'ALL_DAY_SLOT'));
-		$viewer->view($this->getTpl('CalendarView.tpl'), $moduleName);
+		$viewer->view('Calendar/CalendarView.tpl', $moduleName);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function postProcess(App\Request $request, $display = true)
 	{
 		$viewer = $this->getViewer($request);
-		$viewer->assign('FILTERS', ['Filter']);
-		$viewer->view($this->getTpl('PostProcess.tpl'), $request->getModule());
+		$viewer->assign('FILTERS', $this->filters);
+		$viewer->assign('FAVORITES_USERS', Vtiger_CalendarRightPanel_Model::getFavoriteUsers($request->getModule()));
+		$viewer->view('Calendar/PostProcess.tpl', $request->getModule());
 		parent::postProcess($request);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getFooterScripts(App\Request $request)
 	{
 		return array_merge(parent::getFooterScripts($request), $this->checkAndConvertJsScripts([
-			'~libraries/fullcalendar/dist/fullcalendar.js',
+			'~libraries/fullcalendar/main.js',
 			'~libraries/css-element-queries/src/ResizeSensor.js',
 			'~libraries/css-element-queries/src/ElementQueries.js',
 			'~layouts/resources/Calendar.js',
-			'~layouts/resources/YearView.js',
 			'modules.Vtiger.resources.CalendarView',
 			"modules.{$request->getModule()}.resources.CalendarView",
 		]));
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getHeaderCss(App\Request $request)
 	{
 		return array_merge(parent::getHeaderCss($request), $this->checkAndConvertCssStyles([
-			'~libraries/fullcalendar/dist/fullcalendar.css',
+			'~libraries/fullcalendar/main.css',
 		]));
 	}
 }

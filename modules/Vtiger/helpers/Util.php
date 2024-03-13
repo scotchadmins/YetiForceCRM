@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Vtiger_Util_Helper
@@ -167,17 +167,6 @@ class Vtiger_Util_Helper
 	}
 
 	/**
-	 * Function to get maximum upload size.
-	 *
-	 * @return float maximum upload size
-	 */
-	public static function getMaxUploadSize()
-	{
-		$upload_maxsize = \App\Config::main('upload_maxsize');
-		return ceil($upload_maxsize / (1024 * 1024));
-	}
-
-	/**
 	 * Function decodes the utf-8 characters.
 	 *
 	 * @param string $string
@@ -226,7 +215,8 @@ class Vtiger_Util_Helper
 	{
 		return [
 			'twilight' => '#404952',
-			'gray' => '#d1d1db'
+			'gray' => '#d1d1db',
+			'blue' => '#0078d4',
 		];
 	}
 

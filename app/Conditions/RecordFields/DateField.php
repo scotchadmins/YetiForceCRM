@@ -5,8 +5,8 @@
  *
  * @package UIType
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -19,30 +19,22 @@ use App\Log;
  */
 class DateField extends BaseField
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	use \App\Conditions\RecordTraits\Comparison;
+	use \App\Conditions\RecordTraits\ComparisonField;
+
+	/** {@inheritdoc} */
 	public function check()
 	{
 		$fn = 'operator' . ucfirst($this->operator);
+		if (isset(\App\Condition::DATE_OPERATORS[$this->operator]) && !method_exists($this, $fn)) {
+			$fn = 'getStdOperator';
+		}
 		if (method_exists($this, $fn)) {
 			Log::trace("Entering to $fn in " . __CLASS__);
 			return $this->{$fn}();
 		}
 		Log::error("Not found operator: $fn in  " . __CLASS__);
 		return false;
-	}
-
-	/**
-	 * Custom operator.
-	 *
-	 * @return bool
-	 */
-	public function operatorCustom()
-	{
-		[$startDate, $endDate] = explode(',', $this->value);
-		$dateValue = date('Y-m-d', strtotime($this->getValue()));
-		return ($dateValue >= date('Y-m-d', strtotime($startDate))) && ($dateValue <= date('Y-m-d', strtotime($endDate)));
 	}
 
 	/**
@@ -374,5 +366,52 @@ class DateField extends BaseField
 	public function operatorMoreThanDaysAgo()
 	{
 		return $this->getValue() <= date('Y-m-d', strtotime('-' . $this->value . ' days'));
+	}
+
+	/**
+	 * Between operator.
+	 *
+	 * @return array
+	 */
+	public function operatorBw()
+	{
+		[$startDate, $endDate] = explode(',', $this->value);
+		$dateValue = date('Y-m-d', strtotime($this->getValue()));
+		return ($dateValue >= date('Y-m-d', strtotime($startDate))) && ($dateValue <= date('Y-m-d', strtotime($endDate)));
+	}
+
+	/**
+	 * Greater operator.
+	 *
+	 * @return array
+	 */
+	public function operatorGreaterthannow()
+	{
+		return $this->operatorGreater();
+	}
+
+	/**
+	 * Smaller operator.
+	 *
+	 * @return array
+	 */
+	public function operatorSmallerthannow()
+	{
+		return $this->operatorSmaller();
+	}
+
+	/**
+	 * Get value.
+	 *
+	 * @return mixed
+	 */
+	public function getStdOperator()
+	{
+		$dateValue = date('Y-m-d', strtotime($this->getValue()));
+		$value = \DateTimeRange::getDateRangeByType($this->operator);
+		if ($value[0] === $value[1]) {
+			return $dateValue <= $value[0];
+		}
+		return ($dateValue >= $value[0]) && ($dateValue <= $value[1]);
 	}
 }

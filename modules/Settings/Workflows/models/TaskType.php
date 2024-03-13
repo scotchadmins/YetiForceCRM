@@ -6,6 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 // Workflow Task Type Model Class
@@ -33,7 +34,7 @@ class Settings_Workflows_TaskType_Model extends \App\Base
 	 */
 	public function getName()
 	{
-		return $this->get('tasktypename');
+		return $this->get('tasktypename') ?? '';
 	}
 
 	/**
@@ -43,7 +44,7 @@ class Settings_Workflows_TaskType_Model extends \App\Base
 	 */
 	public function getLabel()
 	{
-		return $this->get('label');
+		return $this->get('label') ?? '';
 	}
 
 	/**

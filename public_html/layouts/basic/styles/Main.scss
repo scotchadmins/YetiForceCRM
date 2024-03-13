@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 @charset 'UTF-8';
 //-------- global variables --------//
 @import "_Functions";
@@ -8,7 +8,7 @@
 @import "../../../libraries/bootstrap/scss/bootstrap";
 @import "../../../libraries/select2-theme-bootstrap4/src/select2-bootstrap.scss";
 @import "../../../libraries/sass-material-colors/sass/_sass-material-colors-classes.scss";
-@import "../../../libraries/flag-icon-css/sass/flag-icon.scss";
+@import "../../../libraries/flag-icons/sass/flag-icons.scss";
 //-------- libraries' modifications --------//
 @import "libraries/_Libraries";
 @import "libraries/_Bootstrap";
@@ -24,6 +24,8 @@
 @import "components/_Buttons";
 @import "components/_Checkbox";
 @import "components/_ConditionBuilder";
+@import "components/_Fields";
+@import "components/_Icons";
 //-------- layout --------//
 @import "layout/_Base";
 @import "layout/_Header";
@@ -37,6 +39,8 @@
 @import "pages/_Detail";
 @import "pages/_List";
 @import "pages/_ListPreview";
+@import "pages/_Kanban";
+@import "pages/_Tiles";
 
 //-------- settings --------//
 @import "pages/Settings/_Dashboard";

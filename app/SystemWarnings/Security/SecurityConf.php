@@ -1,69 +1,68 @@
 <?php
 
+/**
+ * Security conf system warnings file.
+ *
+ * @package App
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @author    Sławomir Kłos <s.klos@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ */
+
 namespace App\SystemWarnings\Security;
 
 /**
  * Security conf system warnings class.
- *
- * @package App
- *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
- * @author    Sławomir Kłos <s.klos@yetiforce.com>
  */
 class SecurityConf extends \App\SystemWarnings\Template
 {
-	/**
-	 * {@inheritdoc}
-	 *
-	 * @var string
-	 */
+	/** {@inheritdoc} */
 	protected $title = 'LBL_SECURITY_CONF';
-	/**
-	 * {@inheritdoc}
-	 *
-	 * @var int
-	 */
+
+	/** {@inheritdoc} */
 	protected $priority = 7;
 
 	/**
 	 * Checking whether there is a security configuration issue.
+	 *
+	 * @return void
 	 */
-	public function process()
+	public function process(): void
 	{
 		$this->status = 1;
 		$errorsSecurity = \App\Utils\ConfReport::getErrors('security', true);
 		unset($errorsSecurity['HTTPS']);
-		$errorsText = '<br><pre>';
+		$errorsText = '<br>';
 		if (!empty($errorsSecurity)) {
-			$errorsText .= '<strong>' . \App\Language::translate('LBL_SECURITY', 'Settings:SystemWarnings') . ':</strong>';
+			$errorsText .= '<h5>' . \App\Language::translate('LBL_SECURITY', 'Settings:SystemWarnings') . ':</h5><pre>';
 			foreach ($errorsSecurity as $key => $value) {
 				$errorsText .= PHP_EOL . "  {$key} = " . \yii\helpers\VarDumper::dumpAsString($value['val']) .
 					' (' . \App\Language::translate('LBL_RECOMMENDED_VALUE', 'Settings:SystemWarnings') .
 					": '" . ($value['recommended'] ?? '') . "')";
 			}
-			$errorsText .= PHP_EOL . PHP_EOL;
+			$errorsText .= '</pre><hr/>';
 			$this->status = 0;
 		}
 		$errorsWritableFilesAndFolders = \App\Utils\ConfReport::getErrors('writableFilesAndFolders');
 		if (!empty($errorsWritableFilesAndFolders)) {
-			$errorsText .= '<strong>' . \App\Language::translate('LBL_NO_FILE_WRITE_RIGHTS', 'Settings:SystemWarnings') . ':</strong>';
+			$errorsText .= '<h5>' . \App\Language::translate('LBL_NO_FILE_WRITE_RIGHTS', 'Settings:SystemWarnings') . ':</h5><pre>';
 			foreach ($errorsWritableFilesAndFolders as $key => $value) {
 				$errorsText .= PHP_EOL . "  {$key}";
 			}
 			$this->status = 0;
 		}
-		$errorsText .= PHP_EOL . PHP_EOL;
+		$errorsText .= '</pre>';
 		if (!$this->status) {
-			$errorsText .= '</pre>';
-			$this->link = 'https://yetiforce.com/en/knowledge-base/documentation/implementer-documentation/item/web-server-requirements';
+			$this->link = 'https://doc.yetiforce.com/introduction/requirements/';
 			$this->linkTitle = \App\Language::translate('LBL_CONFIG_REPORT_LINK', 'Settings:SystemWarnings');
 			$this->description = \App\Language::translateArgs(
 				'LBL_SECURITY_CONF_DESC',
 				'Settings:SystemWarnings',
-				'<a target="_blank" rel="noreferrer noopener" href="https://yetiforce.com/en/knowledge-base/documentation/implementer-documentation/item/web-server-requirement"><u>' . \App\Language::translate('LBL_CONFIG_DOC_URL_LABEL', 'Settings:SystemWarnings') . '</u></a>',
-				$errorsText
-			);
+				'<a target="_blank" rel="noreferrer noopener" href="https://doc.yetiforce.com/introduction/requirements/"><u>' . \App\Language::translate('LBL_CONFIG_DOC_URL_LABEL', 'Settings:SystemWarnings') . '</u></a>'
+			) . $errorsText;
 		}
 	}
 }

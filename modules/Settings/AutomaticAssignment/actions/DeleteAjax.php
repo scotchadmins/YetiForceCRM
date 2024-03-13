@@ -3,14 +3,16 @@
 /**
  * Class to delete.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @package Settings.Action
+ *
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Settings_AutomaticAssignment_DeleteAjax_Action extends Settings_Vtiger_Delete_Action
 {
 	/**
-	 * Function  proccess.
+	 * Function  process.
 	 *
 	 * @param \App\Request $request
 	 */
@@ -18,11 +20,11 @@ class Settings_AutomaticAssignment_DeleteAjax_Action extends Settings_Vtiger_Del
 	{
 		$result = true;
 		$recordModel = Settings_AutomaticAssignment_Record_Model::getInstanceById($request->getInteger('record'));
-		if ($recordModel) {
+		if ($recordModel->getId()) {
 			$result = (bool) $recordModel->delete();
 		}
-		$responceToEmit = new Vtiger_Response();
-		$responceToEmit->setResult(['success' => $result]);
-		$responceToEmit->emit();
+		$response = new Vtiger_Response();
+		$response->setResult(['success' => $result]);
+		$response->emit();
 	}
 }

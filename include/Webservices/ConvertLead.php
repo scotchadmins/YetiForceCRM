@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * ******************************************************************************* */
 
 class WebservicesConvertLead
@@ -23,7 +23,7 @@ class WebservicesConvertLead
 	{
 		\App\Log::trace('Start ' . __METHOD__);
 		if (empty($entityvalues['assignedTo'])) {
-			$entityvalues['assignedTo'] = $user->id;
+			$entityvalues['assignedTo'] = $user->getId();
 		}
 		if (empty($entityvalues['transferRelatedRecordsTo'])) {
 			$entityvalues['transferRelatedRecordsTo'] = 'Accounts';
@@ -32,9 +32,9 @@ class WebservicesConvertLead
 		$leadInfo = $recordModel->getData();
 		$leadIdComponents = $entityvalues['leadId'];
 		if ((new \App\Db\Query())->select(['converted'])->from('vtiger_leaddetails')->where(['converted' => 1, 'leadid' => $leadIdComponents])->exists()) {
-			$translateAlreadyConvertedError = \App\Language::translate('LBL_' . WebServiceErrorCode::$LEAD_ALREADY_CONVERTED, 'Leads');
+			$translateAlreadyConvertedError = \App\Language::translate('LBL_LEAD_ALREADY_CONVERTED', 'Leads');
 			\App\Log::error('Error converting a lead: ' . $translateAlreadyConvertedError);
-			throw new WebServiceException(WebServiceErrorCode::$LEAD_ALREADY_CONVERTED, $translateAlreadyConvertedError);
+			throw new WebServiceException('LEAD_ALREADY_CONVERTED', $translateAlreadyConvertedError);
 		}
 
 		$eventHandler = new App\EventHandler();
@@ -56,7 +56,7 @@ class WebservicesConvertLead
 				$entityObjectValues['assigned_user_id'] = $entityvalues['assignedTo'];
 				$entityObjectValues = static::vtwsPopulateConvertLeadEntities($entityvalue, $entityObjectValues, $recordModel, $leadInfo);
 
-				//update the contacts relation
+				// update the contacts relation
 				if ('Contacts' == $entityvalue['name'] && !empty($entityIds['Accounts'])) {
 					$entityObjectValues['parent_id'] = $entityIds['Accounts'];
 				}
@@ -85,7 +85,7 @@ class WebservicesConvertLead
 					}
 				} catch (Exception $e) {
 					\App\Log::error('Error converting a lead: ' . $e->getMessage());
-					throw new WebServiceException(WebServiceErrorCode::$UNKNOWNOPERATION, $e->getMessage() . ' : ' . $entityvalue['name']);
+					throw new WebServiceException('UNKNOWN_OPERATION', $e->getMessage() . ' : ' . $entityvalue['name']);
 				}
 			}
 		}
@@ -233,9 +233,9 @@ class WebservicesConvertLead
 				->update('vtiger_leaddetails', ['converted' => 1], ['leadid' => $leadId])
 				->execute();
 			if (false === $result) {
-				throw new WebServiceException(WebServiceErrorCode::$FAILED_TO_MARK_CONVERTED, 'Failed mark lead converted');
+				throw new WebServiceException('FAILED_TO_MARK_LEAD_CONVERTED', 'Failed mark lead converted');
 			}
-			//update the modifiedtime and modified by information for the record
+			// update the modifiedtime and modified by information for the record
 			$db->createCommand()
 				->update('vtiger_crmentity', ['modifiedtime' => date('Y-m-d H:i:s'), 'modifiedby' => $user->getId()], ['crmid' => $leadId])
 				->execute();

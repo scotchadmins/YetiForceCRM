@@ -1,11 +1,17 @@
 <?php
 
 /**
- * Coordiante model.
+ * OpenStreetMap Coordinate model file.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @package   Model
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Tomasz Kur <t.kur@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ */
+/**
+ * OpenStreetMap Coordinate model class.
  */
 class OpenStreetMap_Coordinate_Model extends \App\Base
 {
@@ -54,7 +60,6 @@ class OpenStreetMap_Coordinate_Model extends \App\Base
 	 */
 	public function getCoordinatesCenter()
 	{
-		$searchValue = $this->get('searchValue');
 		$coordinatesCenter = [];
 		if (!$this->isEmpty('lat') && !$this->isEmpty('lon')) {
 			$coordinatesCenter = [
@@ -62,7 +67,7 @@ class OpenStreetMap_Coordinate_Model extends \App\Base
 				'lon' => $this->get('lon'),
 			];
 		}
-		if (!empty($searchValue)) {
+		if ($searchValue = $this->get('searchValue')) {
 			$coordinatesCenter = \App\Map\Coordinates::getInstance()->getCoordinatesByValue($searchValue);
 		}
 		$this->set('coordinatesCenter', $coordinatesCenter);
@@ -81,7 +86,7 @@ class OpenStreetMap_Coordinate_Model extends \App\Base
 		$recodMetaData = \vtlib\Functions::getCRMRecordMetadata($crmid);
 		$moduleName = $recodMetaData['setype'];
 		$queryGenerator = new App\QueryGenerator($moduleName);
-		$fields = App\Config::module('OpenStreetMap', 'FIELDS_IN_POPUP');
+		$fields = App\Config::module('OpenStreetMap', 'mapPinFields');
 		$queryGenerator->setFields($fields[$moduleName]);
 		$queryGenerator->addNativeCondition(['vtiger_crmentity.crmid' => $crmid]);
 		$row = $queryGenerator->createQuery()->one();
@@ -119,7 +124,6 @@ class OpenStreetMap_Coordinate_Model extends \App\Base
 			}
 		}
 		$dataReader->close();
-
 		return $coordinates;
 	}
 
@@ -134,17 +138,18 @@ class OpenStreetMap_Coordinate_Model extends \App\Base
 	public function getLabelToPopupByArray($data, $moduleName)
 	{
 		$html = '<b><a href="index.php?module=' . $moduleName . '&view=Detail&record=' . $data['crmid'] . '"><span class="description">';
-		$fields = App\Config::module('OpenStreetMap', 'FIELDS_IN_POPUP');
+		$fields = App\Config::module('OpenStreetMap', 'mapPinFields');
 		foreach ($fields[$moduleName] as $fieldName) {
 			if (!empty($data[$fieldName])) {
 				$html .= \App\Purifier::encodeHtml($data[$fieldName]) . '<br />';
 			}
 		}
 		$html .= '</span></a></b><input type=hidden class="coordinates" data-lon="' . $data['lon'] . '" data-lat="' . $data['lat'] . '">';
-		$html .= '<button class="btn btn-success btn-xs startTrack marginTB3">' . \App\Language::translate('LBL_START') . '</button><br />';
-		$html .= '<button class="btn btn-danger btn-xs endTrack marginTB3">' . \App\Language::translate('LBL_END') . '</button><br />';
-		$html .= '<button class="btn btn-warning btn-xs indirectPoint marginTB3">' . \App\Language::translate('LBL_INDIRECT_POINT', 'OpenStreetMap') . '</button><br />';
-		return $html . '<button class="btn btn-primary btn-xs searchInRadius marginTB3">' . \App\Language::translate('LBL_SEARCH_IN_RADIUS', 'OpenStreetMap') . '</button>';
+		$html .= '<button class="btn btn-success btn-xs startTrack marginTB3 mr-3"><span class="fas fa-truck mr-2"></span>' . \App\Language::translate('LBL_START') . '</button>';
+		$html .= '<button class="btn btn-danger btn-xs endTrack marginTB3"><span class="fas fa-flag-checkered mr-2"></span>' . \App\Language::translate('LBL_END') . '</button><br />';
+		$html .= '<button class="btn btn-warning btn-xs indirectPoint marginTB3 mr-3"><span class="fas fa-flag mr-2"></span>' . \App\Language::translate('LBL_INDIRECT_POINT', 'OpenStreetMap') . '</button>';
+		$html .= '<button class="btn btn-primary btn-xs searchInRadius marginTB3"><span class="fas fa-arrows-to-dot mr-2"></span>' . \App\Language::translate('LBL_SEARCH_IN_RADIUS', 'OpenStreetMap') . '</button>';
+		return $html . '<span class="border d-block my-1 p-1">' . $data['lat'] . ', ' . $data['lon'] . '</span>';
 	}
 
 	public static $colors = [];
@@ -238,18 +243,18 @@ class OpenStreetMap_Coordinate_Model extends \App\Base
 	/**
 	 * Function to get coordinates for many records.
 	 *
-	 * @param array $records Array with id of records
+	 * @param int[] $records Array with id of records
 	 *
 	 * @return array
 	 */
-	public function readCoordinatesByRecords($records)
+	public function readCoordinatesByRecords(array $records)
 	{
 		$moduleModel = $this->get('srcModuleModel');
 		$groupByField = $this->get('groupBy');
 		$coordinatesCenter = $this->get('coordinatesCenter');
 		$radius = $this->get('radius');
 		$moduleName = $moduleModel->getName();
-		$fields = App\Config::module('OpenStreetMap', 'FIELDS_IN_POPUP');
+		$fields = App\Config::module('OpenStreetMap', 'mapPinFields');
 		$fields = $fields[$moduleName];
 		if (!empty($groupByField)) {
 			$fields[] = $groupByField;
@@ -261,7 +266,7 @@ class OpenStreetMap_Coordinate_Model extends \App\Base
 		$queryGenerator->setCustomColumn('vtiger_crmentity.crmid');
 		$queryGenerator->addJoin(['LEFT JOIN', 'u_#__openstreetmap', 'vtiger_crmentity.crmid = u_#__openstreetmap.crmid']);
 		$query = $queryGenerator->createQuery();
-		$andWhere = ['and', ['vtiger_crmentity.crmid' => $records], ['u_#__openstreetmap.type' => 'a']];
+		$andWhere = ['vtiger_crmentity.crmid' => $records];
 		if (!empty($coordinatesCenter) && !empty($radius)) {
 			$margins = self::getMargins($coordinatesCenter, $radius);
 			$andWhere[] = ['<', 'u_#__openstreetmap.lat', $margins['latMax']];
@@ -295,13 +300,11 @@ class OpenStreetMap_Coordinate_Model extends \App\Base
 	public function getCoordinatesCustomView()
 	{
 		$selectedIds = $this->get('selectedIds');
-		if ('all' == $selectedIds) {
+		if ($selectedIds && 'all' == $selectedIds[0]) {
 			return $this->readAllCoordinatesFromCustomeView();
 		}
 		if (!empty($selectedIds)) {
-			$records = Vtiger_Mass_Action::getRecordsListFromRequest($this->get('request'));
-
-			return $this->readCoordinatesByRecords($records);
+			return $this->readCoordinatesByRecords(Vtiger_Mass_Action::getRecordsListFromRequest($this->get('request')));
 		}
 		return [];
 	}
@@ -315,15 +318,13 @@ class OpenStreetMap_Coordinate_Model extends \App\Base
 	{
 		$moduleModel = $this->get('srcModuleModel');
 		$moduleName = $moduleModel->getName();
-		$filterId = $this->get('viewname');
 		$excludedIds = $this->get('excluded_ids');
-		$searchKey = $this->get('search_key');
 		$searchValue = $this->get('search_value');
 		$operator = $this->get('operator');
 		$groupByField = $this->get('groupBy');
 		$coordinatesCenter = $this->get('coordinatesCenter');
 		$radius = $this->get('radius');
-		$fields = App\Config::module('OpenStreetMap', 'FIELDS_IN_POPUP');
+		$fields = App\Config::module('OpenStreetMap', 'mapPinFields');
 		$fields = $fields[$moduleName];
 		if (!empty($groupByField)) {
 			$fields[] = $groupByField;
@@ -331,14 +332,17 @@ class OpenStreetMap_Coordinate_Model extends \App\Base
 			$groupByFieldColumn = $fieldModel->get('column');
 		}
 		$queryGenerator = new App\QueryGenerator($moduleName);
-		$queryGenerator->initForCustomViewById($filterId);
+		$queryGenerator->initForCustomViewById($this->get('viewname'));
 		$queryGenerator->setFields($fields);
 		$queryGenerator->setCustomColumn('u_#__openstreetmap.lat');
 		$queryGenerator->setCustomColumn('u_#__openstreetmap.lon');
 		$queryGenerator->setCustomColumn('vtiger_crmentity.crmid');
+		if ($advancedConditions = $this->get('advancedConditions')) {
+			$queryGenerator->setAdvancedConditions($advancedConditions);
+		}
 		$queryGenerator->addJoin(['LEFT JOIN', 'u_#__openstreetmap', 'u_#__openstreetmap.crmid = vtiger_crmentity.crmid']);
 		if (!empty($searchValue) && $operator) {
-			$queryGenerator->addCondition($searchKey, $searchValue, $operator);
+			$queryGenerator->addCondition($this->get('search_key'), $searchValue, $operator);
 		}
 		$searchParams = $this->getArray('search_params');
 		if (empty($searchParams)) {
@@ -379,7 +383,6 @@ class OpenStreetMap_Coordinate_Model extends \App\Base
 			}
 		}
 		$dataReader->close();
-
 		return $coordinates;
 	}
 

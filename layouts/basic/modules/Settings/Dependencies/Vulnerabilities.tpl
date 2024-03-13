@@ -1,4 +1,4 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
 	<!-- tpl-Settings-Dependencies-Vulnerabilities -->
 	<div class="pt-md-0 pt-1">
@@ -36,14 +36,14 @@
 								<th colspan="1" class="mediumWidthType">
 									<span>{App\Language::translate('LBL_LIB_NAME', $QUALIFIED_MODULE)}</span>
 								</th>
+								<th colspan="1" class="mediumWidthType u-w-3per-150px">
+									<span>CVE</span>
+								</th>
 								<th colspan="1" class="mediumWidthType">
 									<span>{App\Language::translate('LBL_VULNERABILITY_NAME', $QUALIFIED_MODULE)}</span>
 								</th>
 								<th colspan="1" class="mediumWidthType">
 									<span>{App\Language::translate('LBL_VULNERABILITY_URL', $QUALIFIED_MODULE)}</span>
-								</th>
-								<th colspan="1" class="mediumWidthType">
-									<span>CVE</span>
 								</th>
 							</tr>
 						</thead>
@@ -52,15 +52,16 @@
 								{foreach from=$LIB['advisories'] item=ADVISORIE}
 									<tr>
 										<td><label>{\App\Purifier::encodeHtml($LIB_NAME)} ({\App\Purifier::encodeHtml($LIB['version'])})</label></td>
+										<td><label>{if isset($ADVISORIE['cve'])}{\App\Purifier::encodeHtml($ADVISORIE['cve'])}{/if}</label></td>
 										<td><label>{\App\Purifier::encodeHtml($ADVISORIE['title'])}</label></td>
 										<td><label>
-											{if isset($ADVISORIE['link'])}
-												<a target="_blank" rel="noreferrer noopener" href="{\App\Purifier::encodeHtml($ADVISORIE['link'])}">
-													{\App\Purifier::encodeHtml($ADVISORIE['link'])}
-												</a>
-											{/if}
-										</label></td>
-										<td><label>{if isset($ADVISORIE['cve'])}{\App\Purifier::encodeHtml($ADVISORIE['cve'])}{/if}</label></td>
+												{if isset($ADVISORIE['link'])}
+													<a target="_blank" rel="noreferrer noopener" href="{\App\Purifier::encodeHtml($ADVISORIE['link'])}">
+														{\App\Purifier::encodeHtml($ADVISORIE['link'])}
+													</a>
+												{/if}
+											</label></td>
+
 									</tr>
 								{/foreach}
 							{/foreach}

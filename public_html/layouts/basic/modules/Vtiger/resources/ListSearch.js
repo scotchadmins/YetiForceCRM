@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 jQuery.Class(
@@ -72,22 +72,82 @@ jQuery.Class(
 			return jQuery('#alphabetValue').val();
 		},
 		registerListSearch: function () {
-			let thisInstance = this;
 			let listViewContainer = this.getContainer();
-			listViewContainer.find('[data-trigger="listSearch"]').on('click', function (e) {
-				thisInstance.reloadList();
+			listViewContainer.find('[data-trigger="listSearch"]').on('click', () => {
+				this.reloadList();
 			});
-			listViewContainer.find('input.listSearchContributor').on('keypress', function (e) {
+			listViewContainer.find('input.listSearchContributor').on('keypress', (e) => {
 				if (e.keyCode == 13) {
-					thisInstance.triggerListSearch();
+					this.triggerListSearch();
 				}
 			});
-			listViewContainer.find('.removeSearchConditions').on('click', function () {
-				thisInstance.reloadList({
+			listViewContainer.find('.removeSearchConditions').on('click', () => {
+				this.reloadList({
 					search_params: [],
 					search_key: '',
 					search_value: '',
-					operator: ''
+					operator: '',
+					lockedEmptyFields: []
+				});
+			});
+			this.registerListSearchEmptyValue();
+		},
+		/**
+		 * Register list search if value empty.
+		 * @param {array} params
+		 * @returns {array}
+		 */
+		parseConditions: function (params) {
+			let listViewContainer = this.getContainer();
+			let lockedEmptyFields = [];
+			let lockedInput = listViewContainer.find('.js-empty-fields').val();
+			if (!!lockedInput) {
+				lockedEmptyFields = JSON.parse(lockedInput);
+			}
+			listViewContainer.find('.js-empty-value').each(function () {
+				let element = $(this);
+				let parentField = element.parents('.searchField,.picklistSearchField').find('.listSearchContributor');
+				let fieldName = parentField.attr('name');
+				let moduleName = parentField.data('module-name');
+				let sourceFieldName = parentField.data('source-field-name');
+				if (moduleName !== undefined && sourceFieldName !== undefined) {
+					fieldName = fieldName + ':' + moduleName + ':' + sourceFieldName;
+				}
+				if (element.is(':checked')) {
+					if ($.inArray(fieldName, lockedEmptyFields) == -1) {
+						lockedEmptyFields.push(fieldName);
+					}
+					let state = 0;
+					for (let i = 0; i < params.search_params[0].length; i++) {
+						if (params.search_params[0][i][0] === fieldName) {
+							params.search_params[0][i] = [fieldName, 'y', ''];
+							state = 1;
+						}
+					}
+					if (!state) {
+						params.search_params[0].push([fieldName, 'y', '']);
+					}
+				} else {
+					for (let i = 0; i < lockedEmptyFields.length; i++) {
+						if (lockedEmptyFields[i] === fieldName) {
+							lockedEmptyFields.splice(i, 1);
+						}
+					}
+				}
+			});
+			params.lockedEmptyFields = lockedEmptyFields;
+			return params;
+		},
+		/**
+		 * Register list search if value empty.
+		 */
+		registerListSearchEmptyValue: function () {
+			let listViewContainer = this.getContainer();
+			const self = this;
+			listViewContainer.find('.js-empty-value').each(function () {
+				let element = $(this);
+				element.on('click', function (e) {
+					self.reloadList();
 				});
 			});
 		},
@@ -103,7 +163,7 @@ jQuery.Class(
 				}
 			});
 			if (app.getMainParams('autoRefreshListOnChange') == '1') {
-				listViewContainer.find('.listViewEntriesTable select, .searchInSubcategories').on('change', () => {
+				listViewContainer.find('.listViewEntriesTable select, .searchInSubcategories').on('change', (e) => {
 					this.triggerListSearch();
 				});
 				listViewContainer.find('.listViewEntriesTable .picklistSearchField').on('apply.daterangepicker', () => {
@@ -243,9 +303,10 @@ jQuery.Class(
 						'boolean',
 						'fileLocationType',
 						'userRole',
-						'companySelect',
 						'multiReferenceValue',
-						'inventoryLimit'
+						'inventoryLimit',
+						'currencyList',
+						'group'
 					]) >= 0
 				) {
 					searchOperator = 'e';
@@ -327,21 +388,22 @@ jQuery.Class(
 			} else if (viewName === 'Detail') {
 				instance = Vtiger_Detail_Js.getInstance();
 				instance.reloadFunctionName = 'loadRelatedList';
-			} else if (viewName == 'List') {
+			} else if (viewName === 'List' || viewName === 'Tiles') {
 				instance = new Vtiger_List_Js();
 				instance.reloadFunctionName = 'getListViewRecords';
 				instance.execute = ['updatePagination'];
-			} else if (viewName == 'ListPreview') {
+			} else if (viewName === 'ListPreview') {
 				instance = window.pageController;
 				instance.reloadFunctionName = 'getListViewRecords';
 				instance.execute = ['updatePagination'];
 			}
+
 			return instance;
 		},
 		reloadList: function (params) {
 			let thisInstance = this;
 			if (params == undefined) {
-				params = { page: 1 };
+				params = { page: 1, totalCount: 0 };
 			}
 			let instance = this.getInstanceByView();
 			if (instance) {

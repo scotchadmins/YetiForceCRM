@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class HelpDesk_Module_Model extends Vtiger_Module_Model
@@ -43,22 +43,24 @@ class HelpDesk_Module_Model extends Vtiger_Module_Model
 	{
 		$listviewHeader = [];
 		$listviewEntries = [];
-		$listColumns = \App\Config::module('HelpDesk', 'COLUMNS_IN_HIERARCHY');
-		if (empty($listColumns)) {
-			$listColumns = $this->getEntityInstance()->list_fields_name;
-		}
-		foreach ($listColumns as $fieldname => $colname) {
-			if (\App\Field::getFieldPermission('HelpDesk', $colname)) {
-				$listviewHeader[] = App\Language::translate($fieldname, 'HelpDesk');
+		if (\App\Record::STATE_ACTIVE === \App\Record::getState($id)) {
+			$listColumns = \App\Config::module('HelpDesk', 'COLUMNS_IN_HIERARCHY');
+			if (empty($listColumns)) {
+				$listColumns = $this->getEntityInstance()->list_fields_name;
 			}
+			foreach ($listColumns as $fieldname => $colname) {
+				if (\App\Field::getFieldPermission('HelpDesk', $colname)) {
+					$listviewHeader[] = App\Language::translate($fieldname, 'HelpDesk');
+				}
+			}
+			$rows = [];
+			$encountered = [$id];
+			$rows = $this->getParent($id, $rows, $encountered);
+			$baseId = current(array_keys($rows));
+			$rows = [$baseId => $rows[$baseId]];
+			$rows[$baseId] = $this->getChild($baseId, $rows[$baseId], $rows[$baseId]['depth']);
+			$this->getHierarchyData($id, $rows[$baseId], $baseId, $listviewEntries, $getRawData, $getLinks);
 		}
-		$rows = [];
-		$encountered = [$id];
-		$rows = $this->getParent($id, $rows, $encountered);
-		$baseId = current(array_keys($rows));
-		$rows = [$baseId => $rows[$baseId]];
-		$rows[$baseId] = $this->getChild($baseId, $rows[$baseId], $rows[$baseId]['depth']);
-		$this->getHierarchyData($id, $rows[$baseId], $baseId, $listviewEntries, $getRawData, $getLinks);
 		return ['header' => $listviewHeader, 'entries' => $listviewEntries];
 	}
 
@@ -182,13 +184,13 @@ class HelpDesk_Module_Model extends Vtiger_Module_Model
 			}
 			foreach ($listColumns as $columnname) {
 				if ('assigned_user_id' === $columnname) {
-					$parentInfo[$columnname] = $row['user_name'];
+					$parentInfo[$columnname] = $row['user_name'] ?? '';
 				} elseif ('ticket_title' === $columnname) {
-					$parentInfo[$columnname] = $row['title'];
+					$parentInfo[$columnname] = $row['title'] ?? '';
 				} elseif ('ticketstatus' === $columnname) {
-					$parentInfo[$columnname] = App\Language::translate($row['status'], 'HelpDesk');
+					$parentInfo[$columnname] = App\Language::translate($row['status'] ?? '', 'HelpDesk');
 				} elseif ('ticketpriorities' === $columnname) {
-					$parentInfo[$columnname] = App\Language::translate($row['priority'], 'HelpDesk');
+					$parentInfo[$columnname] = App\Language::translate($row['priority'] ?? '', 'HelpDesk');
 				} else {
 					$parentInfo[$columnname] = $row[$columnname];
 				}
@@ -270,7 +272,7 @@ class HelpDesk_Module_Model extends Vtiger_Module_Model
 	public function getChildIds(int $id, &$childIds = []): array
 	{
 		$recordsIds = (new App\Db\Query())->select([
-			'vtiger_troubletickets.ticketid'
+			'vtiger_troubletickets.ticketid',
 		])->from('vtiger_troubletickets')
 			->innerJoin('vtiger_crmentity', 'vtiger_crmentity.crmid = vtiger_troubletickets.ticketid')
 			->leftJoin('vtiger_groups', 'vtiger_groups.groupid = vtiger_crmentity.smownerid')

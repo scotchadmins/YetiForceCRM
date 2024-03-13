@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Vtiger_Url_UIType extends Vtiger_Base_UIType
@@ -36,16 +36,16 @@ class Vtiger_Url_UIType extends Vtiger_Base_UIType
 		if (empty($value) || isset($this->validate[$value])) {
 			return;
 		}
-		$maximumLength = $this->getFieldModel()->get('maximumlength');
-		if ($maximumLength && App\TextParser::getTextLength($value) > $maximumLength) {
-			throw new \App\Exceptions\Security('ERR_VALUE_IS_TOO_LONG||' . $this->getFieldModel()->getFieldName() . '||' . $this->getFieldModel()->getModuleName() . '||' . $value, 406);
+		$maximumLength = $this->getFieldModel()->getMaxValue();
+		if ($maximumLength && App\TextUtils::getTextLength($value) > $maximumLength) {
+			throw new \App\Exceptions\Security('ERR_VALUE_IS_TOO_LONG||' . $this->getFieldModel()->getName() . '||' . $this->getFieldModel()->getModuleName() . '||' . $value, 406);
 		}
 		if (!($scheme = parse_url($value, PHP_URL_SCHEME))) {
 			$scheme = 'http';
 			$value = "{$scheme}://{$value}";
 		}
 		if (!(preg_match('/^([^\:]+)\:/i', $value) && \App\Validator::url($value) && \in_array(strtolower($scheme), static::ALLOWED_PROTOCOLS))) {
-			throw new \App\Exceptions\Security('ERR_ILLEGAL_FIELD_VALUE||' . $this->getFieldModel()->getFieldName() . '||' . $this->getFieldModel()->getModuleName() . '||' . $value, 406);
+			throw new \App\Exceptions\Security('ERR_ILLEGAL_FIELD_VALUE||' . $this->getFieldModel()->getName() . '||' . $this->getFieldModel()->getModuleName() . '||' . $value, 406);
 		}
 		$this->validate[$value] = true;
 	}
@@ -59,6 +59,9 @@ class Vtiger_Url_UIType extends Vtiger_Base_UIType
 	/** {@inheritdoc} */
 	public function getDisplayValue($value, $record = false, $recordModel = false, $rawText = false, $length = false)
 	{
+		if (empty($value)) {
+			return '';
+		}
 		$rawValue = $value;
 		$value = \App\Purifier::encodeHtml($value);
 		preg_match('^[\\w]+:\\/\\/^', $value, $matches);
@@ -68,7 +71,7 @@ class Vtiger_Url_UIType extends Vtiger_Base_UIType
 		if ($rawText) {
 			return $value;
 		}
-		$rawValue = \App\TextParser::textTruncate($rawValue, \is_int($length) ? $length : false);
+		$rawValue = \App\TextUtils::textTruncate($rawValue, \is_int($length) ? $length : false);
 
 		return '<a class="urlField u-cursor-pointer" title="' . $value . '" href="' . $value . '" target="_blank" rel="noreferrer noopener">' . \App\Purifier::encodeHtml($rawValue) . '</a>';
 	}

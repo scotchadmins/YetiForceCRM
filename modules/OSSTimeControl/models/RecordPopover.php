@@ -4,8 +4,8 @@
  *
  * @package   Model
  *
- * @copyright YetiForce Sp. z o.o.
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Tomasz Kur <t.kur@yetiforce.com>
  */
 
@@ -14,9 +14,7 @@
  */
 class OSSTimeControl_RecordPopover_Model extends Vtiger_RecordPopover_Model
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getFields(): array
 	{
 		$summaryFields = [];
@@ -30,9 +28,7 @@ class OSSTimeControl_RecordPopover_Model extends Vtiger_RecordPopover_Model
 		return $summaryFields;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getFieldsIcon(): array
 	{
 		return ['date_start' => 'far fa-clock', 'time_start' => 'far fa-clock', 'time_end' => 'far fa-clock', 'due_date' => 'far fa-clock', 'sum_time' => 'far fa-clock',

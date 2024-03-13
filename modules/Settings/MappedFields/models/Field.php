@@ -3,13 +3,21 @@
 /**
  * Field Class for MappedFields Settings.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Settings_MappedFields_Field_Model extends Vtiger_Field_Model
 {
 	public $inventoryField = false;
+	/** @var string Field data type */
+	public $mandatory_fields;
+	/** @var bool */
+	public $mandatory;
+	/** @var string */
+	public $fieldDataTypeForMapp;
+	/** @var Settings_MappedFields_Field_Model */
+	public $fieldModel;
 
 	/**
 	 * Function to get field uitype.
@@ -31,12 +39,38 @@ class Settings_MappedFields_Field_Model extends Vtiger_Field_Model
 	 */
 	public function getFieldDataType()
 	{
-		if (empty($this->fieldDataType) && 'INVENTORY' == $this->get('typeofdata')) {
-			$this->fieldDataType = 'inventory';
-		} elseif (empty($this->fieldDataType)) {
-			$this->fieldDataType = parent::getFieldDataType();
+		if (empty($this->fieldDataTypeForMapp)) {
+			if ('INVENTORY' === $this->get('typeofdata')) {
+				$this->fieldDataTypeForMapp = 'inventory';
+			} elseif (\in_array(parent::getFieldDataType(), self::$referenceTypes)) {
+				$this->fieldDataTypeForMapp = 'reference';
+			} else {
+				$this->fieldDataTypeForMapp = parent::getFieldDataType();
+			}
 		}
-		return $this->fieldDataType;
+
+		return $this->fieldDataTypeForMapp;
+	}
+
+	/** {@inheritdoc} */
+	public function getUITypeModel(): Vtiger_Base_UIType
+	{
+		if (!isset($this->uitypeModel)) {
+			$uiType = ucfirst($this->getFieldDataType());
+			if ('reference' === $this->getFieldDataType()) {
+				$uiType = ucfirst(parent::getFieldDataType());
+			}
+
+			$moduleName = $this->getModuleName();
+			$className = \Vtiger_Loader::getComponentClassName('UIType', $uiType, $moduleName, false);
+			if (!$className) {
+				$className = \Vtiger_Loader::getComponentClassName('UIType', 'Base', $moduleName);
+			}
+			$this->uitypeModel = new $className();
+			$this->uitypeModel->set('field', $this);
+		}
+
+		return $this->uitypeModel;
 	}
 
 	/**
@@ -91,8 +125,8 @@ class Settings_MappedFields_Field_Model extends Vtiger_Field_Model
 		$row['uitype'] = $fieldModel->getUIType();
 		$row['table'] = $fieldModel->getTableName();
 		$row['column'] = $fieldModel->getColumnName();
-		$row['name'] = $fieldModel->getFieldName();
-		$row['label'] = $fieldModel->getFieldLabel();
+		$row['name'] = $fieldModel->getName();
+		$row['label'] = $fieldModel->getLabel();
 		$row['displaytype'] = $fieldModel->getDisplayType();
 		$row['masseditable'] = (bool) $fieldModel->get('masseditable');
 		$row['typeofdata'] = $fieldModel->get('typeofdata');
@@ -158,8 +192,8 @@ class Settings_MappedFields_Field_Model extends Vtiger_Field_Model
 	 * Function to get instance.
 	 *
 	 * @param <String/Integer> $value
-	 * @param string           $module
-	 * @param string           $type
+	 * @param string $module
+	 * @param string $type
 	 *
 	 * @return <Settings_MappedFields_Field_Model> field model
 	 */

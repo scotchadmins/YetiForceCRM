@@ -95,11 +95,13 @@
     "LBL_TIME_CONTROL_USER_GROUP": "Time Control List with additional information about users",
     "LBL_TYPE": "Activity type",
     "FL_SUBPROCESS_SECOND_LEVEL": "Second level subprocess",
-    "LBL_SELECT_USER_CALENDAR": "Select User Calendar",
-    "LBL_SELECT_GROUP_CALENDAR": "Select group calendar",
-    "LBL_USER_NAME": "User name",
-    "LBL_GROUP_NAME": "Group name",
-    "LBL_WORK_DAYS": "Work days"
+    "LBL_WORK_DAYS": "Work days",
+    "Employees Time Control": "Employees Time Control",
+    "LBL_ALL_TIME_CONTROL": "All users total working time",
+    "LBL_START_TIME_COUNTER": "Start time counter",
+    "LBL_STOP_TIME_COUNTER": "Stop time counter",
+    "LBL_RESET_TIME_COUNTER": "Reset time counter",
+    "LBL_ADD_MINUTES": "Add %s minutes to work time"
   },
   "js": {
     "MSG_ERROR_NUMBER": "Allowed characters: [0-9]",

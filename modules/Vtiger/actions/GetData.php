@@ -50,20 +50,28 @@ class Vtiger_GetData_Action extends App\Controller\Action
 		$fieldsDependency = \App\FieldsDependency::getByRecordModel('Detail', $recordModel);
 		foreach ($fields as $fieldName => $fieldModel) {
 			if ($fieldModel->isViewable() && (empty($fieldsDependency['hide']['backend']) || !\in_array($fieldName, $fieldsDependency['hide']['backend']))) {
-				$data[$fieldName] = $recordModel->get($fieldName);
+				$data[$fieldName] = $recordModel->getRawValue($fieldName) ?? '';
 				$labels[$fieldName] = \App\Language::translate($fieldModel->getFieldLabel(), $recordModel->getModuleName());
-				$display[$fieldName] = $fieldModel->getDisplayValue($recordModel->get($fieldName), $record, $recordModel, true);
+				$display[$fieldName] = $fieldModel->getDisplayValue($recordModel->get($fieldName), $record, $recordModel, true) ?? '';
 				$type[$fieldName] = $fieldModel->getFieldDataType();
 			}
 		}
-		$response = new Vtiger_Response();
-		$response->setResult([
-			'success' => true,
-			'data' => array_map('App\Purifier::decodeHtml', $data),
-			'displayData' => array_map('App\Purifier::decodeHtml', $display),
-			'labels' => $labels,
-			'type' => $type,
+
+		$eventHandler = new App\EventHandler();
+		$eventHandler->setRecordModel($recordModel);
+		$eventHandler->setParams([
+			'result' => [
+				'success' => true,
+				'data' => array_map('App\Purifier::decodeHtml', $data),
+				'displayData' => array_map('App\Purifier::decodeHtml', $display),
+				'labels' => $labels,
+				'type' => $type,
+			],
 		]);
+		$eventHandler->trigger('RecordGetData');
+
+		$response = new Vtiger_Response();
+		$response->setResult($eventHandler->getParam('result'));
 		$response->emit();
 	}
 }

@@ -3,8 +3,8 @@
 /**
  * Base for action creating relations on the basis of mail address.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class OSSMailScanner_EmailScannerAction_Model
@@ -16,11 +16,11 @@ class OSSMailScanner_EmailScannerAction_Model
 			return 0;
 		}
 
-		$crmIds = $mail->findEmailAdress('from_email', $moduleName, true);
-		$crmidsToaddress = $mail->findEmailAdress('to_email', $moduleName, true);
-		$crmidsCcaddress = $mail->findEmailAdress('cc_email', $moduleName, true);
-		$crmidsBccaddress = $mail->findEmailAdress('bcc_email', $moduleName, true);
-		$crmidsReplyToaddress = $mail->findEmailAdress('reply_toaddress', $moduleName, true);
+		$crmIds = $mail->findEmailAddress('from_email', $moduleName, true);
+		$crmidsToaddress = $mail->findEmailAddress('to_email', $moduleName, true);
+		$crmidsCcaddress = $mail->findEmailAddress('cc_email', $moduleName, true);
+		$crmidsBccaddress = $mail->findEmailAddress('bcc_email', $moduleName, true);
+		$crmidsReplyToaddress = $mail->findEmailAddress('reply_toaddress', $moduleName, true);
 		$crmIds = OSSMailScanner_Record_Model::mergeArray($crmIds, $crmidsToaddress);
 		$crmIds = OSSMailScanner_Record_Model::mergeArray($crmIds, $crmidsCcaddress);
 		$crmIds = OSSMailScanner_Record_Model::mergeArray($crmIds, $crmidsBccaddress);

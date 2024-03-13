@@ -5,8 +5,8 @@
  *
  * @package   Settings.Action
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -68,13 +68,21 @@ class Settings_MailRbl_GetData_Action extends \App\Controller\Action
 			$mailRbl = \App\Mail\Rbl::getInstance($row);
 			$mailRbl->parse();
 			$type = \App\Mail\Rbl::LIST_TYPES[$row['type']];
+			if ($ip = ($mailRbl->getSender()['ip'] ?? '')) {
+				$icon = '';
+				if ($ips = \App\Mail\Rbl::findIp($ip, true)) {
+					$type = \App\Mail\Rbl::LIST_TYPES[$ips[0]['type']];
+					$icon = "<span class=\"{$type['icon']} mr-2 u-cursor-pointer\" title=\"" . \App\Language::translate('LBL_IP_ALREADY_EXISTS_LIST', 'Settings:MailRbl') . ' ' . \App\Language::translate($type['label'], 'Settings:MailRbl') . '"></span>';
+				}
+				$ip = $icon . \App\Purifier::encodeHtml($ip);
+			}
 			$rows[] = [
 				'id' => $row['id'],
 				'datetime' => \App\Fields\DateTime::formatToDisplay($row['datetime']),
 				'user' => \App\Fields\Owner::getUserLabel($row['user']) ?: '',
 				'sender' => \App\Purifier::encodeHtml($mailRbl->mailMimeParser->getHeaderValue('from')),
 				'recipient' => \App\Purifier::encodeHtml($mailRbl->mailMimeParser->getHeaderValue('to')),
-				'ip' => \App\Purifier::encodeHtml($mailRbl->getSender()['ip'] ?? ''),
+				'ip' => $ip,
 				'type' => "<span class=\"{$type['icon']} mr-2\"></span>" . \App\Language::translate($type['label'], 'Settings:MailRbl'),
 			];
 		}
@@ -84,7 +92,7 @@ class Settings_MailRbl_GetData_Action extends \App\Controller\Action
 			'draw' => $request->getInteger('draw'),
 			'iTotalRecords' => $query->where(['status' => 0])->count(),
 			'iTotalDisplayRecords' => $count,
-			'aaData' => $rows
+			'aaData' => $rows,
 		];
 		header('content-type: text/json; charset=UTF-8');
 		echo \App\Json::encode($result);
@@ -122,7 +130,7 @@ class Settings_MailRbl_GetData_Action extends \App\Controller\Action
 			'draw' => $request->getInteger('draw'),
 			'iTotalRecords' => $query->where(['status' => 1])->count(),
 			'iTotalDisplayRecords' => $count,
-			'aaData' => $rows
+			'aaData' => $rows,
 		];
 		header('content-type: text/json; charset=UTF-8');
 		echo \App\Json::encode($result);
@@ -144,13 +152,21 @@ class Settings_MailRbl_GetData_Action extends \App\Controller\Action
 			$mailRbl->parse();
 			$status = \App\Mail\Rbl::REQUEST_STATUS[$row['status']];
 			$type = \App\Mail\Rbl::LIST_TYPES[$row['type']];
+			if ($ip = ($mailRbl->getSender()['ip'] ?? '')) {
+				$icon = '';
+				if ($ips = \App\Mail\Rbl::findIp($ip, true)) {
+					$type = \App\Mail\Rbl::LIST_TYPES[$ips[0]['type']];
+					$icon = "<span class=\"{$type['icon']} mr-2 u-cursor-pointer\" title=\"" . \App\Language::translate('LBL_IP_ALREADY_EXISTS_LIST', 'Settings:MailRbl') . ' ' . \App\Language::translate($type['label'], 'Settings:MailRbl') . '"></span>';
+				}
+				$ip = $icon . \App\Purifier::encodeHtml($ip);
+			}
 			$rows[] = [
 				'id' => $row['id'],
 				'datetime' => \App\Fields\DateTime::formatToDisplay($row['datetime']),
 				'user' => \App\Fields\Owner::getUserLabel($row['user']) ?: '',
 				'sender' => \App\Purifier::encodeHtml($mailRbl->mailMimeParser->getHeaderValue('from')),
 				'recipient' => \App\Purifier::encodeHtml($mailRbl->mailMimeParser->getHeaderValue('to')),
-				'ip' => \App\Purifier::encodeHtml($mailRbl->getSender()['ip'] ?? ''),
+				'ip' => $ip,
 				'statusId' => $row['status'],
 				'status' => "<span class=\"{$status['icon']} mr-2\"></span>" . \App\Language::translate($status['label'], 'Settings:MailRbl'),
 				'type' => "<span class=\"{$type['icon']} mr-2\"></span>" . \App\Language::translate($type['label'], 'Settings:MailRbl'),
@@ -162,7 +178,7 @@ class Settings_MailRbl_GetData_Action extends \App\Controller\Action
 			'draw' => $request->getInteger('draw'),
 			'iTotalRecords' => $query->where(null)->count(),
 			'iTotalDisplayRecords' => $count,
-			'aaData' => $rows
+			'aaData' => $rows,
 		];
 		header('content-type: text/json; charset=UTF-8');
 		echo \App\Json::encode($result);
@@ -195,7 +211,7 @@ class Settings_MailRbl_GetData_Action extends \App\Controller\Action
 			'draw' => $request->getInteger('draw'),
 			'iTotalRecords' => $query->where(['type' => \App\Mail\Rbl::LIST_TYPE_BLACK_LIST])->count(),
 			'iTotalDisplayRecords' => $count,
-			'aaData' => $rows
+			'aaData' => $rows,
 		];
 		header('content-type: text/json; charset=UTF-8');
 		echo \App\Json::encode($result);
@@ -228,7 +244,7 @@ class Settings_MailRbl_GetData_Action extends \App\Controller\Action
 			'draw' => $request->getInteger('draw'),
 			'iTotalRecords' => $query->where(['type' => \App\Mail\Rbl::LIST_TYPE_WHITE_LIST])->count(),
 			'iTotalDisplayRecords' => $count,
-			'aaData' => $rows
+			'aaData' => $rows,
 		];
 		header('content-type: text/json; charset=UTF-8');
 		echo \App\Json::encode($result);
@@ -243,7 +259,7 @@ class Settings_MailRbl_GetData_Action extends \App\Controller\Action
 	{
 		$rows = [];
 		$query = $this->getQuery($request);
-		$query->from('s_#__mail_rbl_list')->select(['ip', 'status', 'type'])->andWhere(['type' => [\App\Mail\Rbl::LIST_TYPE_PUBLIC_BLACK_LIST, \App\Mail\Rbl::LIST_TYPE_PUBLIC_WHITE_LIST]]);
+		$query->from('s_#__mail_rbl_list')->select(['ip', 'status', 'type', 'comment'])->andWhere(['type' => [\App\Mail\Rbl::LIST_TYPE_PUBLIC_BLACK_LIST, \App\Mail\Rbl::LIST_TYPE_PUBLIC_WHITE_LIST]]);
 		$dataReader = $query->createCommand(\App\Db::getInstance('admin'))->query();
 		while ($row = $dataReader->read()) {
 			$status = \App\Mail\Rbl::LIST_STATUS[$row['status']];
@@ -252,6 +268,7 @@ class Settings_MailRbl_GetData_Action extends \App\Controller\Action
 				'type' => \App\Language::translate((\App\Mail\Rbl::LIST_TYPE_PUBLIC_BLACK_LIST == $row['type'] ? 'LBL_BLACK_LIST' : 'LBL_WHITE_LIST'), 'Settings:MailRbl'),
 				'statusId' => $row['status'],
 				'status' => "<span class=\"{$status['icon']} mr-2\"></span>" . \App\Language::translate($status['label'], 'Settings:MailRbl'),
+				'comment' => \App\Layout::truncateText($row['comment'], 30),
 			];
 		}
 		$query->limit(null)->offset(null)->orderBy(null);
@@ -260,7 +277,7 @@ class Settings_MailRbl_GetData_Action extends \App\Controller\Action
 			'draw' => $request->getInteger('draw'),
 			'iTotalRecords' => $query->where(['type' => [\App\Mail\Rbl::LIST_TYPE_PUBLIC_BLACK_LIST, \App\Mail\Rbl::LIST_TYPE_PUBLIC_WHITE_LIST]])->count(),
 			'iTotalDisplayRecords' => $count,
-			'aaData' => $rows
+			'aaData' => $rows,
 		];
 		header('content-type: text/json; charset=UTF-8');
 		echo \App\Json::encode($result);

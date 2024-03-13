@@ -1,33 +1,32 @@
 <?php
 
 /**
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @package   View
+ *
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class OSSMailView_Widget_View extends Vtiger_Edit_View
 {
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
-		$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
-		$permission = $userPrivilegesModel->hasModulePermission($request->getModule());
-		if (!$permission) {
+		if (!Users_Privileges_Model::getCurrentUserPrivilegesModel()->hasModulePermission($request->getModule())) {
 			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
 		}
-
-		$srecord = $request->getInteger('srecord');
-		$smodule = $request->getByType('smodule');
-
-		$recordPermission = \App\Privilege::isPermitted($smodule, 'DetailView', $srecord);
-		if (!$recordPermission) {
+		if (!\App\Privilege::isPermitted($request->getByType('smodule'), 'DetailView', $request->getInteger('srecord'))) {
 			throw new \App\Exceptions\NoPermittedToRecord('ERR_NO_PERMISSIONS_FOR_THE_RECORD', 406);
 		}
 	}
 
+	/** {@inheritdoc} */
 	public function preProcess(App\Request $request, $display = true)
 	{
 	}
 
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$moduleName = $request->getModule();
@@ -37,20 +36,21 @@ class OSSMailView_Widget_View extends Vtiger_Edit_View
 		$mode = $request->getMode();
 		$record = $request->getInteger('record');
 		$mailFilter = $request->getByType('mailFilter', 1);
-		$recordModel = Vtiger_Record_Model::getCleanInstance($moduleName);
-		$config = OSSMail_Module_Model::getComposeParameters();
-		if ($request->has('limit')) {
-			$config['widget_limit'] = $request->getInteger('limit');
+		$recordModel = Vtiger_Record_Model::getCleanInstance($moduleName)->setId($srecord);
+		$relation = \App\Relation::getRelationId($smodule, $moduleName);
+		if (!$relation) {
+			throw new \App\Exceptions\AppException("ERR_RELATION_NOT_FOUND||$smodule||$moduleName", 400);
 		}
+		$relationModel = \Vtiger_Relation_Model::getInstanceById($relation)->set('parentRecord', $recordModel);
 		$viewer = $this->getViewer($request);
-		$viewer->assign('RECOLDLIST', $recordModel->{$mode}($srecord, $smodule, $config, $type, $mailFilter));
+		$viewer->assign('RECOLDLIST', $recordModel->{$mode}($srecord, $smodule, ['widget_limit' => $request->getInteger('limit', 5)], $type, $mailFilter));
 		$viewer->assign('MODULENAME', $moduleName);
 		$viewer->assign('SMODULENAME', $smodule);
 		$viewer->assign('RECORD', $record);
 		$viewer->assign('SRECORD', $srecord);
 		$viewer->assign('TYPE', $type);
-		$viewer->assign('POPUP', $config['popup']);
-		$viewer->assign('PRIVILEGESMODEL', Users_Privileges_Model::getCurrentUserPrivilegesModel());
+		$viewer->assign('RELATION_MODEL', $relationModel);
+		$viewer->assign('POPUP', \App\User::getCurrentUserModel()->getDetail('mail_popup'));
 		$viewer->view('widgets.tpl', 'OSSMailView');
 	}
 }

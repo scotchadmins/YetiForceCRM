@@ -1,15 +1,15 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
 	<!-- tpl-Base-inventoryfields-DetailViewName -->
 	<strong>{$FIELD->getDisplayValue($ITEM_VALUE)}</strong>
 	{if isset($INVENTORY_MODEL)}
 		{foreach item=FIELD from=$INVENTORY_MODEL->getFieldsByType('Comment')}
 			{if $FIELD->isVisibleInDetail() && $INVENTORY_ROW[$FIELD->getColumnName()]}
-				<br/>
+				<br />
 				<label class="u-text-small-bold mt-2">
 					{\App\Language::translate($FIELD->get('label'), $MODULE_NAME)}
 				</label>
-				{$FIELD->getDisplayValue($INVENTORY_ROW[$FIELD->getColumnName()])}
+				{$FIELD->getDisplayValue($INVENTORY_ROW[$FIELD->getColumnName()], $INVENTORY_ROW)}
 			{/if}
 		{/foreach}
 		<div class="js-subproducts-container" data-js="append">

@@ -3,8 +3,10 @@
 /**
  * OSSTimeControl module model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @package   Model
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class OSSTimeControl_Module_Model extends Vtiger_Module_Model
 {
@@ -13,9 +15,7 @@ class OSSTimeControl_Module_Model extends Vtiger_Module_Model
 		return 'index.php?module=' . $this->getName() . '&view=Calendar';
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getSideBarLinks($linkParams)
 	{
 		$links = parent::getSideBarLinks($linkParams);
@@ -23,7 +23,7 @@ class OSSTimeControl_Module_Model extends Vtiger_Module_Model
 			'linktype' => 'SIDEBARLINK',
 			'linklabel' => 'LBL_CALENDAR_VIEW',
 			'linkurl' => $this->getCalendarViewUrl(),
-			'linkicon' => 'fas fa-calendar-alt'
+			'linkicon' => 'fas fa-calendar-alt',
 		]));
 		return $links;
 	}
@@ -47,89 +47,38 @@ class OSSTimeControl_Module_Model extends Vtiger_Module_Model
 	 */
 	public function getRelatedSummary(App\Db\Query $query)
 	{
-		// Calculate total working time
 		$totalTime = $query->limit(null)->orderBy('')->sum('vtiger_osstimecontrol.sum_time');
-		// Calculate total working time divided into users
-		$dataReader = $query->select(['sumtime' => new \yii\db\Expression('SUM(vtiger_osstimecontrol.sum_time)'), 'vtiger_crmentity.smownerid'])
-			->groupBy('vtiger_crmentity.smownerid')
-			->orderBy(['vtiger_crmentity.smownerid' => SORT_ASC])
-			->createCommand()
-			->query();
 
-		$userTime = [
-			'labels' => [],
-			'title' => \App\Language::translate('LBL_SUM', $this->getName()) . ': ' . \App\Fields\RangeTime::displayElapseTime($totalTime, 'i', 'i', false),
-			'datasets' => [
-				[
-					'data' => [],
-					'backgroundColor' => [],
-					'borderColor' => [],
-					'tooltips' => [],
-				],
-			],
+		$chartData = [
+			'show_chart' => false,
 		];
 
+		$datasetIndex = 0;
+		$dataReader = $query->select(['sumtime' => new \yii\db\Expression('SUM(vtiger_osstimecontrol.sum_time)'), 'vtiger_crmentity.smownerid'])
+			->groupBy('vtiger_crmentity.smownerid')->orderBy(['vtiger_crmentity.smownerid' => SORT_ASC])->createCommand()
+			->query();
+		$chartData['title'] = [
+			'text' => \App\Language::translate('LBL_SUM', $this->getName()) . ': ' . \App\Fields\RangeTime::displayElapseTime($totalTime, 'i', 'hi', false),
+			'textStyle' => [
+				'fontSize' => 12
+			]
+		];
 		while ($row = $dataReader->read()) {
-			$ownerName = App\Fields\Owner::getLabel($row['smownerid']) ?? '';
-			$color = App\Fields\Owner::getColor($row['smownerid']);
-			$userTime['labels'][] = \App\Utils::getInitials($ownerName);
-			$userTime['datasets'][0]['tooltips'][] = $ownerName;
-			$userTime['datasets'][0]['data'][] = round((float) $row['sumtime'] / 60, 2);
-			$userTime['datasets'][0]['dataFormatted'][] = \App\Fields\RangeTime::displayElapseTime($row['sumtime']);
-			$userTime['datasets'][0]['backgroundColor'][] = $color;
-			$userTime['datasets'][0]['borderColor'][] = $color;
+			$color = \App\Fields\Owner::getColor($row['smownerid']);
+			$fullName = trim(\App\Fields\Owner::getLabel($row['smownerid']));
+			$label = \App\Utils::getInitials($fullName);
+
+			$chartData['series'][$datasetIndex]['data'][] = ['value' => round((float) $row['sumtime'] / 60, 2), 'name' => $label, 'itemStyle' => ['color' => $color], 'link' => '', 'fullName' => $fullName, 'fullValue' => \App\Fields\RangeTime::displayElapseTime((float) $row['sumtime'])];
+			$chartData['series'][$datasetIndex]['type'] = 'bar';
+			$chartData['xAxis']['data'][] = $label;
+			$chartData['show_chart'] = true;
 		}
 		$dataReader->close();
 
-		return ['totalTime' => $totalTime, 'userTime' => $userTime];
+		return ['totalTime' => $totalTime, 'userTime' => $chartData];
 	}
 
-	/**
-	 * Get working time of users.
-	 *
-	 * @param $id
-	 * @param $moduleName
-	 *
-	 * @return bool
-	 */
-	public function getTimeUsers($id, $moduleName)
-	{
-		$fieldName = \App\ModuleHierarchy::getMappingRelatedField($moduleName);
-		if (empty($id) || empty($fieldName)) {
-			$chartData = ['show_chart' => false];
-		} else {
-			$query = (new \App\Db\Query())->select([
-				'vtiger_crmentity.smownerid',
-				'time' => new \yii\db\Expression('SUM(vtiger_osstimecontrol.sum_time)'),
-			])->from('vtiger_osstimecontrol')->innerJoin('vtiger_crmentity', 'vtiger_osstimecontrol.osstimecontrolid = vtiger_crmentity.crmid')
-				->where(['vtiger_crmentity.deleted' => 0, "vtiger_osstimecontrol.$fieldName" => $id, 'vtiger_osstimecontrol.osstimecontrol_status' => OSSTimeControl_Record_Model::RECALCULATE_STATUS])
-				->groupBy('smownerid');
-			App\PrivilegeQuery::getConditions($query, $this->getName());
-			$dataReader = $query->createCommand()->query();
-			$chartData = [
-				'labels' => [],
-				'fullLabels' => [],
-				'datasets' => [],
-				'show_chart' => false,
-			];
-			while ($row = $dataReader->read()) {
-				$ownerName = App\Fields\Owner::getLabel($row['smownerid']);
-				$color = App\Fields\Owner::getColor($row['smownerid']);
-				$chartData['labels'][] = \App\Utils::getInitials($ownerName);
-				$chartData['datasets'][0]['tooltips'][] = $ownerName;
-				$chartData['datasets'][0]['data'][] = (float) $row['time'];
-				$chartData['datasets'][0]['backgroundColor'][] = $color;
-				$chartData['datasets'][0]['borderColor'][] = $color;
-			}
-			$chartData['show_chart'] = \count($chartData['datasets']) && \count($chartData['datasets'][0]['data']);
-			$dataReader->close();
-		}
-		return $chartData;
-	}
-
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getFieldsForSave(Vtiger_Record_Model $recordModel)
 	{
 		$fields = parent::getFieldsForSave($recordModel);
@@ -139,9 +88,7 @@ class OSSTimeControl_Module_Model extends Vtiger_Module_Model
 		return $fields;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getLayoutTypeForQuickCreate(): string
 	{
 		return 'standard';

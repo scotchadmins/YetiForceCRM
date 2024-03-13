@@ -3,9 +3,12 @@
 /**
  * Mail record model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @package Model
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Adrian Koń <a.kon@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Settings_Mail_Record_Model extends Settings_Vtiger_Record_Model
 {
@@ -63,8 +66,7 @@ class Settings_Mail_Record_Model extends Settings_Vtiger_Record_Model
 		$value = $this->get($key);
 		switch ($key) {
 			case 'smtp_id':
-				$smtpName = \App\Mail::getSmtpById($value)['name'];
-				$value = '<a href=index.php?module=MailSmtp&parent=Settings&view=Detail&record=' . $value . '>' . $smtpName . '</a>';
+				$value = \App\Purifier::encodeHtml(\App\Mail::getSmtpById($value)['name'] ?? '');
 				break;
 			case 'status':
 				if (isset(\App\Mailer::$statuses[$value])) {
@@ -87,20 +89,29 @@ class Settings_Mail_Record_Model extends Settings_Vtiger_Record_Model
 			case 'to':
 			case 'cc':
 			case 'bcc':
-				$value = $this->getDisplayValueForEmail($value);
+				$value = \App\Purifier::encodeHtml($this->getDisplayValueForEmail($value));
 				break;
 			case 'attachments':
 				if ($value) {
-					$attachments = $value;
+					$attachments = \App\Json::decode($value);
 					$value = '';
 					$fileCounter = 0;
-					foreach (\App\Json::decode($attachments) as $path => $name) {
+					if (isset($attachments['ids'])) {
+						$attachments = array_merge($attachments, \App\Mail::getAttachmentsFromDocument($attachments['ids']));
+						unset($attachments['ids']);
+					}
+					foreach ($attachments as $path => $name) {
 						if (is_numeric($path)) {
-							$path = $name;
-							$name = 'LBL_FILE';
+							$name = \App\Language::translate('LBL_FILE');
+						} else {
+							$name = \App\Purifier::encodeHtml($name);
 						}
 						$actionPath = "?module=Mail&parent=Settings&action=DownloadAttachment&record={$this->getId()}&selectedFile=$fileCounter";
-						$value .= '<form action="' . $actionPath . '" method="POST"><button class="btn btn-sm btn-outline-secondary" title="' . $name . '" data-selected-file="' . $fileCounter . '">' . $name . '</button></form>';
+						$value .= '<form action="' . $actionPath . '"
+						method="POST"><button class="btn btn-sm btn-outline-secondary"
+						title="' . $name . '"
+						data-selected-file="' . $fileCounter . '">
+						' . $name . '</button></form>';
 						++$fileCounter;
 					}
 				}
@@ -109,6 +120,7 @@ class Settings_Mail_Record_Model extends Settings_Vtiger_Record_Model
 				 $value = \App\Layout::truncateHtml($value, 'mini', 30);
 				break;
 			default:
+				$value = \App\Purifier::encodeHtml($value);
 				break;
 		}
 		return $value;
@@ -125,17 +137,17 @@ class Settings_Mail_Record_Model extends Settings_Vtiger_Record_Model
 	{
 		$value = '';
 		if ($emails) {
+			$displayEmails = [];
 			foreach (\App\Json::decode($emails) as $email => $name) {
 				if (is_numeric($email)) {
-					$email = $name;
-					$name = '';
-					$value .= $email . ', ';
+					$displayEmails[] = $name;
 				} else {
-					$value .= $name . ' &lt;' . $email . '&gt;, ';
+					$displayEmails[] = "{$name} <{$email}>";
 				}
 			}
+			$value = implode(' ,', $displayEmails);
 		}
-		return rtrim($value, ', ');
+		return $value;
 	}
 
 	/**
@@ -150,12 +162,8 @@ class Settings_Mail_Record_Model extends Settings_Vtiger_Record_Model
 			->execute();
 	}
 
-	/**
-	 * Function to get the list view actions for the record.
-	 *
-	 * @return array - Associate array of Vtiger_Link_Model instances
-	 */
-	public function getRecordLinks()
+	/** {@inheritdoc} */
+	public function getRecordLinks(): array
 	{
 		$links = [];
 		if (0 === $this->get('status')) {

@@ -1,16 +1,17 @@
 <?php
-
-namespace App;
-
 /**
  * Utils class.
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
+
+namespace App;
+
 class Utils
 {
 	/**
@@ -29,7 +30,7 @@ class Utils
 	/**
 	 * Outputs or returns a parsable string representation of a variable.
 	 *
-	 * @see http://php.net/manual/en/function.var-export.php
+	 * @see https://php.net/manual/en/function.var-export.php
 	 *
 	 * @param mixed $variable
 	 *
@@ -72,24 +73,86 @@ class Utils
 	 * Flatten a multi-dimensional array into a single level.
 	 *
 	 * @param array $array
-	 * @param int   $depth
+	 * @param float $depth
 	 *
 	 * @return array
 	 */
-	public static function flatten($array, $depth = INF)
+	public static function flatten(array $array, float $depth = INF): array
 	{
 		$result = [];
 		foreach ($array as $item) {
-			if (!\is_array($item)) {
-				$result[] = $item;
-			} else {
+			if (\is_array($item)) {
 				$values = 1 === $depth ? array_values($item) : static::flatten($item, $depth - 1);
 				foreach ($values as $value) {
 					$result[] = $value;
 				}
+			} else {
+				$result[] = $item;
 			}
 		}
 		return $result;
+	}
+
+	/**
+	 * Flatten the multidimensional array on one level, keeping the key names unique.
+	 *
+	 * @param array  $array
+	 * @param string $type
+	 * @param float  $depth
+	 *
+	 * @return array
+	 */
+	public static function flattenKeys(array $array, string $type = '_', float $depth = INF): array
+	{
+		$result = [];
+		foreach ($array as $key => $item) {
+			if (\is_array($item)) {
+				if (1 === $depth) {
+					$values = array_values($item);
+				} else {
+					$values = static::flattenKeys($item, $type, $depth - 1);
+				}
+				foreach ($values as $keySec => $value) {
+					switch ($type) {
+						case 'ucfirst':
+							$keySec = ucfirst($keySec);
+							$newKey = "{$key}{$keySec}";
+							break;
+						default:
+							$newKey = "{$key}{$type}{$keySec}";
+							break;
+					}
+					$result[$newKey] = $value;
+				}
+			} else {
+				$result[$key] = $item;
+			}
+		}
+		return $result;
+	}
+
+	/**
+	 * Merge two arrays.
+	 *
+	 * @param array $array1
+	 * @param array $array2
+	 *
+	 * @return array
+	 */
+	public static function merge(array $array1, array $array2): array
+	{
+		foreach ($array2 as $key => $value) {
+			if (isset($array1[$key])) {
+				if (\is_array($array1[$key]) && \is_array($value)) {
+					$array1[$key] = self::merge($array1[$key], $value);
+				} else {
+					$array1[$key] = $value;
+				}
+			} else {
+				$array1[$key] = $value;
+			}
+		}
+		return $array1;
 	}
 
 	/**
@@ -301,5 +364,39 @@ class Utils
 			}
 		}
 		return $return;
+	}
+
+	/**
+	 * Detect recursion / circular references.
+	 * Recommend not using this feature as it will be removed in the future.
+	 *
+	 * @param string $class
+	 * @param string $function
+	 * @param int    $limit
+	 *
+	 * @return bool
+	 */
+	public static function detectRecursion(string $class, string $function, int $limit = 1): bool
+	{
+		$counter = 0;
+		foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS) as $trace) {
+			$counter += (int) ($class === ($trace['class'] ?? '') && $function === $trace['function']);
+			if ($counter > $limit) {
+				break;
+			}
+		}
+		return $counter > $limit;
+	}
+
+	/**
+	 * Get the number of records by modules.
+	 *
+	 * @return array
+	 */
+	public static function getNumberRecordsByModule(): array
+	{
+		return (new \App\Db\Query())->select(['setype', 'counter' => new \yii\db\Expression('count(setype)')])->from('vtiger_crmentity')
+			->groupBy('setype')->orderBy(['counter' => SORT_DESC])
+			->createCommand()->queryAllByGroup();
 	}
 }

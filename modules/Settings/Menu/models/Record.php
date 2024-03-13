@@ -3,8 +3,8 @@
 /**
  * Settings menu record model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class Settings_Menu_Record_Model extends Settings_Vtiger_Record_Model
 {
@@ -53,10 +53,11 @@ class Settings_Menu_Record_Model extends Settings_Vtiger_Record_Model
 		$dataReader = $query->createCommand()->query();
 		$menu = [];
 		while ($row = $dataReader->read()) {
+			$row['type'] = (int) $row['type'];
 			$menu[] = [
 				'id' => $row['id'],
 				'parent' => 0 == $row['parentid'] ? '#' : $row['parentid'],
-				'text' => Vtiger_Menu_Model::vtranslateMenu($settingsModel->getMenuName($row, true), $row['name']),
+				'text' => Vtiger_Menu_Model::getLabelToDisplay($row),
 				'icon' => 'menu-icon-' . $settingsModel->getMenuTypes($row['type']),
 			];
 		}
@@ -112,6 +113,9 @@ class Settings_Menu_Record_Model extends Settings_Vtiger_Record_Model
 			}
 			if (!isset($data['newwindow'])) {
 				$params['newwindow'] = 0;
+			}
+			if (!isset($data['countentries'])) {
+				$params['countentries'] = 0;
 			}
 			if (!isset($data['filters'])) {
 				$params['filters'] = '';
@@ -209,26 +213,59 @@ class Settings_Menu_Record_Model extends Settings_Vtiger_Record_Model
 			->orderBy(' yetiforce_menu.sequence', 'yetiforce_menu.parentid');
 		$dataReader = $query->createCommand()->query();
 		while ($row = $dataReader->read()) {
-			$menu[] = [
+			$row = [
 				'id' => $row['id'],
 				'tabid' => $row['module'],
 				'mod' => $row['name'],
-				'name' => $settingsModel->getMenuName($row),
+				'label' => $row['label'],
 				'type' => $settingsModel->getMenuTypes($row['type']),
 				'sequence' => $row['sequence'],
 				'newwindow' => $row['newwindow'],
 				'dataurl' => $settingsModel->getMenuUrl($row),
-				//'showicon' => $row['showicon'],
 				'icon' => $row['icon'],
-				//'sizeicon' => $row['sizeicon'],
 				'parent' => $row['parentid'],
 				'hotkey' => $row['hotkey'],
 				'filters' => $row['filters'],
+				'countentries' => $row['countentries'],
 				'childs' => $this->getChildMenu($roleId, $row['id'], $source),
 			];
+			$menu[] = $row;
 		}
 		$dataReader->close();
 		return $menu;
+	}
+
+	/**
+	 * Check permissions for display.
+	 *
+	 * @param array $menus
+	 *
+	 * @return array
+	 */
+	public static function parseToDisplay(array $menus): array
+	{
+		$userPrivilegesModel = \Users_Privileges_Model::getCurrentUserPrivilegesModel();
+		$data = [];
+		foreach ($menus as $key => $item) {
+			if (\in_array($item['type'], ['QuickCreate', 'Module', 'HomeIcon', 'CustomFilter', 'RecycleBin'])) {
+				if (!\App\Module::isModuleActive($item['mod']) || (!$userPrivilegesModel->isAdminUser() && !$userPrivilegesModel->hasGlobalReadPermission() && !$userPrivilegesModel->hasModulePermission($item['tabid']))) {
+					continue;
+				}
+				if ('CustomFilter' === $item['type'] && (!($cvId = vtlib\Functions::getQueryParams($item['dataurl'])['viewname'] ?? '') || !\App\CustomView::isPermitted($cvId, $item['mod']))) {
+					continue;
+				}
+				if ('QuickCreate' === $item['type'] && (!Vtiger_Module_Model::getInstance($item['tabid'])->isQuickCreateSupported() || !$userPrivilegesModel->hasModuleActionPermission($item['tabid'], 'CreateView'))) {
+					continue;
+				}
+			}
+			$item['name'] = Vtiger_Menu_Model::getLabelToDisplay($item);
+			if ($item['childs']) {
+				$item['childs'] = self::parseToDisplay($item['childs']);
+			}
+			$data[$key] = $item;
+		}
+
+		return $data;
 	}
 
 	public function generateFileMenu($roleId)
@@ -257,8 +294,8 @@ class Settings_Menu_Record_Model extends Settings_Vtiger_Record_Model
 		unset($menu['filters']);
 		$content = $menu['id'] . '=>[';
 		foreach ($menu as $key => $item) {
-			if ('childs' == $key) {
-				if (\count($item) > 0) {
+			if ('childs' == $key && $item) {
+				if ($item) {
 					$childs = var_export($key, true) . '=>[';
 					foreach ($item as $child) {
 						$childs .= $this->createContentMenu($child);
@@ -267,7 +304,7 @@ class Settings_Menu_Record_Model extends Settings_Vtiger_Record_Model
 					$content .= trim($childs, ',');
 				}
 			} else {
-				$content .= var_export($key, true) . '=>' . var_export($item, true) . ',';
+				$content .= var_export($key, true) . '=>' . \App\Utils::varExport($item) . ',';
 			}
 		}
 		return trim($content, ',') . '],';
@@ -276,10 +313,11 @@ class Settings_Menu_Record_Model extends Settings_Vtiger_Record_Model
 	public function createParentList($menu)
 	{
 		$content = $menu['id'] . '=>[';
-		$content .= "'name'=>" . var_export($menu['name'], true) . ',';
-		$content .= "'url'=>" . var_export($menu['dataurl'], true) . ',';
+		$content .= "'type'=>" . var_export($menu['type'], true) . ',';
+		$content .= "'mod'=>" . var_export($menu['mod'], true) . ',';
+		$content .= "'label'=>" . var_export($menu['label'], true) . ',';
+		$content .= "'dataurl'=>" . var_export($menu['dataurl'], true) . ',';
 		$content .= "'parent'=>" . var_export($menu['parent'], true) . ',';
-		$content .= "'mod'=>" . var_export($menu['mod'], true);
 		$content .= '],';
 		if (\count($menu['childs']) > 0) {
 			foreach ($menu['childs'] as $child) {

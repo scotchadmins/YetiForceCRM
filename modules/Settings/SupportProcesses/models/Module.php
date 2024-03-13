@@ -3,8 +3,8 @@
 /**
  * Settings SupportProcesses module model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class Settings_SupportProcesses_Module_Model extends Settings_Vtiger_Module_Model
 {
@@ -16,7 +16,7 @@ class Settings_SupportProcesses_Module_Model extends Settings_Vtiger_Module_Mode
 	/**
 	 * Gets ticket status for support processes.
 	 *
-	 * @return - array of ticket status
+	 * @return array - array of ticket status
 	 */
 	public static function getTicketStatus()
 	{
@@ -32,7 +32,7 @@ class Settings_SupportProcesses_Module_Model extends Settings_Vtiger_Module_Mode
 	/**
 	 * Gets ticket status for support processes from support_processes.
 	 *
-	 * @return - array of ticket status
+	 * @return array - array of ticket status
 	 */
 	public static function getTicketStatusNotModify()
 	{
@@ -56,7 +56,7 @@ class Settings_SupportProcesses_Module_Model extends Settings_Vtiger_Module_Mode
 	 *
 	 * @param mixed $data
 	 *
-	 * @return - array of ticket status
+	 * @return array - array of ticket status
 	 */
 	public function updateTicketStatusNotModify($data)
 	{

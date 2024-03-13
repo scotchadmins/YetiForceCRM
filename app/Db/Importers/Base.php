@@ -4,9 +4,10 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 namespace App\Db\Importers;
@@ -18,60 +19,31 @@ use yii\db\Schema;
  */
 class Base
 {
-	/**
-	 * Database section.
-	 *
-	 * @var string
-	 */
+	/** @var string Database section. */
 	public $dbType = 'base';
 
-	/**
-	 * Table structure.
-	 *
-	 * @var array
-	 */
+	/** @var array Table structure. */
 	public $tables = [];
 
-	/**
-	 * Drop tables.
-	 *
-	 * @var array
-	 */
+	/** @var array Drop tables. */
 	public $dropTables = [];
 
-	/**
-	 * Drop columns.
-	 *
-	 * @var array
-	 */
+	/** @var array Drop columns. */
 	public $dropColumns = [];
 
-	/**
-	 * Foreign keys.
-	 *
-	 * @var array
-	 */
+	/** @var array Drop indexes. */
+	public $dropIndexes = [];
+
+	/** @var array Foreign keys. */
 	public $foreignKey = [];
 
-	/**
-	 * Data to import.
-	 *
-	 * @var array
-	 */
+	/** @var array Data to import. */
 	public $data = [];
 
-	/**
-	 * Db.
-	 *
-	 * @var \App\Db
-	 */
+	/** @var \App\Db Database connection instance */
 	public $db;
 
-	/**
-	 * Db schema.
-	 *
-	 * @var \yii\db\Schema
-	 */
+	/** @var \yii\db\Schema Database schema information. */
 	protected $schema;
 
 	/**
@@ -103,7 +75,7 @@ class Base
 	 */
 	public function primaryKey($length = null)
 	{
-		return $this->schema->createColumnSchemaBuilder(Schema::TYPE_PK, $length)->notNull();
+		return $this->schema->createColumnSchemaBuilder(Schema::TYPE_PK, $length)->notNull()->autoIncrement();
 	}
 
 	/**

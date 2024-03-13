@@ -4,10 +4,11 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o.
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Rafal Pospiech <r.pospiech@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 namespace App;
@@ -84,7 +85,7 @@ class RecordStatus
 			'response_expected' => 'FL_RESPONSE_EXPECTED',
 			'solution_expected' => 'FL_SOLUTION_EXPECTED',
 			'idle_expected' => 'FL_IDLE_DATE_EXPECTED',
-		]
+		],
 	];
 
 	/**
@@ -97,7 +98,7 @@ class RecordStatus
 		return [
 			self::RECORD_STATE_NO_CONCERN => 'LBL_RECORD_STATE_NO_CONCERN',
 			self::RECORD_STATE_OPEN => 'LBL_RECORD_STATE_OPEN',
-			self::RECORD_STATE_CLOSED => 'LBL_RECORD_STATE_CLOSED'
+			self::RECORD_STATE_CLOSED => 'LBL_RECORD_STATE_CLOSED',
 		];
 	}
 
@@ -173,7 +174,7 @@ class RecordStatus
 				}
 				EventHandler::update([
 					'is_active' => 1,
-					'include_modules' => \implode(',', $modules)
+					'include_modules' => \implode(',', $modules),
 				], $handler['eventhandler_id']);
 			}
 		}
@@ -190,12 +191,13 @@ class RecordStatus
 	 */
 	public static function addFieldsAndBlock(string $moduleName)
 	{
-		$moduleModel = \Settings_LayoutEditor_Module_Model::getInstanceByName($moduleName);
+		$moduleModel = \Settings_LayoutEditor_Module_Model::getInstance('Settings:LayoutEditor')->setSourceModule($moduleName);
 		$blockId = (new \App\Db\Query())->select(['blockid'])->from('vtiger_blocks')->where(['blocklabel' => 'BL_RECORD_STATUS_TIMES', 'tabid' => $moduleModel->getId()])->scalar();
 		if (!$blockId) {
 			$blockInstance = new \Settings_LayoutEditor_Block_Model();
 			$blockInstance->set('label', 'BL_RECORD_STATUS_TIMES');
-			$blockId = $blockInstance->save($moduleModel);
+			$blockInstance->set('icon', 'fas fa-business-time');
+			$blockId = $blockInstance->save($moduleModel->getSourceModule());
 		}
 		$allFields = $moduleModel->getFields();
 		foreach (static::$stateTimeFields as $type => $fields) {
@@ -207,7 +209,7 @@ class RecordStatus
 						'fieldTypeList' => 0,
 						'generatedtype' => 1,
 						'displayType' => 2,
-						'helpinfo' => 'Detail'
+						'helpinfo' => 'Detail',
 					]);
 				}
 			}
@@ -251,7 +253,7 @@ class RecordStatus
 				}
 				EventHandler::update([
 					'is_active' => $modules ? 1 : 0,
-					'include_modules' => \implode(',', $modules)
+					'include_modules' => \implode(',', $modules),
 				], $handler['eventhandler_id']);
 			}
 		}
@@ -276,7 +278,7 @@ class RecordStatus
 					'crmid' => $recordModel->getId(),
 					'before' => $before,
 					'after' => $after,
-					'date' => date('Y-m-d H:i:s')
+					'date' => date('Y-m-d H:i:s'),
 				])->execute();
 			Cache::save("RecordStatus::StateDates::{$recordModel->getId()}", $after, date('Y-m-d H:i:s'));
 		}
@@ -293,11 +295,11 @@ class RecordStatus
 		$timeCountingValues = self::getTimeCountingValues($fieldName);
 		$previous = $recordModel->getPreviousValue($fieldName);
 		$current = $recordModel->get($fieldName);
-		$currentCountingValue = $timeCountingValues[$current] ?? '';
-		$previousCountingValue = $timeCountingValues[$previous] ?? '';
-		if ($previous && $currentCountingValue !== $previousCountingValue
+		$currentCountingValue = $timeCountingValues[$current] ?? null;
+		$previousCountingValue = $timeCountingValues[$previous] ?? null;
+		if ($previous && $currentCountingValue !== $previousCountingValue && null !== $previousCountingValue
 		&& ($date = self::getStateDate($recordModel, $previousCountingValue)) && ($key = self::$fieldsByStateTime[$previousCountingValue] ?? '')) {
-			$recordModel->set($key . '_range_time', Utils\ServiceContracts::getDiff($date, $recordModel));
+			$recordModel->set($key . '_range_time', $recordModel->get($key . '_range_time') + Utils\ServiceContracts::getDiff($date, $recordModel));
 			$recordModel->set($key . '_datatime', date('Y-m-d H:i:s'));
 		}
 		if (self::TIME_COUNTING_IDLE === $currentCountingValue) {
@@ -306,7 +308,7 @@ class RecordStatus
 	}
 
 	/**
-	 * Get date date from the status change history by status.
+	 * Get date from the status change history by status.
 	 *
 	 * @param \Vtiger_Record_Model $recordModel
 	 * @param int                  $value
@@ -323,7 +325,7 @@ class RecordStatus
 		$date = (new Db\Query())->select(['date'])
 			->from($recordModel->getModule()->get('basetable') . '_state_history')
 			->where(['crmid' => $recordModel->getId(), 'after' => $state])->orderBy(['date' => SORT_DESC])
-			->limit(1)->scalar();
+			->scalar();
 		Cache::save($cacheName, $state, $date);
 		return $date;
 	}
@@ -375,9 +377,9 @@ class RecordStatus
 	 * @param string $moduleName
 	 * @param bool   $byName
 	 *
-	 * @return string[]
+	 * @return array
 	 */
-	public static function getLockStatus(string $moduleName, bool $byName = true)
+	public static function getLockStatus(string $moduleName, bool $byName = true): array
 	{
 		$tabId = Module::getModuleId($moduleName);
 		$cacheName = "RecordStatus::getLockStatus::$moduleName";

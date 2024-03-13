@@ -6,12 +6,14 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Settings_Leads_Mapping_Model extends Settings_Vtiger_Module_Model
 {
 	public $name = 'Leads';
+	/** @var array List of mapping details. */
+	private $mapping;
 
 	/**
 	 * Function to get detail view url of this model.

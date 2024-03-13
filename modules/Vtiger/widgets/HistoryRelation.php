@@ -5,8 +5,8 @@
  *
  * @package Widget
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Tomasz Kur <t.kur@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -42,14 +42,14 @@ class Vtiger_HistoryRelation_Widget extends Vtiger_Basic_Widget
 		return $modules;
 	}
 
+	/**
+	 * Get URL.
+	 *
+	 * @return string
+	 */
 	public function getUrl()
 	{
-		$url = 'module=' . $this->Module . '&view=Detail&record=' . $this->Record . '&mode=showRecentRelation&page=1&limit=' . $this->Data['limit'];
-		foreach (self::getActions() as $type) {
-			$url .= '&type[]=' . $type;
-		}
-
-		return $url;
+		return 'module=' . $this->Module . '&view=Detail&record=' . $this->Record . '&mode=showRecentRelation&page=1&limit=' . $this->Data['limit'] . '&type=' . \App\Json::encode(self::getActions());
 	}
 
 	public function getWidget()
@@ -107,10 +107,10 @@ class Vtiger_HistoryRelation_Widget extends Vtiger_Basic_Widget
 			}
 			$body = trim(App\Purifier::purify($row['body']));
 			if (!$request->getBoolean('isFullscreen')) {
-				$body = App\TextParser::textTruncate($body, 100);
+				$body = App\TextUtils::textTruncate($body, 100);
 			} else {
 				$body = str_replace(['<p></p>', '<p class="MsoNormal">'], ["\r\n", "\r\n"], App\Purifier::decodeHtml(App\Purifier::purify($body)));
-				$body = nl2br(App\TextParser::textTruncate($body, 500), false);
+				$body = nl2br(App\TextUtils::textTruncate($body, 500), false);
 			}
 			$row['body'] = $body;
 			$history[] = $row;
@@ -139,14 +139,14 @@ class Vtiger_HistoryRelation_Widget extends Vtiger_Basic_Widget
 					'attachments_exist' => new \yii\db\Expression($db->quoteValue('')),
 					'type' => new \yii\db\Expression($db->quoteValue('Calendar')),
 					'id' => 'vtiger_crmentity.crmid',
-					'content' => 'a.subject',
+					'content' => 'vtiger_activity.subject',
 					'user' => 'vtiger_crmentity.smownerid',
-					'time' => new \yii\db\Expression('CONCAT(a.date_start, ' . $db->quoteValue(' ') . ', a.time_start)'),
+					'time' => new \yii\db\Expression('CONCAT(vtiger_activity.date_start, ' . $db->quoteValue(' ') . ', vtiger_activity.time_start)'),
 				])
-				->from('vtiger_activity a')
-				->innerJoin('vtiger_crmentity', 'vtiger_crmentity.crmid = a.activityid')
+				->from('vtiger_activity')
+				->innerJoin('vtiger_crmentity', 'vtiger_crmentity.crmid = vtiger_activity.activityid')
 				->where(['vtiger_crmentity.deleted' => 0])
-				->andWhere(['=', 'a.' . $field->getColumnName(), $recordId]);
+				->andWhere(['=', 'vtiger_activity.' . $field->getColumnName(), $recordId]);
 			\App\PrivilegeQuery::getConditions($query, 'Calendar', false, $recordId);
 			$queries[] = $query;
 		}
@@ -156,32 +156,32 @@ class Vtiger_HistoryRelation_Widget extends Vtiger_Basic_Widget
 					'body' => new \yii\db\Expression($db->quoteValue('')),
 					'attachments_exist' => new \yii\db\Expression($db->quoteValue('')),
 					'type' => new \yii\db\Expression($db->quoteValue('ModComments')),
-					'id' => 'm.modcommentsid',
-					'content' => 'm.commentcontent',
+					'id' => 'vtiger_modcomments.modcommentsid',
+					'content' => 'vtiger_modcomments.commentcontent',
 					'user' => 'vtiger_crmentity.smownerid',
 					'time' => 'vtiger_crmentity.createdtime',
 				])
-				->from('vtiger_modcomments m')
-				->innerJoin('vtiger_crmentity', 'vtiger_crmentity.crmid = m.modcommentsid')
+				->from('vtiger_modcomments')
+				->innerJoin('vtiger_crmentity', 'vtiger_crmentity.crmid = vtiger_modcomments.modcommentsid')
 				->where(['vtiger_crmentity.deleted' => 0])
-				->andWhere(['=', 'related_to', $recordId]);
+				->andWhere(['=', 'vtiger_modcomments.related_to', $recordId]);
 			\App\PrivilegeQuery::getConditions($query, 'ModComments', false, $recordId);
 			$queries[] = $query;
 		}
 		if (\in_array('OSSMailView', $type)) {
 			$query = (new \App\Db\Query())
 				->select([
-					'body' => 'o.content',
+					'body' => 'vtiger_ossmailview.content',
 					'attachments_exist',
-					'type' => new \yii\db\Expression('CONCAT(\'OSSMailView\', o.ossmailview_sendtype)'),
-					'id' => 'o.ossmailviewid',
-					'content' => 'o.subject',
+					'type' => new \yii\db\Expression('CONCAT(\'OSSMailView\', vtiger_ossmailview.ossmailview_sendtype)'),
+					'id' => 'vtiger_ossmailview.ossmailviewid',
+					'content' => 'vtiger_ossmailview.subject',
 					'user' => 'vtiger_crmentity.smownerid',
 					'time' => 'vtiger_crmentity.createdtime',
 				])
-				->from('vtiger_ossmailview o')
-				->innerJoin('vtiger_crmentity', 'vtiger_crmentity.crmid = o.ossmailviewid')
-				->innerJoin('vtiger_ossmailview_relation r', 'r.ossmailviewid = o.ossmailviewid ')
+				->from('vtiger_ossmailview')
+				->innerJoin('vtiger_crmentity', 'vtiger_crmentity.crmid = vtiger_ossmailview.ossmailviewid')
+				->innerJoin('vtiger_ossmailview_relation r', 'r.ossmailviewid = vtiger_ossmailview.ossmailviewid ')
 				->where(['vtiger_crmentity.deleted' => 0])
 				->andWhere(['=', 'r.crmid', $recordId]);
 			\App\PrivilegeQuery::getConditions($query, 'OSSMailView', false, $recordId);

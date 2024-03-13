@@ -1,30 +1,23 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 .dashboardWidgetCalendar {
-	.fc-widget-content {
-		.fc-scroller.fc-day-grid-container {
-			height: 18.6rem !important;
+	.fc .fc-daygrid-day-events {
+		text-align: center;
+	}
+	.fc .fc-daygrid-day-number {
+		padding: 2px 4px;
+	}
+	.fc .fc-daygrid-day-top {
+		line-height: 1;
+	}
+	.fc-daygrid-event-harness {
+		display: inline-block;
+		.fc-daygrid-event {
+			padding: 0px 4px;
+			.fc-event-main {
+				color: inherit;
+			}
 		}
 	}
-
-	.fc-day-grid {
-		.fc-row.fc-week {
-			min-height: 3.1rem !important;
-			height: 3.1rem !important;
-		}
-	}
-
-	.fc-head-container.fc-widget-header {
-		@extend .border-0;
-	}
-
-	.fc-body > tr > .fc-widget-content {
-		@extend .border-right-0;
-		@extend .border-left-0;
-	}
-}
-
-.fc-state-default .fc-button-effect {
-	top: 100% !important;
 }
 
 .fc-event-style1 {
@@ -136,9 +129,8 @@
 	color: #000;
 }
 
-.fc-button {
+.fc .fc-button {
 	display: inline-block;
-	padding: $p-bs4-button !important;
 	margin-bottom: 0;
 	font-weight: normal;
 	line-height: 1.5;
@@ -164,7 +156,7 @@
 		}
 	}
 
-	&.fc-state-active .fc-button-inner .fc-button-content,
+	&.fc-button-active .fc-button-inner .fc-button-content,
 	&:active .fc-button-inner .fc-button-content {
 		color: #000 !important;
 		background: transparent;
@@ -177,14 +169,12 @@
 	line-height: 20px;
 }
 
-.fc-widget-header {
-	th {
-		padding: 4px 0 !important;
-	}
-
-	color: #666;
+.fc-col-header-cell {
 	background: $light;
 	border-color: #ccc;
+	a {
+		color: #666;
+	}
 }
 
 .fc-content {
@@ -205,10 +195,6 @@
 	td:hover {
 		background: #f3f3f3;
 	}
-}
-
-.fc-state-default .fc-button-effect span {
-	background: none;
 }
 
 .fc button {
@@ -251,18 +237,21 @@
 		padding: 0 !important;
 		line-height: 1;
 	}
-	.c-calendar-quickcreate .fc-day-top .fc-day-number {
+	.c-calendar-quickcreate .fc-daygrid-day-top .fc-daygrid-day-number {
 		font-size: 20px;
 	}
 	.js-calendar-switch-container {
 		margin: auto !important;
 	}
 }
-
-.fc-event {
-	color: #353c44 !important;
+.fc-unthemed td {
+	border-color: #ddd !important;
 }
 
 .fc-view-container {
 	@extend .mb-0;
+}
+
+.fc-event-title {
+	font-weight: bold;
 }

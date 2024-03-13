@@ -1,12 +1,17 @@
 <?php
 /**
- *  UIType multi domain Field Class.
+ * UIType multi domain field file.
  *
  * @package UIType
  *
- * @copyright YetiForce Sp. z o.o.
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Rafal Pospiech <r.pospiech@yetiforce.com>
+ * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ */
+/**
+ * UIType multi domain field Class.
  */
 class Vtiger_MultiDomain_UIType extends Vtiger_Base_UIType
 {
@@ -32,31 +37,15 @@ class Vtiger_MultiDomain_UIType extends Vtiger_Base_UIType
 	}
 
 	/** {@inheritdoc} */
-	public function getDbConditionBuilderValue($value, string $operator)
-	{
-		$values = [];
-		if (!\is_array($value)) {
-			$value = $value ? array_filter(explode(',', $value)) : [];
-		}
-		foreach ($value as $val) {
-			$values[] = parent::getDbConditionBuilderValue($val, $operator);
-		}
-		if (empty($values)) {
-			return null;
-		}
-		return implode(',', $values);
-	}
-
-	/** {@inheritdoc} */
 	public function getDBValue($value, $recordModel = false)
 	{
 		if (empty($value)) {
 			return null;
 		}
 		if (!\is_array($value)) {
-			$value = [$value];
+			$value = array_filter(explode(',', $value));
 		}
-		$value = ',' . implode(',', $value) . ',';
+		$value = ',' . implode(',', array_map('trim', $value)) . ',';
 		return \App\Purifier::decodeHtml($value);
 	}
 
@@ -68,7 +57,7 @@ class Vtiger_MultiDomain_UIType extends Vtiger_Base_UIType
 		}
 		$value = str_ireplace(',', ', ', trim($value, ','));
 		if (\is_int($length)) {
-			$value = \App\TextParser::textTruncate($value, $length);
+			$value = \App\TextUtils::textTruncate($value, $length);
 		}
 		return \App\Purifier::encodeHtml($value);
 	}
@@ -76,7 +65,7 @@ class Vtiger_MultiDomain_UIType extends Vtiger_Base_UIType
 	/** {@inheritdoc} */
 	public function getEditViewDisplayValue($value, $recordModel = false)
 	{
-		return array_filter(explode(',', \App\Purifier::encodeHtml($value)));
+		return $value ? array_filter(explode(',', \App\Purifier::encodeHtml($value))) : [];
 	}
 
 	/** {@inheritdoc} */
@@ -94,6 +83,6 @@ class Vtiger_MultiDomain_UIType extends Vtiger_Base_UIType
 	/** {@inheritdoc} */
 	public function getQueryOperators()
 	{
-		return ['e', 'n', 'c', 'k', 'y', 'ny'];
+		return ['e', 'n', 'c', 'k', 'y', 'ny', 'ef', 'nf'];
 	}
 }

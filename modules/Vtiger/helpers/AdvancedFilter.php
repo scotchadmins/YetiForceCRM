@@ -3,13 +3,15 @@
 /**
  * Advanced Filter Class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Vtiger_AdvancedFilter_Helper
 {
+	protected static $recordStructure = false;
+
 	public static function getMetaVariables()
 	{
 		return [
@@ -52,7 +54,6 @@ class Vtiger_AdvancedFilter_Helper
 			'before' => 'before',
 			'after' => 'after',
 			'between' => 'between',
-			'is added' => 'is added',
 			'is today' => 'is today',
 			'less than hours before' => 'less than hours before',
 			'less than hours later' => 'less than hours later',
@@ -72,6 +73,7 @@ class Vtiger_AdvancedFilter_Helper
 			'is Not Watching Record' => 'is Not Watching Record',
 			'is record open' => 'Record is open',
 			'is record closed' => 'Record is closed',
+			'not created by owner' => 'LBL_NOT_CREATED_BY_OWNER',
 		];
 	}
 
@@ -83,6 +85,7 @@ class Vtiger_AdvancedFilter_Helper
 	public static function getAdvancedFilterOpsByFieldType()
 	{
 		return [
+			'accountName' => ['is', 'contains', 'does not contain', 'starts with', 'ends with', 'has changed', 'is empty', 'is not empty'],
 			'string' => ['is', 'contains', 'does not contain', 'starts with', 'ends with', 'has changed', 'not has changed', 'is empty', 'is not empty'],
 			'text' => ['is', 'contains', 'does not contain', 'starts with', 'ends with', 'has changed', 'not has changed', 'is empty', 'is not empty'],
 			'url' => ['is', 'contains', 'does not contain', 'starts with', 'ends with', 'has changed', 'not has changed', 'is empty', 'is not empty'],
@@ -100,11 +103,10 @@ class Vtiger_AdvancedFilter_Helper
 				'days ago', 'days later', 'is not empty', ],
 			'boolean' => ['is', 'is not', 'has changed', 'not has changed', 'has changed to'],
 			'reference' => ['is', 'contains', 'does not contain', 'starts with', 'ends with', 'has changed', 'not has changed', 'is empty', 'is not empty'],
-			'owner' => ['has changed', 'not has changed', 'is', 'is not', 'is Watching Record', 'is Not Watching Record'],
+			'owner' => ['has changed', 'not has changed', 'is', 'is not', 'is Watching Record', 'is Not Watching Record', 'not created by owner'],
 			'sharedOwner' => ['has changed', 'not has changed', 'is', 'is not', 'is not empty', 'is empty'],
 			'userCreator' => ['is', 'is not', 'is not empty', 'is empty', 'om', 'nom'],
 			'recurrence' => ['is', 'is not', 'has changed', 'not has changed'],
-			'comment' => ['is added'],
 			'image' => ['is', 'is not', 'contains', 'does not contain', 'starts with', 'ends with', 'is empty', 'is not empty'],
 			'percentage' => ['equal to', 'less than', 'greater than', 'does not equal', 'less than or equal to', 'greater than or equal to', 'has changed', 'not has changed', 'is not empty'],
 			'multiReferenceValue' => ['contains', 'does not contain', 'has changed', 'not has changed', 'is empty', 'is not empty'],
@@ -118,15 +120,21 @@ class Vtiger_AdvancedFilter_Helper
 			'serverAccess' => ['is', 'is not', 'has changed', 'not has changed'],
 			'multiDomain' => ['is', 'contains', 'does not contain', 'starts with', 'ends with', 'has changed', 'not has changed', 'is empty', 'is not empty'],
 			'currencyInventory' => ['equal to', 'less than', 'greater than', 'does not equal', 'less than or equal to', 'greater than or equal to', 'has changed', 'not has changed'],
-			'country' => ['is', 'is not', 'is empty', 'is not empty']
+			'country' => ['is', 'is not', 'is empty', 'is not empty'],
+			'group' => ['is', 'is not', 'is empty', 'is not empty'],
+			'totalTime' => ['equal to', 'less than', 'greater than', 'does not equal', 'less than or equal to', 'greater than or equal to', 'has changed', 'not has changed'],
 		];
 	}
 
 	public static function getExpressions()
 	{
-		return ['concat' => 'concat(a,b)', 'time_diffdays(a,b)' => 'time_diffdays(a,b)', 'time_diffdays(a)' => 'time_diffdays(a)', 'time_diff(a,b)' => 'time_diff(a,b)', 'time_diff(a)' => 'time_diff(a)',
-			'add_days' => 'add_days(datefield, noofdays)', 'sub_days' => 'sub_days(datefield, noofdays)', 'add_time(timefield, minutes)' => 'add_time(timefield, minutes)', 'sub_time(timefield, minutes)' => 'sub_time(timefield, minutes)',
-			'today' => "get_date('today')", 'tomorrow' => "get_date('tomorrow')", 'yesterday' => "get_date('yesterday')", ];
+		return [
+			'concat' => 'concat(a,b)', 'time_diffdays(a,b)' => 'time_diffdays(a,b)', 'time_diffdays(a)' => 'time_diffdays(a)',
+			'time_diff(a,b)' => 'time_diff(a,b)', 'time_diff(a)' => 'time_diff(a)',
+			'add_days' => 'add_days(datefield, noofdays)', 'sub_days' => 'sub_days(datefield, noofdays)',
+			'add_time(timefield, minutes)' => 'add_time(timefield, minutes)', 'sub_time(timefield, minutes)' => 'sub_time(timefield, minutes)',
+			'today' => "get_date('today')", 'get_date(today,Y-m-d)' => "get_date('today','Y-m-d H:i:s')",
+			'tomorrow' => "get_date('tomorrow')", 'yesterday' => "get_date('yesterday')", ];
 	}
 
 	/**
@@ -143,7 +151,7 @@ class Vtiger_AdvancedFilter_Helper
 		$secondGroup = [];
 		if (!empty($conditions)) {
 			foreach ($conditions as $info) {
-				if (!($info['groupid'])) {
+				if (!$info['groupid']) {
 					$firstGroup[] = ['columnname' => $info['fieldname'], 'comparator' => $info['operation'], 'value' => $info['value'],
 						'column_condition' => $info['joincondition'], 'valuetype' => $info['valuetype'], 'groupid' => $info['groupid'], ];
 				} else {
@@ -190,6 +198,4 @@ class Vtiger_AdvancedFilter_Helper
 		}
 		return $dateFilters;
 	}
-
-	protected static $recordStructure = false;
 }

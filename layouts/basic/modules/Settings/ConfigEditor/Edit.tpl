@@ -1,34 +1,20 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
-	<div class="tpl-Settings-ConfigEditor-Edit">
-		<div class="contents">
-			<form id="ConfigEditorForm" class="form-horizontal" data-detail-url="{$MODEL->getDetailViewUrl()}" method="POST">
-				<div class="row widget_header">
-					<div class="col-md-8">
-						{include file=\App\Layout::getTemplatePath('BreadCrumbs.tpl', $QUALIFIED_MODULE)}
-					</div>
-					<div class="col-md-4 btn-toolbar mt-2">
-						<div class="float-right">
-							<button class="btn btn-success saveButton" type="submit"
-									title="{\App\Language::translate('LBL_SAVE', $QUALIFIED_MODULE)}">
-								<span class="fa fa-check u-mr-5px"></span><strong>{\App\Language::translate('LBL_SAVE', $QUALIFIED_MODULE)}</strong>
-							</button>
-							<button type="reset" class="cancelLink btn btn-warning"
-									title="{\App\Language::translate('LBL_CANCEL', $QUALIFIED_MODULE)}">
-								<span class="fas fa-times u-mr-5px"></span>{\App\Language::translate('LBL_CANCEL', $QUALIFIED_MODULE)}
-							</button>
-						</div>
-					</div>
-				</div>
-				<hr>
-				<table class="table table-bordered table-sm themeTableColor">
-					<thead>
+	<!-- tpl-Settings-ConfigEditor-Edit -->
+	<div>
+		<form id="ConfigEditorForm" class="form-horizontal js-form-ajax-submit js-validate-form" data-detail-url="{$MODEL->getDetailViewUrl()}" method="POST">
+			<input name="module" type="hidden" value="{$MODULE_NAME}" />
+			<input name="parent" type="hidden" value="Settings" />
+			<input name="action" type="hidden" value="SaveAjax" />
+			<input name="type" type="hidden" value="Main" />
+			<table class="table table-bordered table-sm themeTableColor">
+				<thead>
 					<tr class="blockHeader">
 						<th colspan="2"
 							class="{$WIDTHTYPE}">{\App\Language::translate('LBL_MAIN_CONFIG', $QUALIFIED_MODULE)}</th>
 					</tr>
-					</thead>
-					<tbody>
+				</thead>
+				<tbody>
 					{foreach key=FIELD_NAME item=FIELD_LABEL from=$MODEL->listFields}
 						{assign var="FIELD_MODEL" value=$MODEL->getFieldInstanceByName($FIELD_NAME)->set('fieldvalue',$MODEL->get($FIELD_NAME))}
 						<tr>
@@ -45,8 +31,7 @@
 											</div>
 										</div>
 										<label class="col-form-label">
-											(upload_max_filesize: {vtlib\Functions::showBytes(vtlib\Functions::getMaxUploadSize())}
-											)
+											(upload_max_filesize: {vtlib\Functions::showBytes(\App\Config::getMaxUploadSize(false))})
 										</label>
 									{else}
 										<div class="col-md-3 fieldValue">
@@ -57,9 +42,15 @@
 							</td>
 						</tr>
 					{/foreach}
-					</tbody>
-				</table>
-			</form>
-		</div>
+				</tbody>
+			</table>
+			<div class="c-form__action-panel">
+				<button class="btn btn-success js-save" type="submit">
+					<span class="fas fa-check mr-2"></span>
+					{\App\Language::translate('LBL_SAVE', $QUALIFIED_MODULE)}
+				</button>
+			</div>
+		</form>
 	</div>
+	<!-- /tpl-Settings-ConfigEditor-Edit -->
 {/strip}

@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 $.Class(
@@ -17,29 +17,29 @@ $.Class(
 		 * Register actions for record
 		 */
 		registerTableEvents: function () {
-			var thisInstance = this;
+			let thisInstance = this;
 			const container = (this.container = $('.configContainer'));
 			container.find('.edit').on('click', function (e) {
-				var currentTarget = $(e.currentTarget);
-				var trRow = currentTarget.closest('tr');
+				let currentTarget = $(e.currentTarget);
+				let trRow = currentTarget.closest('tr');
 				thisInstance.showFormToEditKey(trRow.data('id'));
 			});
 			container.find('.remove').on('click', function (e) {
-				var removeButton = jQuery(e.currentTarget);
-				var currentTrElement = removeButton.closest('tr');
-				var message = app.vtranslate('JS_DELETE_CONFIRMATION');
-				Vtiger_Helper_Js.showConfirmationBox({ message: message }).done(function (e) {
-					var params = {
-						module: app.getModuleName(),
-						parent: app.getParentModuleName(),
-						action: 'Delete',
-						id: currentTrElement.data('id')
-					};
-					var progress = jQuery.progressIndicator();
-					AppConnector.request(params).done(function (data) {
-						progress.progressIndicator({ mode: 'hide' });
-						thisInstance.loadTable();
-					});
+				let currentTrElement = jQuery(e.currentTarget).closest('tr');
+				app.showConfirmModal({
+					title: app.vtranslate('JS_DELETE_CONFIRMATION'),
+					confirmedCallback: () => {
+						let progress = jQuery.progressIndicator();
+						AppConnector.request({
+							module: app.getModuleName(),
+							parent: app.getParentModuleName(),
+							action: 'Delete',
+							id: currentTrElement.data('id')
+						}).done(function (data) {
+							progress.progressIndicator({ mode: 'hide' });
+							thisInstance.loadTable();
+						});
+					}
 				});
 			});
 		},
@@ -64,20 +64,21 @@ $.Class(
 		 * Show forms to edit or create record
 		 * @param {int} id
 		 */
-		showFormToEditKey: function (id) {
+		showFormToEditKey: function (id, type) {
 			var thisInstance = this;
 			var params = {
 				module: app.getModuleName(),
 				parent: app.getParentModuleName(),
-				view: 'CreateApp'
+				view: 'CreateApp',
+				type: type
 			};
 			if (id != '') {
 				params['record'] = id;
 			}
 			var progress = jQuery.progressIndicator();
-			AppConnector.request(params).done(function (data) {
+			AppConnector.request(params).done((data) => {
 				progress.progressIndicator({ mode: 'hide' });
-				app.showModalWindow(data, function (container) {
+				app.showModalWindow(data, (container) => {
 					const prevButton = container.find('.previewPassword');
 					const password = container.find('[name="pass"]');
 					prevButton.on('mousedown', function (e) {
@@ -97,20 +98,15 @@ $.Class(
 					form.validationEngine(app.validationEngineOptions);
 					container.find('[name="saveButton"]').on('click', function () {
 						if (form.validationEngine('validate')) {
-							var params = {
-								module: app.getModuleName(),
-								parent: app.getParentModuleName(),
-								action: 'SaveAjax',
-								name: container.find('[name="name"]').val(),
-								url: container.find('[name="addressUrl"]').val(),
-								status: container.find('[name="status"]').is(':checked'),
-								type: container.find('.typeServer').val(),
-								pass: password.val()
-							};
+							let formData = form.serializeFormData();
+							formData['module'] = app.getModuleName();
+							formData['parent'] = app.getParentModuleName();
+							formData['action'] = 'SaveAjax';
+							formData['status'] = container.find('[name="status"]').is(':checked');
 							if (id != '') {
-								params['id'] = id;
+								formData['id'] = id;
 							}
-							AppConnector.request(params).done(function (data) {
+							AppConnector.request(formData).done(function (data) {
 								if (data.result === true) {
 									thisInstance.loadTable();
 									app.hideModalWindow();
@@ -122,6 +118,10 @@ $.Class(
 								}
 							});
 						}
+					});
+					container.find('[name="type"]').on('change', (e) => {
+						app.hideModalWindow();
+						this.showFormToEditKey('', $(e.currentTarget).val());
 					});
 				});
 			});

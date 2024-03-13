@@ -5,9 +5,10 @@
  *
  * @package Dashboard
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Tomasz Kur <t.kur@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Vtiger_Rss_Dashboard extends Vtiger_IndexAjax_View
 {
@@ -24,32 +25,31 @@ class Vtiger_Rss_Dashboard extends Vtiger_IndexAjax_View
 		$widget = Vtiger_Widget_Model::getInstanceWithWidgetId($widgetId, $currentUser->getId());
 		$data = $widget->get('data');
 		$data = \App\Json::decode(App\Purifier::decodeHtml($data));
-		$listSubjects = [];
+		$errors = $items = [];
 		foreach ($data['channels'] as $rss) {
-			try {
-				$rssContent = Feed::loadRss($rss);
-			} catch (FeedException $ex) {
-				continue;
-			}
-			if (!empty($rssContent)) {
-				foreach ($rssContent->item as $item) {
-					if (!\App\Validator::url((string) $item->link)) {
+			$feed = Rss_Record_Model::getRssClient($rss);
+			if ($feed->init()) {
+				foreach ($feed->get_items(0, 10) as $announcement) {
+					if (!\App\Validator::url((string) $announcement->get_link())) {
 						continue;
 					}
-					$date = new DateTime($item->pubDate);
-					$date = DateTimeField::convertToUserFormat($date->format('Y-m-d H:i:s'));
-					$title = \App\Purifier::purifyByType((string) $item->title, 'Text');
-					$listSubjects[] = [
-						'title' => \strlen($title) > 40 ? substr($title, 0, 40) . '...' : $title,
-						'link' => (string) $item->link,
-						'date' => $date,
+
+					$title = App\Purifier::decodeHtml(\App\Purifier::purify(App\Purifier::decodeHtml($announcement->get_title())));
+					$items[] = [
+						'title' => \App\TextUtils::textTruncate($title, 50),
+						'link' => App\Purifier::decodeHtml($announcement->get_link()),
+						'date' => \App\Fields\DateTime::formatToViewDate($announcement->get_date('Y-m-d H:i:s')),
 						'fullTitle' => $title,
 						'source' => $rss,
 					];
 				}
+			} elseif ($error = $feed->error()) {
+				$errors[$rss] = $error;
+				\App\Log::warning($error, 'RSS');
 			}
 		}
-		$viewer->assign('LIST_SUCJECTS', $listSubjects);
+		$viewer->assign('ERRORS', $errors);
+		$viewer->assign('LIST_SUBJECTS', $items);
 		$viewer->assign('WIDGET', $widget);
 		$viewer->assign('MODULE_NAME', $moduleName);
 		if ($request->has('content')) {

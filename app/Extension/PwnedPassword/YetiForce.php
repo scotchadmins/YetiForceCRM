@@ -5,8 +5,8 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -17,18 +17,12 @@ namespace App\Extension\PwnedPassword;
  */
 class YetiForce extends Base
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $url = 'YetiForce';
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $infoUrl = 'index.php?module=YetiForce&parent=Settings&view=Shop&product=YetiForcePassword&mode=showProductModal';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function check(string $password): array
 	{
 		$status = ['status' => true];
@@ -46,8 +40,8 @@ class YetiForce extends Base
 				$response = \App\Json::decode($request->getBody());
 				if (isset($response['count'])) {
 					$status = [
-						'message' => \App\Language::translateArgs('LBL_ALERT_PWNED_PASSWORD', 'Settings:Password', $response['count']),
-						'status' => 0 == $response['count']
+						'message' => \App\Language::translate('LBL_ALERT_PWNED_PASSWORD', 'Settings:Password'),
+						'status' => 0 === (int) $response['count'],
 					];
 				} elseif ($response['error']) {
 					throw new \App\Exceptions\AppException('Error with response |' . $response['error']);
@@ -61,9 +55,7 @@ class YetiForce extends Base
 		return $status;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function isActive(): bool
 	{
 		return \App\YetiForce\Shop::check('YetiForcePassword');

@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce Sp. z o.o
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Products_ListView_Model extends Vtiger_ListView_Model
@@ -23,7 +23,7 @@ class Products_ListView_Model extends Vtiger_ListView_Model
 	{
 		$moduleModel = $this->getModule();
 		$moduleName = $moduleModel->get('name');
-		$queryGenerator = $this->get('query_generator');
+		$queryGenerator = $this->getQueryGenerator();
 		// Limit the choice of products/services only to the ones related to currently selected Opportunity - last step.
 		if (Settings_SalesProcesses_Module_Model::checkRelatedToPotentialsLimit($this->get('src_module'))) {
 			if ($this->isEmpty('filterFields')) {
@@ -76,5 +76,22 @@ class Products_ListView_Model extends Vtiger_ListView_Model
 				->from('vtiger_seproductsrel')->innerJoin('vtiger_crmentity', 'vtiger_seproductsrel.crmid = vtiger_crmentity.crmid')->where(['vtiger_crmentity.deleted' => 0, 'vtiger_seproductsrel.setype' => $this->getModule()->get('name'), 'vtiger_seproductsrel.productid' => $subProductId])->exists();
 		}
 		return $flag;
+	}
+
+	/** {@inheritdoc} */
+	public function getAdvancedLinks()
+	{
+		$advancedLinks = parent::getAdvancedLinks();
+		$moduleModel = $this->getModule();
+		if ($moduleModel->isPermitted('CreateView') && $moduleModel->isPermitted('Import')) {
+			$advancedLinks[] = [
+				'linktype' => 'LISTVIEWMASSACTION',
+				'linklabel' => 'LBL_IMPORT_STOCKTAKING',
+				'linkdata' => ['url' => 'index.php?module=' . $moduleModel->getName() . '&view=StocktakingModal', 'type' => 'modal', 'check-selected' => 0],
+				'linkclass' => 'js-mass-action',
+				'linkicon' => 'fas fa-boxes'
+			];
+		}
+		return $advancedLinks;
 	}
 }

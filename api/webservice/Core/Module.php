@@ -1,13 +1,18 @@
 <?php
+/**
+ * Web service module file.
+ *
+ * @package API
+ *
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ */
 
 namespace Api\Core;
 
 /**
- * Module class.
- *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
- * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * Web service module class.
  */
 class Module
 {
@@ -19,14 +24,14 @@ class Module
 	 *
 	 * @return array
 	 */
-	public static function getPermittedModules()
+	public static function getPermittedModules(): array
 	{
 		if (isset(static::$permittedModules)) {
 			return static::$permittedModules;
 		}
 		$modules = [];
 		foreach (\vtlib\Functions::getAllModules(false, false, 0) as $value) {
-			if (\Api\Portal\Privilege::isPermitted($value['name'])) {
+			if (\Api\WebservicePremium\Privilege::isPermitted($value['name'])) {
 				$modules[$value['name']] = \App\Language::translate($value['name'], $value['name']);
 			}
 		}
@@ -40,12 +45,12 @@ class Module
 	 *
 	 * @return bool
 	 */
-	public static function checkModuleAccess($moduleName)
+	public static function checkModuleAccess($moduleName): bool
 	{
 		if (isset(static::$permittedModules)) {
 			return isset(static::$permittedModules[$moduleName]);
 		}
-		return \Api\Portal\Privilege::isPermitted($moduleName);
+		return \Api\WebservicePremium\Privilege::isPermitted($moduleName);
 	}
 
 	/**
@@ -62,7 +67,11 @@ class Module
 		if (\App\Cache::has('API-FieldPermission', $cacheName)) {
 			return \App\Cache::get('API-FieldPermission', $cacheName);
 		}
-		$fieldInfo = (new \App\Db\Query())->from('vtiger_field')->where(['tabid' => \App\Module::getModuleId($moduleName), 'uitype' => 318, 'fieldparams' => $serverId])->one();
+		$fieldInfo = (new \App\Db\Query())->from('vtiger_field')->where([
+			'tabid' => \App\Module::getModuleId($moduleName),
+			'uitype' => 318,
+			'fieldparams' => $serverId
+		])->one();
 		\App\Cache::save('API-FieldPermission', $cacheName, $fieldInfo, \App\Cache::LONG);
 		return $fieldInfo;
 	}

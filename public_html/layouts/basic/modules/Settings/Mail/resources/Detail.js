@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 jQuery.Class(
@@ -6,9 +6,9 @@ jQuery.Class(
 	{},
 	{
 		registerRemoveEvents: function () {
-			var container = jQuery('.contentsDiv');
+			let container = jQuery('.contentsDiv');
 			container.on('click', '.js-delete', function () {
-				var progressIndicator = jQuery.progressIndicator();
+				let progressIndicator = jQuery.progressIndicator();
 				AppConnector.request({
 					module: app.getModuleName(),
 					parent: app.getParentModuleName(),
@@ -20,36 +20,41 @@ jQuery.Class(
 						progressIndicator.progressIndicator({ mode: 'hide' });
 						window.location.href = data.result;
 					})
-					.fail(function (error) {
+					.fail(function (_error) {
 						progressIndicator.progressIndicator({ mode: 'hide' });
+						app.showNotify({ text: app.vtranslate('JS_ERROR'), type: 'error' });
 					});
 			});
 		},
 		registerAcceptanceEvent: function () {
-			var container = jQuery('.contentsDiv');
-			container.on('click', '.acceptanceRecord', function (e) {
-				var elem = this;
-				var progressIndicator = jQuery.progressIndicator();
+			let container = jQuery('.contentsDiv');
+			container.on('click', '.acceptanceRecord', function () {
+				let elem = this;
+				let progressIndicator = jQuery.progressIndicator();
 				AppConnector.request({
 					module: app.getModuleName(),
 					parent: app.getParentModuleName(),
 					action: 'SaveAjax',
 					mode: 'acceptanceRecord',
-					id: $('#recordId').val()
+					record: container.find('#recordId').val()
 				})
 					.done(function (data) {
 						progressIndicator.progressIndicator({ mode: 'hide' });
 						Settings_Vtiger_Index_Js.showMessage({ text: data.result.message });
 						$(elem).remove();
+						if (data.result.success) {
+							window.location.reload();
+						}
 					})
-					.fail(function (error) {
+					.fail(function (_error) {
 						progressIndicator.progressIndicator({ mode: 'hide' });
+						app.showNotify({ text: app.vtranslate('JS_ERROR'), type: 'error' });
 					});
 			});
 		},
 		sendMailManually: function () {
 			const container = $('.contentsDiv');
-			container.on('click', '.sendManually', function (e) {
+			container.on('click', '.sendManually', function () {
 				const progressIndicator = $.progressIndicator();
 				AppConnector.request({
 					module: app.getModuleName(),
@@ -63,11 +68,13 @@ jQuery.Class(
 							text: data.result.message,
 							type: data.result.success ? 'success' : 'error'
 						});
-						container.find('.sendManually').remove();
-						container.find('.deleteButton').remove();
+						if (data.result.success) {
+							window.history.back();
+						}
 					})
-					.fail(function (error) {
+					.fail(function (_error) {
 						progressIndicator.progressIndicator({ mode: 'hide' });
+						app.showNotify({ text: app.vtranslate('JS_ERROR'), type: 'error' });
 					});
 			});
 		},

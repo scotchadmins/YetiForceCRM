@@ -3,8 +3,8 @@
 /**
  * Settings calendar UserColors view class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class Settings_Calendar_UserColors_View extends Settings_Vtiger_Index_View
 {
@@ -22,9 +22,7 @@ class Settings_Calendar_UserColors_View extends Settings_Vtiger_Index_View
 		$viewer->view('UserColors.tpl', $qualifiedModuleName);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getFooterScripts(App\Request $request)
 	{
 		$moduleName = $request->getModule();

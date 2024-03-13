@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce Sp. z o.o
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class PriceBooks_Module_Model extends Vtiger_Module_Model
@@ -50,9 +50,7 @@ class PriceBooks_Module_Model extends Vtiger_Module_Model
 		return false;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getModalRecordsListFields(App\QueryGenerator $queryGenerator, $sourceModule = false)
 	{
 		$popupFields = parent::getModalRecordsListFields($queryGenerator, $sourceModule);

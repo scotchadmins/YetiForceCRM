@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 window.App.Fields = {
@@ -139,7 +139,7 @@ window.App.Fields = {
 			if (typeof customParams !== 'undefined') {
 				params = $.extend(params, customParams);
 			}
-			elements.each((index, element) => {
+			elements.each((_index, element) => {
 				$(element).datepicker(
 					$.extend(
 						true,
@@ -204,23 +204,15 @@ window.App.Fields = {
 				moment().subtract(1, 'month').endOf('month')
 			];
 			ranges[app.vtranslate('JS_NEXT_6_MONTHS')] = [moment().startOf('month'), moment().add(6, 'month').endOf('month')];
+
+			let locale = App.Fields.DateTime.getDefaultLocale();
+			locale.format = format;
 			let params = {
+				language: CONFIG.langKey,
 				autoUpdateInput: false,
 				autoApply: true,
 				ranges: ranges,
-				locale: {
-					format: format,
-					separator: ',',
-					applyLabel: app.vtranslate('JS_APPLY'),
-					cancelLabel: app.vtranslate('JS_CANCEL'),
-					fromLabel: app.vtranslate('JS_FROM'),
-					toLabel: app.vtranslate('JS_TO'),
-					customRangeLabel: app.vtranslate('JS_CUSTOM'),
-					weekLabel: app.vtranslate('JS_WEEK').substr(0, 1),
-					firstDay: CONFIG.firstDayOfWeekNo,
-					daysOfWeek: App.Fields.Date.daysTranslated,
-					monthNames: App.Fields.Date.fullMonthsTranslated
-				}
+				locale: locale
 			};
 
 			if (typeof customParams !== 'undefined') {
@@ -232,11 +224,11 @@ window.App.Fields = {
 				.on('click', (e) => {
 					$(e.currentTarget).parent().next('.dateRangeField')[0].focus();
 				});
-			elements.each((index, element) => {
+			elements.each((_index, element) => {
 				let el = $(element);
 				let currentParams = $.extend(true, params, el.data('params'));
 				el.daterangepicker(currentParams)
-					.on('apply.daterangepicker', function (ev, picker) {
+					.on('apply.daterangepicker', function (_ev, picker) {
 						$(this).val(
 							picker.startDate.format(currentParams.locale.format) +
 								',' +
@@ -251,65 +243,181 @@ window.App.Fields = {
 						App.Fields.Utils.positionPicker(ev, picker);
 						picker.container.addClass('js-visible');
 					})
-					.on('hide.daterangepicker', (ev, picker) => {
+					.on('hide.daterangepicker', (_ev, picker) => {
 						picker.container.removeClass('js-visible');
 					});
 				App.Fields.Utils.registerMobileDateRangePicker(el);
 			});
+		},
+		/**
+		 * Function to get Date Instance
+		 * @param {string} dateTime
+		 * @param {string} dateFormat user date format
+		 * @returns {Date}
+		 */
+		getDateInstance: function (dateTime, dateFormat = CONFIG.dateFormat) {
+			let dateTimeComponents = dateTime.split(' '),
+				dateComponent = dateTimeComponents[0],
+				timeComponent = dateTimeComponents[1],
+				seconds = '00',
+				dotMode = '-';
+			if (dateFormat.indexOf('.') !== -1) {
+				dotMode = '.';
+			} else if (dateFormat.indexOf('/') !== -1) {
+				dotMode = '/';
+			}
+			let splittedDate = dateComponent.split(dotMode),
+				splittedDateFormat = dateFormat.split(dotMode),
+				year = splittedDate[splittedDateFormat.indexOf('yyyy')],
+				month = splittedDate[splittedDateFormat.indexOf('mm')],
+				day = splittedDate[splittedDateFormat.indexOf('dd')],
+				dateInstance = Date.parse(year + '/' + month + '/' + day);
+
+			if (isNaN(dateInstance) || year.length !== 4 || month.length > 2 || day.length > 2 || dateInstance == null) {
+				throw app.vtranslate('JS_INVALID_DATE');
+			}
+			//Before creating date object time is set to 00
+			//because as while calculating date object it depends system timezone
+			if (typeof timeComponent === 'undefined') {
+				timeComponent = '00:00:00';
+			}
+			let timeSections = timeComponent.split(':');
+			if (typeof timeSections[2] !== 'undefined') {
+				seconds = timeSections[2];
+			}
+			//Am/Pm component exits
+			if (typeof dateTimeComponents[2] !== 'undefined') {
+				if (dateTimeComponents[2].toLowerCase() === 'pm' && timeSections[0] !== '12') {
+					timeSections[0] = parseInt(timeSections[0], 10) + 12;
+				}
+				if (dateTimeComponents[2].toLowerCase() === 'am' && timeSections[0] === '12') {
+					timeSections[0] = '00';
+				}
+			}
+			month = month - 1;
+			return new Date(year, month, day, timeSections[0], timeSections[1], seconds);
+		},
+		/**
+		 * Format the Date object to a date in the format DB format, example: `2018-07-23`
+		 * @param {Date} date
+		 * @returns {string}
+		 */
+		dateToDbFormat: function (date) {
+			let d = date.getDate();
+			let m = date.getMonth() + 1;
+			let y = date.getFullYear();
+			d = d <= 9 ? '0' + d : d;
+			m = m <= 9 ? '0' + m : m;
+			return y + '-' + m + '-' + d;
+		},
+		/**
+		 * Format the Date object to a date in the format user format, example: `2018/07/23`
+		 * @param {Date} date
+		 * @returns {string}
+		 */
+		dateToUserFormat: function (date, format = CONFIG.dateFormat) {
+			if (typeof date === 'string') {
+				date = new Date(date);
+			}
+			let m = date.getMonth() + 1,
+				d = date.getDate();
+			d = d <= 9 ? '0' + d : d;
+			m = m <= 9 ? '0' + m : m;
+			return format.replace('yyyy', date.getFullYear()).replace('mm', m).replace('dd', d);
+		},
+		/**
+		 * Get last day of month
+		 * @param {integer} year
+		 * @param {integer} month
+		 * @returns {integer}
+		 */
+		getLastMonthDay: function (year, month) {
+			let date = new Date(year, month, 0);
+			return date.getDate();
+		},
+		/**
+		 * Get number of days from a given date to now
+		 * @param {Date} dateTime
+		 * @returns {integer}
+		 */
+		howManyDaysFromDate: function (dateTime) {
+			let today = new Date();
+			let toTime = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+			return Math.floor((toTime - dateTime.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+		},
+		/**
+		 * Converting the date format to the format supported in the DatePicker, example: `yyyy-mm-dd` >> `Y-m-d`
+		 * @param {string} dateFormat
+		 * @returns {string}
+		 */
+		convertToDatePickerFormat: function (dateFormat) {
+			switch (dateFormat) {
+				case 'yyyy-mm-dd':
+					return 'Y-m-d';
+				case 'mm-dd-yyyy':
+					return 'm-d-Y';
+				case 'dd-mm-yyyy':
+					return 'd-m-Y';
+				case 'yyyy.mm.dd':
+					return 'Y.m.d';
+				case 'mm.dd.yyyy':
+					return 'm.d.Y';
+				case 'dd.mm.yyyy':
+					return 'd.m.Y';
+				case 'yyyy/mm/dd':
+					return 'Y/m/d';
+				case 'mm/dd/yyyy':
+					return 'm/d/Y';
+				case 'dd/mm/yyyy':
+					return 'd/m/Y';
+			}
 		}
 	},
-	DateTime: {
-		/*
-		 * Initialization datetime fields
-		 * @param {jQuery} parentElement
-		 * @param {object} customParams
+	DateTime: class DateTime {
+		constructor(container, params) {
+			this.container = container;
+			this.init(params);
+		}
+		/**
+		 * Register function
+		 * @param {jQuery} container
+		 * @param {Object} params
 		 */
-		register: function (parentElement, customParams) {
-			if (typeof parentElement === 'undefined') {
-				parentElement = $('body');
-			} else {
-				parentElement = $(parentElement);
+		static register(container, params) {
+			if (typeof container === 'undefined') {
+				container = $('body');
 			}
-			let elements = $('.dateTimePickerField', parentElement);
-			if (parentElement.hasClass('dateTimePickerField')) {
-				elements = parentElement;
+			if (container.hasClass('dateTimePickerField') && !container.prop('disabled')) {
+				return new DateTime(container, params);
 			}
-			if (elements.length === 0) {
-				return;
-			}
-			$('.input-group-text', elements.closest('.dateTime')).on('click', function (e) {
-				$(e.currentTarget).closest('.dateTime').find('input.dateTimePickerField ').get(0).focus();
+			const instances = [];
+			container.find('.dateTimePickerField:not([disabled])').each((_, e) => {
+				let element = $(e);
+				instances.push(new DateTime(element, params));
 			});
-			let dateFormat = CONFIG.dateFormat.toUpperCase();
-			const elementDateFormat = elements.data('dateFormat');
-			if (typeof elementDateFormat !== 'undefined') {
-				dateFormat = elementDateFormat.toUpperCase();
+			return instances;
+		}
+		/**
+		 * Format the Date object to a date in the format user format, example: `2018/07/23 03:00`
+		 * @param {Date} dateTime Date object
+		 * @returns {string} `2018/07/23 03:00`
+		 */
+		static dateToUserFormat(dateTime, format = CONFIG.dateFormat) {
+			format = format.toUpperCase();
+			if (CONFIG.hourFormat == 24) {
+				format += ' HH:mm';
+			} else {
+				format += ' hh:mm A';
 			}
-			let hourFormat = CONFIG.hourFormat;
-			const elementHourFormat = elements.data('hourFormat');
-			if (typeof elementHourFormat !== 'undefined') {
-				hourFormat = elementHourFormat;
-			}
-			let timePicker24Hour = true;
-			let timeFormat = 'HH:mm';
-			if (hourFormat != '24') {
-				timePicker24Hour = false;
-				timeFormat = 'hh:mm A';
-			}
-			const format = dateFormat + ' ' + timeFormat;
-			let isDateRangePicker = elements.data('calendarType') !== 'range';
-			let params = {
-				parentEl: parentElement,
-				singleDatePicker: isDateRangePicker,
-				showDropdowns: true,
-				timePicker: true,
-				autoUpdateInput: false,
-				timePicker24Hour: timePicker24Hour,
-				timePickerIncrement: 1,
-				autoApply: true,
-				opens: 'left',
-				locale: {
-					format: format,
+			return moment(dateTime).format(format);
+		}
+		/**
+		 * Gets default locale data
+		 * @returns {Object}
+		 */
+		static getDefaultLocale() {
+			if (!this.locale) {
+				this.locale = {
 					separator: ',',
 					applyLabel: app.vtranslate('JS_APPLY'),
 					cancelLabel: app.vtranslate('JS_CANCEL'),
@@ -320,14 +428,57 @@ window.App.Fields = {
 					firstDay: CONFIG.firstDayOfWeekNo,
 					daysOfWeek: App.Fields.Date.daysTranslated,
 					monthNames: App.Fields.Date.fullMonthsTranslated
-				}
+				};
+			}
+			return { ...this.locale };
+		}
+
+		/**
+		 * Initialization datetime
+		 */
+		init(customParams) {
+			$('.input-group-text', this.container.closest('.dateTime')).on('click', function (e) {
+				$(e.currentTarget).closest('.dateTime').find('input.dateTimePickerField').get(0).focus();
+			});
+			let dateFormat = CONFIG.dateFormat.toUpperCase();
+			const elementDateFormat = this.container.data('dateFormat');
+			if (typeof elementDateFormat !== 'undefined') {
+				dateFormat = elementDateFormat.toUpperCase();
+			}
+			let hourFormat = CONFIG.hourFormat;
+			const elementHourFormat = this.container.data('hourFormat');
+			if (typeof elementHourFormat !== 'undefined') {
+				hourFormat = elementHourFormat;
+			}
+			let timePicker24Hour = true;
+			let timeFormat = 'HH:mm';
+			if (hourFormat != '24') {
+				timePicker24Hour = false;
+				timeFormat = 'hh:mm A';
+			}
+			const format = dateFormat + ' ' + timeFormat;
+			let isDateRangePicker = this.container.data('calendarType') !== 'range';
+			let locale = App.Fields.DateTime.getDefaultLocale();
+			locale.format = format;
+			let params = {
+				language: CONFIG.langKey,
+				parentEl: this.container.closest('.dateTime'),
+				singleDatePicker: isDateRangePicker,
+				showDropdowns: true,
+				timePicker: true,
+				autoUpdateInput: false,
+				timePicker24Hour: timePicker24Hour,
+				timePickerIncrement: 1,
+				autoApply: true,
+				opens: 'left',
+				locale: locale
 			};
 			if (typeof customParams !== 'undefined') {
 				params = $.extend(params, customParams);
 			}
-			elements
+			this.container
 				.daterangepicker(params)
-				.on('apply.daterangepicker', function applyDateRangePickerHandler(ev, picker) {
+				.on('apply.daterangepicker', function applyDateRangePickerHandler(_ev, picker) {
 					if (isDateRangePicker) {
 						$(this).val(picker.startDate.format(format));
 					} else {
@@ -338,9 +489,27 @@ window.App.Fields = {
 					App.Fields.Utils.positionPicker(ev, picker);
 					picker.container.addClass('js-visible');
 				});
-			elements.each((index, element) => {
-				App.Fields.Utils.registerMobileDateRangePicker($(element));
-			});
+			App.Fields.Utils.registerMobileDateRangePicker(this.container);
+		}
+	},
+	Time: {
+		/**
+		 * Format the Date object to a date in the format user format, example: `2018/07/23`
+		 * @param {Date} date
+		 * @returns {string}
+		 */
+		dateToUserFormat: function (date, timeFormat) {
+			if (typeof date === 'string') {
+				date = new Date(date);
+			}
+			if (!timeFormat) {
+				if (CONFIG.hourFormat == 24) {
+					timeFormat = 'HH:mm';
+				} else {
+					timeFormat = 'hh:mm A';
+				}
+			}
+			return moment(date).format(timeFormat);
 		}
 	},
 	Colors: {
@@ -395,7 +564,7 @@ window.App.Fields = {
 		 * @returns {ClipboardJS|undefined}
 		 */
 		registerCopyClipboard: function (container, key = '.clipboard') {
-			if (typeof container !== 'object') {
+			if (typeof container !== 'object' || $(container).length === 0) {
 				return;
 			}
 			container = $(container).get(0);
@@ -430,7 +599,16 @@ window.App.Fields = {
 			});
 		},
 		Editor: class {
+			static initialization = false;
 			constructor(container, params) {
+				if (window.App.Fields.Text.Editor.initialization === false) {
+					CKEDITOR.disableAutoInline = true;
+					CKEDITOR.plugins.addExternal(
+						'base64image',
+						app.getMainParams('siteUrl') + 'layouts/resources/libraries/ckeditor/base64image/'
+					);
+					window.App.Fields.Text.Editor.initialization = true;
+				}
 				this.container = container;
 				this.init(container, params);
 			}
@@ -468,7 +646,7 @@ window.App.Fields = {
 				}
 				params = $.extend(config, params);
 				this.isModal = element.closest('.js-modal-container').length;
-				if (this.isModal) {
+				if (this.isModal && element.is(':visible')) {
 					let self = this;
 					this.progressInstance = $.progressIndicator({
 						blockInfo: {
@@ -520,8 +698,7 @@ window.App.Fields = {
 			 */
 			loadEditor(element, customConfig) {
 				this.setElement(element);
-				const instance = this.getEditorInstanceFromName(),
-					self = this;
+				const instance = this.getEditorInstanceFromName();
 				let config = {
 					language: CONFIG.langKey,
 					allowedContent: true,
@@ -533,19 +710,25 @@ window.App.Fields = {
 					shiftEnterMode: CKEDITOR.ENTER_P,
 					emojiEnabled: false,
 					mentionsEnabled: false,
+					clipboard_handleImages: false,
 					on: {
-						instanceReady: function (evt) {
+						instanceReady: (evt) => {
 							evt.editor.on('blur', function () {
 								evt.editor.updateElement();
 							});
-							if (self.isModal) {
-								self.progressInstance.progressIndicator({ mode: 'hide' });
+							if (this.isModal && this.progressInstance) {
+								this.progressInstance.progressIndicator({ mode: 'hide' });
+							}
+						},
+						beforeCommandExec: (e) => {
+							if (e.editor.mode === 'source') {
+								return this.validate(element, e);
 							}
 						}
 					},
 					removePlugins: 'scayt',
 					extraPlugins:
-						'colorbutton,pagebreak,colordialog,find,selectall,showblocks,div,print,font,justify,bidi,ckeditor-image-to-base',
+						'colorbutton,pagebreak,colordialog,find,selectall,showblocks,div,print,font,justify,bidi,base64image',
 					toolbar: 'Full',
 					toolbar_Full: [
 						{
@@ -556,7 +739,7 @@ window.App.Fields = {
 						{ name: 'links', items: ['Link', 'Unlink'] },
 						{
 							name: 'insert',
-							items: ['ckeditor-image-to-base', 'Table', 'HorizontalRule', 'SpecialChar', 'PageBreak']
+							items: ['base64image', 'Table', 'HorizontalRule', 'SpecialChar', 'PageBreak']
 						},
 						{ name: 'tools', items: ['Maximize', 'ShowBlocks'] },
 						{ name: 'paragraph', items: ['Outdent', 'Indent', '-', 'Blockquote', 'CreateDiv'] },
@@ -638,7 +821,7 @@ window.App.Fields = {
 						{ name: 'links', items: ['Link', 'Unlink'] },
 						{
 							name: 'insert',
-							items: ['ckeditor-image-to-base', 'Table', 'HorizontalRule', 'PageBreak']
+							items: ['base64image', 'Table', 'HorizontalRule', 'PageBreak']
 						},
 						{ name: 'tools', items: ['Maximize', 'ShowBlocks'] },
 						{ name: 'document', items: ['Source'] },
@@ -729,11 +912,53 @@ window.App.Fields = {
 			getMentionUsersData(opts, callback) {
 				App.Fields.Text.getMentionData(opts, callback, 'owners');
 			}
+
+			/**
+			 * Function to validate the field value
+			 * @param {jQuery} element
+			 * @param {object} e
+			 */
+			validate(element) {
+				let status = true,
+					params;
+				if (element.data('purifyMode')) {
+					params = {
+						module: 'Users',
+						action: 'Fields',
+						mode: 'validateByMode',
+						purifyMode: element.data('purifyMode'),
+						value: element.val()
+					};
+				} else {
+					params = {
+						module: element.closest('form').find('[name="module"]').val(),
+						action: 'Fields',
+						mode: 'validateForField',
+						fieldName: element.attr('name'),
+						fieldValue: element.val()
+					};
+				}
+				AppConnector.request({
+					async: false,
+					data: params
+				})
+					.done(function (data) {
+						element.val(data.result.raw);
+					})
+					.fail(function () {
+						app.showNotify({
+							type: 'error',
+							text: app.vtranslate('JS_UNEXPECTED_ERROR')
+						});
+						status = false;
+					});
+				return status;
+			}
 		},
 		/**
 		 * Completions class for contenteditable html element for records, users and emojis. Params can be passed in data-completions- of contenteditable element or as argument. Default params:
 		 * {
-		 		completionsCollection: {
+					completionsCollection: {
 						records: true,
 						users: true,
 						emojis: true
@@ -746,7 +971,7 @@ window.App.Fields = {
 			 * @param {jQuery} inputDiv - contenteditable div
 			 * @param params
 			 */
-			constructor(inputDiv = $('.js-completions').eq(0), params = { emojiPanel: true }) {
+			constructor(inputDiv = $('.js-completions').eq(0), params = {}) {
 				if (typeof inputDiv === 'undefined' || inputDiv.length === 0) {
 					return;
 				} else if (inputDiv.length === undefined) {
@@ -973,8 +1198,7 @@ window.App.Fields = {
 				const self = this;
 				this.completionsCollection = new Tribute({
 					collection: self.collection,
-					allowSpaces: true,
-					replaceTextSuffix: ''
+					allowSpaces: true
 				});
 				this.completionsCollection.attach(inputDiv[0]);
 				if (this.params.completionsTextarea !== undefined) {
@@ -985,9 +1209,6 @@ window.App.Fields = {
 				}
 				if (this.params.autolink) {
 					this.registerAutoLinker(inputDiv);
-				}
-				if (this.params.emojiPanel) {
-					this.registerEmojiPanel(this.inputDiv, this.inputDiv.parents().eq(3).find('.js-completions__emojis'));
 				}
 				if (App.emoji === undefined) {
 					fetch(`${CONFIG.siteUrl}/vendor/ckeditor/ckeditor/plugins/emoji/emoji.json`)
@@ -1051,44 +1272,6 @@ window.App.Fields = {
 				});
 				completionsContainer.find('.js-completions__records').on('click', (e) => {
 					this.completionsCollection.showMenuForCollection(this.inputDiv[0], 0);
-				});
-			}
-
-			/**
-			 * Register emojipanel library
-			 * @param {jQuery} inputDiv - contenteditable div
-			 * @param {jQuery} emojisContainer
-			 */
-			registerEmojiPanel(inputDiv, emojisContainer) {
-				new EmojiPanel({
-					container: '.js-completions__emojis',
-					json_url: CONFIG.siteUrl + 'libraries/emojipanel/dist/emojis.json'
-				});
-				emojisContainer.on('click', (e) => {
-					let element = $(e.target);
-					element.toggleClass('active');
-				});
-				emojisContainer.on('click', '.emoji', (e) => {
-					e.preventDefault();
-					e.stopPropagation();
-					if ($(e.currentTarget).data('char') !== undefined) {
-						inputDiv.append(`${$(e.currentTarget).data('char')}`);
-					}
-				});
-				emojisContainer.on('mouseenter', '.emoji', (e) => {
-					if ($(e.currentTarget).data('name') !== undefined) {
-						emojisContainer.find('.emoji-hovered').remove();
-						emojisContainer
-							.find('footer')
-							.prepend(
-								`<div class="emoji-hovered">${
-									$(e.currentTarget).data('char') + ' ' + $(e.currentTarget).data('name')
-								}</div>`
-							);
-					}
-				});
-				emojisContainer.on('clickoutside', () => {
-					emojisContainer.removeClass('active');
 				});
 			}
 		},
@@ -1199,7 +1382,7 @@ window.App.Fields = {
 				params = {};
 			}
 			if ($(selectElement).length > 1) {
-				return $(selectElement).each((index, element) => {
+				return $(selectElement).each((_, element) => {
 					this.showSelect2ElementView($(element).eq(0), params);
 				});
 			}
@@ -1247,6 +1430,13 @@ window.App.Fields = {
 						}
 						let instance = $(e.currentTarget).data('select2');
 						instance.$dropdown.css('z-index', 1000002);
+						/**
+						 * Fix auto focusing in select2 with jQuery 3.6.0
+						 * see: https://github.com/select2/select2/issues/5993
+						 */
+						if (instance.dropdown.$search) {
+							instance.dropdown.$search.get(0).focus();
+						}
 					})
 					.on('select2:unselect', () => {
 						select.data('unselecting', true);
@@ -1255,7 +1445,6 @@ window.App.Fields = {
 					self[params.selectCb](select, params);
 				}
 			});
-
 			return selectElement;
 		},
 		/**
@@ -1288,15 +1477,17 @@ window.App.Fields = {
 			if (typeof containerCssClass !== 'undefined') {
 				params.containerCssClass += ' ' + containerCssClass;
 			}
-			params.language.noResults = function (msn) {
+			params.language.noResults = function () {
 				return app.vtranslate('JS_NO_RESULTS_FOUND');
 			};
-
+			params.language.removeAllItems = function () {
+				return app.vtranslate('JS_REMOVE_ALL_ITEMS');
+			};
 			// Sort DOM nodes alphabetically in select box.
 			if (typeof params['customSortOptGroup'] !== 'undefined' && params['customSortOptGroup']) {
 				$('optgroup', selectElement).each(function () {
-					var optgroup = $(this);
-					var options = optgroup
+					let optgroup = $(this);
+					let options = optgroup
 						.children()
 						.toArray()
 						.sort(function (a, b) {
@@ -1315,10 +1506,9 @@ window.App.Fields = {
 			//then we should send our custom function for formatSelectionTooBig
 			if (typeof params.maximumSelectionLength !== 'undefined' && typeof params.formatSelectionTooBig === 'undefined') {
 				//custom function which will return the maximum selection size exceeds message.
-				var formatSelectionExceeds = function (limit) {
+				params.language.maximumSelected = function (limit) {
 					return app.vtranslate('JS_YOU_CAN_SELECT_ONLY') + ' ' + limit.maximum + ' ' + app.vtranslate('JS_ITEMS');
 				};
-				params.language.maximumSelected = formatSelectionExceeds;
 			}
 			if (typeof selectElement.attr('multiple') !== 'undefined' && !params.placeholder) {
 				params.placeholder = app.vtranslate('JS_SELECT_SOME_OPTIONS');
@@ -1330,38 +1520,34 @@ window.App.Fields = {
 					if (data.element && data.element.className) {
 						$(container).addClass(data.element.className);
 					}
-					let actualElement = $(data.element);
-					if (typeof selectElement.data('showAdditionalIcons') !== 'undefined' && actualElement.is('option')) {
-						return (
-							'<div class="js-element__title d-flex justify-content-between" data-js="appendTo"><div class="u-text-ellipsis--no-hover">' +
-							actualElement.text() +
-							'</div></div>'
-						);
-					}
+					const resultContainer = document.createElement('span');
 					if (typeof data.name === 'undefined') {
-						return data.text;
-					}
-					if (data.type == 'optgroup') {
-						return '<strong>' + data.name + '</strong>';
+						resultContainer.innerText = data.text;
+					} else if (data.type == 'optgroup') {
+						const strong = document.createElement('strong');
+						strong.innerText = data.name;
+						strong.appendChild(document.createTextNode(file.name));
+						resultContainer.appendChild(strong);
 					} else {
-						return '<span>' + data.name + '</span>';
+						resultContainer.innerText = data.name;
 					}
-				};
-				params.escapeMarkup = function (markup) {
-					return markup;
+					return resultContainer;
 				};
 			} else if (typeof this[params.templateResult] === 'function') {
 				params.templateResult = this[params.templateResult];
 			}
 			if (typeof params.templateSelection === 'undefined') {
-				params.templateSelection = function (data, container) {
-					if (data.element && data.element.className) {
-						$(container).addClass(data.element.className);
+				params.templateSelection = function (item, container) {
+					if (item.element && item.element.className) {
+						$(container).addClass(item.element.className);
 					}
-					if (data.text === '') {
-						return data.name;
+					const span = document.createElement('span');
+					if (item.text === '') {
+						span.innerText = item.name;
+					} else {
+						span.innerText = item.text;
 					}
-					return data.text;
+					return span;
 				};
 			} else if (typeof this[params.templateSelection] === 'function') {
 				params.templateSelection = this[params.templateSelection];
@@ -1373,9 +1559,9 @@ window.App.Fields = {
 		},
 		/**
 		 * Register ajax params
-		 * @param selectElement
-		 * @param params
-		 * @returns {*}
+		 * @param {jQuery} selectElement
+		 * @param {Object} params
+		 * @returns {Object}
 		 */
 		registerAjaxParams(selectElement, params) {
 			params.tags = false;
@@ -1395,41 +1581,46 @@ window.App.Fields = {
 				dataType: 'json',
 				delay: 250,
 				method: 'POST',
-				data: function (params) {
-					return {
-						value: params.term, // search term
-						page: params.page
-					};
-				},
-				processResults: function (data, params) {
-					var items = new Array();
-					if (data.success == true) {
-						selectElement.find('option').each(function () {
-							var currentTarget = $(this);
-							items.push({
-								label: currentTarget.html(),
-								value: currentTarget.val()
-							});
-						});
-						items = items.concat(data.result.items);
-					}
-					return {
-						results: items,
-						pagination: {
-							more: false
-						}
-					};
-				},
+				data:
+					params['ajax'] && params['ajax']['data']
+						? params['ajax']['data']
+						: function (item) {
+								return {
+									value: item.term, // search term
+									page: item.page
+								};
+						  },
+				processResults:
+					params['ajax'] && params['ajax']['processResults']
+						? params['ajax']['processResults']
+						: function (data, _params) {
+								var items = new Array();
+								if (data.success == true) {
+									selectElement.find('option').each(function () {
+										var currentTarget = $(this);
+										items.push({
+											label: currentTarget.html(),
+											value: currentTarget.val()
+										});
+									});
+									items = items.concat(data.result.items);
+								}
+								return {
+									results: items,
+									pagination: {
+										more: false
+									}
+								};
+						  },
 				cache: false
 			};
 			params.escapeMarkup = function (markup) {
 				if (markup !== 'undefined') return markup;
 			};
-			var minimumInputLength = 3;
+			params.minimumInputLength = 3;
 			if (selectElement.data('minimumInput') !== 'undefined') {
-				minimumInputLength = selectElement.data('minimumInput');
+				params.minimumInputLength = selectElement.data('minimumInput');
 			}
-			params.minimumInputLength = minimumInputLength;
 			params.templateResult = function (data) {
 				if (typeof data.name === 'undefined') {
 					return data.text;
@@ -1440,11 +1631,14 @@ window.App.Fields = {
 					return '<span>' + data.name + '</span>';
 				}
 			};
-			params.templateSelection = function (data, container) {
+			params.templateSelection = function (data, _container) {
+				const span = document.createElement('span');
 				if (data.text === '') {
-					return data.name;
+					span.innerText = data.name;
+				} else {
+					span.innerText = data.text;
 				}
-				return data.text;
+				return span;
 			};
 			return params;
 		},
@@ -1454,25 +1648,22 @@ window.App.Fields = {
 		 * @returns {Mixed|jQuery|HTMLElement}
 		 */
 		prependDataTemplate(optionData) {
-			let template = optionData.text;
+			const span = document.createElement('span');
 			if (optionData.id !== undefined && optionData.id !== '') {
-				template = $(optionData.element.dataset.template);
+				span.innerHTML = optionData.element.dataset.template;
 				if (optionData.element.dataset.state !== undefined) {
+					const icon = span.querySelector('.js-select-option-event');
 					//check if element has icons with different states
 					if (optionData.element.dataset.state === 'active') {
-						template
-							.find('.js-select-option-event')
-							.removeClass(optionData.element.dataset.iconInactive)
-							.addClass(optionData.element.dataset.iconActive);
+						icon.classList.replace(optionData.element.dataset.iconInactive, optionData.element.dataset.iconActive);
 					} else {
-						template
-							.find('.js-select-option-event')
-							.removeClass(optionData.element.dataset.iconActive)
-							.addClass(optionData.element.dataset.iconInactive);
+						icon.classList.replace(optionData.element.dataset.iconActive, optionData.element.dataset.iconInactive);
 					}
 				}
+			} else {
+				span.innerText = optionData.text;
 			}
-			return template;
+			return span;
 		},
 		/**
 		 * Register select sortable
@@ -1515,6 +1706,7 @@ window.App.Fields = {
 						});
 					});
 					cb(select);
+					select.trigger('sortable:change');
 				}
 			});
 		},
@@ -1540,13 +1732,15 @@ window.App.Fields = {
 					.done((data) => {
 						progressIndicatorElement.progressIndicator({ mode: 'hide' });
 						let response = data.result;
+						const icon = currentTarget.get(0);
+						//check if element has icons with different states
 						if (response && response.result) {
 							if (optionElement.attr('data-state') === 'active') {
 								optionElement.attr('data-state', 'inactive');
-								currentTarget.toggleClass(currentElementData.iconActive + ' ' + currentElementData.iconInactive);
+								icon.classList.replace(currentElementData.iconActive, currentElementData.iconInactive);
 							} else {
 								optionElement.attr('data-state', 'active');
-								currentTarget.toggleClass(currentElementData.iconInactive + ' ' + currentElementData.iconActive);
+								icon.classList.replace(currentElementData.iconInactive, currentElementData.iconActive);
 							}
 							if (response.message) {
 								app.showNotify({ text: response.message, type: 'success' });
@@ -1643,23 +1837,27 @@ window.App.Fields = {
 			return options;
 		},
 		/**
-		 * Set value.
+		 * Set a value for the field
 		 *
-		 * @param   {object}  selectElement  [selectElement description]
-		 * @param   {string}  searchValue
-		 * @param   {string}  type           value|text|all
+		 * @param   {jQuery}  field Field element
+		 * @param   {mixed}  value The value to set
+		 * @param   {object}  params Additional parameters [optional]
 		 *
-		 * @return  {boolean|string}         false or set value
+		 * @return  {mixed} The value that has been set
 		 */
-		setValue(selectElement, searchValue, type = 'value') {
-			const option = this.findOption(selectElement, searchValue, type);
+		setValue(field, value, params) {
+			let type = 'value';
+			if (params && params['type']) {
+				type = params['type'];
+			}
+			const option = this.findOption(field, value, type);
 			if (!option) {
 				return false;
 			}
-			if (selectElement.hasClass('js-lazy-select-active')) {
-				this.createSelectedOption(selectElement, option.text, option.value);
+			if (field.hasClass('js-lazy-select-active')) {
+				this.createSelectedOption(field, option.text, option.value);
 			} else {
-				selectElement.val(option.value).trigger('change');
+				field.val(option.value).trigger('change');
 			}
 			return option.value;
 		},
@@ -1711,7 +1909,7 @@ window.App.Fields = {
 				return selectElement.data('fieldinfo').picklistvalues;
 			} else {
 				let optionsObject = {};
-				selectElement.find('option').each((i, element) => {
+				selectElement.find('option').each((_i, element) => {
 					optionsObject[element.value] = element.text;
 				});
 				return optionsObject;
@@ -2008,31 +2206,29 @@ window.App.Fields = {
 			return integer;
 		}
 	},
-	Double: {
+	Double: class Double {
+		/** @static int User format without rounding */
+		static FORMAT_USER_WITHOUT_ROUNDING = 0;
+		/** @static int Rounds num to specified precision */
+		static FORMAT_ROUND = 1;
+		/** @static int Truncate trailing zeros */
+		static FORMAT_TRUNCATE_TRAILING_ZEROS = 2;
+		/** @static int Show digits up to precision */
+		static FORMAT_DIGITS_UP_TO_PRECISION = 4;
+
 		/**
 		 * Function returns the currency in user specified format.
 		 * @param {number} value
-		 * @param {boolean} numberOfDecimal
+		 * @param {int} fix				 A bitmask of one or more of the mode flags
 		 * @param {int} numberOfDecimal
 		 * @returns {string}
 		 */
-		formatToDisplay(value, fixed = true, numberOfDecimal = CONFIG.noOfCurrencyDecimals) {
+		static formatToDisplay(value, fix = Double.FORMAT_ROUND, numberOfDecimal = CONFIG.noOfCurrencyDecimals) {
 			if (!value) {
 				value = 0;
 			}
-			let strDecimal = value.toString().split('.')[1];
-			let numberOfZerosAtTheEnd = 0;
-			if (typeof strDecimal !== 'undefined') {
-				for (let i = strDecimal.length - 1; i > 0; --i) {
-					if (strDecimal[i] == '0') {
-						numberOfZerosAtTheEnd++;
-					} else {
-						break;
-					}
-				}
-			}
 			value = parseFloat(value);
-			if (fixed) {
+			if (fix & Double.FORMAT_ROUND) {
 				let base = 10 ** numberOfDecimal;
 				value =
 					Math.round(
@@ -2044,10 +2240,14 @@ window.App.Fields = {
 			if (integer !== '-0' && integer !== '0') {
 				integer = App.Fields.Integer.formatToDisplay(integer);
 			}
-			let decimal = splittedFloat[1];
+			let decimal = splittedFloat[1] || '';
 			if (numberOfDecimal) {
-				if (!CONFIG.truncateTrailingZeros && decimal) {
-					for (let i = 0; i < numberOfZerosAtTheEnd && decimal.length < numberOfDecimal; ++i) {
+				if (
+					!(fix & Double.FORMAT_TRUNCATE_TRAILING_ZEROS) &&
+					(!CONFIG.truncateTrailingZeros || fix & Double.FORMAT_DIGITS_UP_TO_PRECISION)
+				) {
+					let decimalLenght = decimal.length;
+					for (let i = decimalLenght; i < numberOfDecimal; ++i) {
 						decimal += '0';
 					}
 				}
@@ -2056,13 +2256,13 @@ window.App.Fields = {
 				}
 			}
 			return integer;
-		},
+		}
 		/**
 		 * Function to get value for db format.
 		 * @param {string} value
 		 * @returns {number}
 		 */
-		formatToDb(value) {
+		static formatToDb(value) {
 			if (value == undefined || value == '') {
 				value = 0;
 			}
@@ -2112,8 +2312,8 @@ window.App.Fields = {
 					let sourceFieldElement = this.container.find('input.sourceField'),
 						fieldDisplayElement = this.container.find('input[name="' + sourceFieldElement.attr('name') + '_display"]');
 					AppConnector.request({
-						module: sourceFieldElement.data('modulename'),
-						view: 'TreeModal',
+						module: sourceFieldElement.data('module-name'),
+						view: sourceFieldElement.data('view') || 'TreeModal',
 						template: sourceFieldElement.data('treetemplate'),
 						fieldName: sourceFieldElement.attr('name'),
 						multiple: sourceFieldElement.data('multiple'),
@@ -2172,7 +2372,6 @@ window.App.Fields = {
 					this.value = selectedItemData.label;
 					let element = $(this).attr('readonly', true);
 					element.closest('.js-tree-container').find('input.sourceField').val(selectedItemData.id).trigger('change');
-					return false;
 				},
 				change: function (event, ui) {},
 				open: function (event, ui) {
@@ -2719,7 +2918,7 @@ window.App.Fields = {
 					e.preventDefault();
 					if (!form.find('input[id^="selectRow"]:checked').length) {
 						app.showNotify({
-							text: app.vtranslate('NONE_OF_THE_FIELD_VALUES_ARE_CHANGED_IN_MASS_EDIT'),
+							text: app.vtranslate('JS_NONE_FIELD_MARKED_IN_MASS_EDIT'),
 							type: 'error'
 						});
 						return;
@@ -2769,6 +2968,919 @@ window.App.Fields = {
 			return this.container.closest('form').find(`[name=${relatedFieldName}]`);
 		}
 	},
+	/**
+	 * MultiReference
+	 */
+	MultiReference: class MultiReference {
+		constructor(container) {
+			this.container = container;
+			this.select = container.find('.js-multi-reference');
+			this.form = container.closest('form');
+			this.init();
+		}
+		/**
+		 * Register function
+		 * @param {jQuery} container
+		 */
+		static register(container) {
+			if (container.hasClass('js-multiReference-container')) {
+				return new MultiReference(container);
+			}
+			const instances = [];
+			container.find('.js-multiReference-container').each((_, e) => {
+				instances.push(new MultiReference($(e)));
+			});
+			return instances;
+		}
+		/**
+		 * Set a value for the field
+		 *
+		 * @param   {jQuery}  field Field element
+		 * @param   {mixed}  value The value to set
+		 * @param   {object}  params Additional parameters [optional]
+		 *
+		 * @return  {mixed} The value that has been set
+		 */
+		static setValue(field, value, params) {
+			if (!(params && params['extend'])) {
+				field.val(null);
+			}
+			const values = field.val();
+			$.each(value, (id, label) => {
+				if (!values.includes(id)) {
+					field.append(new Option(label, id, true, true));
+				}
+			});
+			field.trigger('change');
+			return field.val();
+		}
+		/**
+		 * Initiation
+		 */
+		init() {
+			$('.js-related-popup', this.container)
+				.off('click')
+				.on('click', () => {
+					app.showRecordsList(this.getParams(), (_modal, instance) => {
+						instance.setSelectEvent((data) => {
+							this.setReferenceFieldValue(data);
+						});
+					});
+				});
+			$('.js-create-reference-record', this.container)
+				.off('click')
+				.on('click', () => {
+					this.createHandler();
+				});
+			this.registerAutoComplete();
+		}
+		/**
+		 * Function which will handle the reference auto complete event registrations
+		 */
+		registerAutoComplete() {
+			App.Fields.Picklist.showSelect2ElementView(this.select, {
+				ajax: {
+					data: function (item) {
+						return {
+							search_value: item.term ?? '',
+							page: item.page
+						};
+					},
+					processResults: (data, params) => {
+						let items = new Array();
+						if (!params.term) {
+							items.push({
+								type: 'optgroup',
+								name: this.select.attr('placeholder')
+							});
+						} else if (data.success) {
+							$.each(data.result, (_, item) => {
+								items.push({
+									name: item.label,
+									id: item.id
+								});
+							});
+						}
+						return {
+							results: items,
+							pagination: {
+								more: false
+							}
+						};
+					}
+				}
+			});
+		}
+		/**
+		 * Set reference field value
+		 */
+		createHandler() {
+			let formData = this.form.serializeFormData();
+			delete formData['action'];
+			App.Components.QuickCreate.createRecord($('.js-popup-reference-module', this.container).val(), {
+				data: {
+					sourceRecordData: formData
+				},
+				callbackFunction: (data) => {
+					if (data.success) {
+						this.select
+							.append(new Option(data.result._recordLabel, data.result._recordId, true, true))
+							.trigger('change');
+					}
+				},
+				noCache: true
+			});
+		}
+		/**
+		 * Set reference field value
+		 * @param {object} data
+		 */
+		setReferenceFieldValue(data) {
+			const values = this.select.val();
+			let changed = false;
+			$.each(data, (id, label) => {
+				if (!values.includes(id)) {
+					changed = true;
+					this.select.append(new Option(label, id, true, true));
+				}
+			});
+			if (changed) {
+				this.select.trigger('change');
+			}
+		}
+		/**
+		 * Gets params
+		 * @returns {Object}
+		 */
+		getParams() {
+			const referenceModule = $('.js-popup-reference-module', this.container).val(),
+				sourceFieldName = this.select.attr('name').slice(0, -2),
+				sourceRecordElement = $('input[name="record"]', this.form),
+				listFilterFieldsJson = this.form.find('input[name="listFilterFields"]').val(),
+				listFilterFields = listFilterFieldsJson ? JSON.parse(listFilterFieldsJson) : [];
+			let sourceRecordId = '';
+			if (sourceRecordElement.length > 0) {
+				sourceRecordId = sourceRecordElement.val();
+			}
+			let filterFields = {};
+			if (
+				listFilterFields[sourceFieldName] != undefined &&
+				listFilterFields[sourceFieldName][referenceModule] != undefined
+			) {
+				$.each(listFilterFields[sourceFieldName][referenceModule], (index) => {
+					let mapFieldElement = this.form.find('[name="' + index + '"]');
+					if (mapFieldElement.length && mapFieldElement.val() != '') {
+						filterFields[index] = mapFieldElement.val();
+					}
+				});
+			}
+			return {
+				module: referenceModule,
+				src_module: $('input[name="module"]', this.form).val(),
+				src_field: sourceFieldName,
+				src_record: sourceRecordId,
+				filterFields: filterFields,
+				multi_select: true
+			};
+		}
+	},
+	/**
+	 * Password
+	 */
+	Password: class Password {
+		constructor(container) {
+			this.container = container;
+			this.init();
+		}
+		/**
+		 * Register function
+		 * @param {jQuery} container
+		 */
+		static register(container) {
+			if (container.hasClass('js-pwd-container')) {
+				return new Password(container);
+			}
+			const instances = [];
+			container.find('.js-pwd-container').each((_, e) => {
+				instances.push(new Password($(e)));
+			});
+			return instances;
+		}
+		/**
+		 * Get strength meter
+		 * @returns {Object}
+		 */
+		static getStrengthLevels() {
+			if (!this.strengthLevels) {
+				this.strengthLevels = {
+					0: app.vtranslate('JS_PWD_RIDICULOUS'),
+					1: app.vtranslate('JS_PWD_VERY_WEAK'),
+					2: app.vtranslate('JS_PWD_WEAK'),
+					3: app.vtranslate('JS_PWD_MEDIUM'),
+					4: app.vtranslate('JS_PWD_STRONG'),
+					5: app.vtranslate('JS_PWD_VERY_STRONG')
+				};
+			}
+			return { ...this.strengthLevels };
+		}
+		/**
+		 * Initiation
+		 */
+		init() {
+			const field = this.getField();
+			$('.js-pwd-auto-generate', this.container)
+				.off('click')
+				.on('click', (e) => {
+					this.getResponse($(e.currentTarget).data('url')).then((response) => {
+						if (response.success && response.result && response.result.pwd) {
+							this.clear();
+							field.val(response.result.pwd).trigger('keyup').focus();
+						}
+					});
+				});
+			$('.js-pwd-validate', this.container)
+				.off('click')
+				.on('click', (e) => {
+					this.getResponse($(e.currentTarget).data('url') + '&password=' + field.val()).then((response) => {
+						if (response.success && response.result) {
+							let message = response.result.message;
+							if (Array.isArray(message)) {
+								message = message.join('<br>');
+							}
+							field.validationEngine('showPrompt', message, response.result.type, 'topLeft', true);
+							field.validationEngine('updatePromptsPosition');
+						}
+					});
+				});
+			$('.js-pwd-clear', this.container)
+				.off('click')
+				.on('click', () => {
+					this.clear();
+				});
+			$('.js-pwd-copy', this.container)
+				.off('click')
+				.on('click', () => {
+					if (this.container.find('.js-pwd-show').attr('disabled') === 'disabled') {
+						this.getPassword().then((response) => {
+							this.clear();
+							field.val(response.result.text);
+							ClipboardJS.copy(response.result.text);
+							app.showNotify({
+								text: app.vtranslate('JS_NOTIFY_COPY_TEXT'),
+								type: 'success'
+							});
+						});
+					} else {
+						ClipboardJS.copy(this.getField().val());
+						app.showNotify({
+							text: app.vtranslate('JS_NOTIFY_COPY_TEXT'),
+							type: 'success'
+						});
+					}
+				});
+			$('.js-pwd-get', this.container)
+				.off('click')
+				.on('click', () => {
+					this.getPassword().then((response) => {
+						this.clear();
+						field.val(response.result.text);
+					});
+				});
+			if (field.data('strengthMeter')) {
+				field.off('keyup').on('keyup', (e) => {
+					let score = this.strengthMeter(e.target.value || '');
+					field
+						.attr('data-original-title', App.Fields.Password.getStrengthLevels()[score])
+						.tooltip('show')
+						.validationEngine('hide');
+				});
+			}
+		}
+		/**
+		 * Get decoded password
+		 * @returns {Promise}
+		 */
+		getPassword() {
+			const field = this.getField();
+			return this.getResponse({
+				module: field.data('module'),
+				field: field.attr('name'),
+				record: $('input[name="record"]', this.container.closest('form')).val() || app.getRecordId(),
+				action: 'Password',
+				mode: 'getPwd'
+			});
+		}
+		/**
+		 * Clear data
+		 */
+		clear() {
+			this.getField().val('').attr('disabled', false).tooltip('dispose').validationEngine('hide');
+			this.container.find('.js-pwd-validate, .js-pwd-show').attr('disabled', false);
+		}
+		/**
+		 * Get response
+		 * @param {Object|string} params
+		 * @returns {Promise}
+		 */
+		getResponse(params) {
+			const aDeferred = $.Deferred();
+			let progressIndicatorElement = $.progressIndicator({ blockInfo: { enabled: true } });
+			AppConnector.request(params)
+				.done((response) => {
+					progressIndicatorElement.progressIndicator({ mode: 'hide' });
+					if (response.success) {
+						aDeferred.resolve(response);
+					} else {
+						aDeferred.reject(response);
+					}
+				})
+				.fail((_) => {
+					app.showNotify({
+						text: app.vtranslate('JS_ERROR'),
+						type: 'error'
+					});
+					progressIndicatorElement.progressIndicator({ mode: 'hide' });
+					aDeferred.reject(_);
+				});
+			return aDeferred.promise();
+		}
+		/**
+		 * Get strength meter score
+		 * @param {string} pwd
+		 * @returns {int}
+		 */
+		strengthMeter(pwd) {
+			let score = 0;
+			if (pwd.length > 6) score++;
+			if (pwd.match(/[a-z]/) && pwd.match(/[A-Z]/)) score++;
+			if (pwd.match(/\d+/)) score++;
+			if (pwd.match(/.[!,@,#,$,%,^,&,*,?,_,~,-,(,)]/)) score++;
+			if (pwd.length > 12) score++;
+
+			return score;
+		}
+		/**
+		 * Gets field
+		 */
+		getField() {
+			return this.container.find('.js-pwd-field');
+		}
+	},
+	/**
+	 * Multi Attachment
+	 */
+	MultiAttachment: class MultiAttachment {
+		/**
+		 * Constructor
+		 * @param {jQuery} container
+		 * @param {Object} options
+		 */
+		constructor(container, options) {
+			this.container = container;
+			this.fileInput = container.find('.js-multi-attachment__file').eq(0);
+			this.dataInput = container.find('.js-multi-attachment__values');
+			this.form = container.closest('form');
+
+			this.progressBar = container.find('.js-multi-attachment__progress-bar');
+			this.progress = container.find('.js-multi-attachment__progress');
+			this.result = container.find('.js-multi-attachment__result');
+			this.files = this.dataInput.is('input') ? JSON.parse(this.dataInput.val()) : this.dataInput.data('value');
+
+			let fieldInfo = this.dataInput.data('fieldinfo') || {};
+			this.options = {
+				formats: fieldInfo.formats || [],
+				limit: fieldInfo.limit || 1,
+				maxFileSize: fieldInfo.maxFileSize,
+				maxFileSizeDisplay: fieldInfo.maxFileSizeDisplay || '',
+				...options
+			};
+			if (this.form.length && this.fileInput.length) {
+				this.initEditView();
+			} else {
+				this.initDetailView();
+			}
+		}
+		/**
+		 * Register function
+		 * @param {jQuery} container
+		 * @param {Object} options
+		 */
+		static register(container, options = {}) {
+			if (container.hasClass('js-multi-attachment')) {
+				return new MultiAttachment(container, options);
+			}
+			const instances = [];
+			container.find('.js-multi-attachment').each((_, e) => {
+				instances.push(new MultiAttachment($(e), options));
+			});
+			return instances;
+		}
+		/**
+		 * Initiation for detail view
+		 */
+		initDetailView() {
+			this.files.forEach((fileInfo) => {
+				this.createItem(fileInfo);
+			});
+		}
+		/**
+		 * Initiation for edit view
+		 */
+		initEditView() {
+			this.fileInput.detach();
+			this.container.on('mouseup', this.openBrowser.bind(this));
+			this.fileInput.fileupload({
+				dataType: 'json',
+				replaceFileInput: false,
+				fileInput: this.fileInput,
+				autoUpload: false,
+				submit: this.submit.bind(this),
+				add: this.add.bind(this),
+				progressall: this.progressAll.bind(this),
+				change: this.change.bind(this),
+				drop: this.change.bind(this),
+				dragover: this.dragOver.bind(this),
+				fail: this.uploadError.bind(this),
+				done: this.uploadSuccess.bind(this)
+			});
+			this.container.on('dragleave', this.dragLeave.bind(this));
+			this.container.on('dragend', this.dragLeave.bind(this));
+			this.fileInput.fileupload('option', 'dropZone', this.container);
+			this.enableDragNDrop();
+			this.form.on('submit', this.onFormSubmit.bind(this));
+			this.deleteButtonActive = true;
+			this.container.on('click', '.js-multi-attachment__file-buttons-delete', (e) => {
+				e.preventDefault();
+				this.deleteFile(e.currentTarget.dataset.key);
+			});
+			this.files.forEach((fileInfo) => {
+				this.createItem(fileInfo);
+			});
+			this.filesActive = 0;
+		}
+		/**
+		 * Add event handler from jQuery-file-upload
+		 *
+		 * @param {Event} e
+		 * @param {Object} data
+		 */
+		add(e, data) {
+			if (data.files.length > 0) {
+				data.submit();
+			}
+		}
+		/**
+		 * Submit event handler from jQuery-file-upload
+		 *
+		 * @param {Event} e
+		 * @param {Object} data
+		 */
+		submit(e, data) {
+			this.filesActive++;
+			this.progressInstance = $.progressIndicator({
+				position: 'replace',
+				blockInfo: {
+					enabled: true,
+					elementToBlock: this.container
+				}
+			});
+		}
+		/**
+		 * Prevent form submission before file upload end
+		 * @param e
+		 */
+		onFormSubmit(e) {
+			if (this.filesActive) {
+				e.preventDefault();
+				e.stopPropagation();
+				e.stopImmediatePropagation();
+				app.showAlert(app.vtranslate('JS_WAIT_FOR_FILE_UPLOAD'));
+				return false;
+			}
+			return true;
+		}
+		/**
+		 * Progressall event handler from jQuery-file-upload
+		 *
+		 * @param {Event} e
+		 * @param {Object} data
+		 */
+		progressAll(e, data) {
+			const progress = parseInt((data.loaded / data.total) * 100, 10);
+			this.progressBar.css({ width: progress + '%' });
+			if (progress === 100) {
+				setTimeout(() => {
+					this.progress.addClass('d-none');
+					this.progressBar.css({ width: '0%' });
+				}, 1000);
+			} else {
+				this.progress.removeClass('d-none');
+			}
+		}
+		/**
+		 * File change event handler from jQuery-file-upload
+		 *
+		 * @param {Event} e
+		 * @param {object} data
+		 */
+		change(e, data) {
+			let { valid, error } = this.filterFiles(data.files);
+			data.files = valid;
+			if (!valid.length) {
+				this.fileInput.val('');
+			}
+			if (error.length) {
+				this.showErrors(error);
+			}
+			this.dragLeave(e);
+		}
+		/**
+		 * Get only valid files from list
+		 *
+		 * @param {Array} files
+		 * @returns {Object}
+		 */
+		filterFiles(files) {
+			let valid = [],
+				error = [];
+			if (files.length + this.files.length > this.options.limit) {
+				error.push({ error: { text: `${app.vtranslate('JS_FILE_LIMIT')} [${this.options.limit}]` } });
+			} else {
+				for (let file of files) {
+					this.validateFileType(file) && this.validateFileSize(file) ? valid.push(file) : error.push(file);
+				}
+			}
+			return { valid, error };
+		}
+		/**
+		 * Validate maximum file size
+		 * @param {Object} file
+		 * @returns {Boolean}
+		 */
+		validateFileSize(file) {
+			let result = typeof file.size === 'number' && file.size < this.options.maxFileSize;
+			if (!result) {
+				file.error = {
+					title: `${app.vtranslate('JS_UPLOADED_FILE_SIZE_EXCEEDS')} <br> [${this.options.maxFileSizeDisplay}]`,
+					text: file.name
+				};
+			}
+			return result;
+		}
+		/**
+		 * Validate file
+		 *
+		 * @param {Object} file
+		 * @returns {boolean}
+		 */
+		validateFileType(file) {
+			let result =
+				!this.options.formats.length ||
+				this.options.formats.filter((format) => {
+					return file.type === format || (format.slice(-2) === '/*' && file.type.indexOf(format.slice(0, -1)) === 0);
+				}).length > 0;
+			if (!result) {
+				file.error = { title: app.vtranslate('JS_INVALID_FILE_TYPE'), text: file.name };
+			}
+			return result;
+		}
+		/**
+		 * Show errors
+		 */
+		showErrors(errors = []) {
+			for (let info of errors) {
+				this.showError(info.error);
+			}
+		}
+		/**
+		 * Show error
+		 */
+		showError(error) {
+			if (typeof error.type === 'undefined') {
+				error.type = 'error';
+			}
+			error.textTrusted = false;
+			app.showNotify(error);
+		}
+		/**
+		 * Dragover event handler from jQuery-file-upload
+		 *
+		 * @param {Event} e
+		 */
+		dragOver(_e) {
+			this.container.addClass('c-multi-image__drop-effect');
+		}
+		/**
+		 * Dragleave event handler
+		 * @param {Event} e
+		 */
+		dragLeave(_e) {
+			this.container.removeClass('c-multi-image__drop-effect');
+		}
+		/**
+		 * Error event handler from file upload request
+		 *
+		 * @param {Event} e
+		 * @param {Object} data
+		 */
+		uploadError(_e, data) {
+			this.progressInstance.progressIndicator({ mode: 'hide' });
+			this.filesActive--;
+			app.errorLog('File upload error.');
+			const { jqXHR, files } = data;
+			if (typeof jqXHR.responseJSON === 'undefined' || jqXHR.responseJSON === null) {
+				return this.showError({
+					title: app.vtranslate('JS_FILE_UPLOAD_ERROR'),
+					type: 'error'
+				});
+			}
+			files.forEach((file) => {
+				this.showError({
+					title: app.vtranslate('JS_FILE_UPLOAD_ERROR'),
+					text: file.name,
+					type: 'error'
+				});
+			});
+			this.updateFormValues();
+		}
+		/**
+		 * Success event handler from file upload request
+		 *
+		 * @param {Event} e
+		 * @param {Object} data
+		 */
+		uploadSuccess(e, data) {
+			this.progressInstance.progressIndicator({ mode: 'hide' });
+			const { result } = data;
+			const attach = result.result.attach;
+			attach.forEach((fileAttach) => {
+				this.filesActive--;
+				if (typeof fileAttach.key === 'undefined') {
+					return this.uploadError(e, data);
+				}
+				if (typeof fileAttach.info !== 'undefined' && fileAttach.info) {
+					app.showNotify({
+						type: 'notice',
+						text: fileAttach.info
+					});
+				}
+				this.files.push(fileAttach);
+				const fileInfo = this.getFileInfo(fileAttach.key);
+				this.createItem(fileInfo);
+			});
+			this.updateFormValues();
+		}
+		/**
+		 * Get file information
+		 *
+		 * @param {String} key - file id
+		 * @returns {Object}
+		 */
+		getFileInfo(key) {
+			for (let i = 0, len = this.files.length; i < len; i++) {
+				const file = this.files[i];
+				if (file.key === key) {
+					return file;
+				}
+			}
+			app.errorLog(`File '${key}' not found.`);
+			app.showNotify({
+				text: app.vtranslate('JS_INVALID_FILE_HASH'),
+				type: 'error'
+			});
+		}
+		/**
+		 * Generate preview of image as html string from existing values
+		 * @param {Object} file
+		 */
+		createItem(file) {
+			const item = document.createElement('fieldset');
+			item.setAttribute('class', 'c-multi-attachment--file bg-light js-handle');
+			item.setAttribute('data-key', file.key);
+
+			const legend = document.createElement('legend');
+			legend.appendChild(document.createTextNode(file.name));
+			item.appendChild(legend);
+
+			const icon = document.createElement('div');
+			icon.setAttribute('class', 'c-multi-attachment--file-icon');
+			const span = document.createElement('span');
+			span.setAttribute('class', file.icon);
+			icon.appendChild(span);
+			item.appendChild(icon);
+
+			const fileInfo = document.createElement('div');
+			fileInfo.setAttribute('class', 'c-multi-attachment--file-info');
+			const name = document.createElement('span');
+			name.setAttribute('class', 'c-multi-attachment--file-info-main');
+			name.setAttribute('aria-hidden', true);
+			name.appendChild(document.createTextNode(file.name));
+			fileInfo.appendChild(name);
+			const size = document.createElement('span');
+			size.setAttribute('class', 'c-multi-attachment--file-info-sub');
+			size.appendChild(document.createTextNode(file.sizeDisplay));
+			fileInfo.appendChild(size);
+			item.appendChild(fileInfo);
+
+			const buttons = document.createElement('div');
+			buttons.setAttribute('class', 'js-multi-attachment__file-buttons');
+
+			if (file.url) {
+				const downloadBtn = document.createElement('a');
+				downloadBtn.setAttribute('class', 'btn btn-sm btn-outline-success js-multi-attachment__file-buttons-download');
+				downloadBtn.setAttribute('href', file.url);
+				downloadBtn.setAttribute('download', file.name);
+				downloadBtn.setAttribute('title', $('<textarea />').html(app.vtranslate('JS_DOWNLOAD')).text());
+				const downloadBtnIcon = document.createElement('span');
+				downloadBtnIcon.setAttribute('class', 'fa fa-download');
+				downloadBtn.appendChild(downloadBtnIcon);
+				buttons.appendChild(downloadBtn);
+			}
+			if (this.deleteButtonActive && !file.lock) {
+				const deleteBtn = document.createElement('button');
+				deleteBtn.setAttribute('class', 'btn btn-sm btn-outline-danger js-multi-attachment__file-buttons-delete ml-1');
+				deleteBtn.setAttribute('data-key', file.key);
+				deleteBtn.setAttribute('title', $('<textarea />').html(app.vtranslate('JS_DELETE')).text());
+				const deleteBtnIcon = document.createElement('span');
+				deleteBtnIcon.setAttribute('class', 'fa fa-trash-alt');
+				deleteBtn.appendChild(deleteBtnIcon);
+				buttons.appendChild(deleteBtn);
+			}
+
+			item.appendChild(buttons);
+			this.result.append(item);
+		}
+		/**
+		 * Enable drag and drop files repositioning
+		 */
+		enableDragNDrop() {
+			this.result
+				.sortable({
+					containment: this.container,
+					items: '.js-handle',
+					stop: this.sortStop.bind(this)
+				})
+				.disableSelection();
+		}
+		/**
+		 * Prevent form submission
+		 *
+		 * @param {Event} e
+		 */
+		openBrowser(e) {
+			if (!e.target.closest('fieldset')) {
+				e.preventDefault();
+				this.fileInput.trigger('click');
+			}
+		}
+
+		/**
+		 * Update file position according to elements order
+		 *
+		 * @param {Event} e
+		 * @param {Object} ui
+		 */
+		sortStop(e, ui) {
+			const actualElements = this.result.find('fieldset').toArray();
+			this.files = actualElements.map((element) => {
+				for (let i = 0, len = this.files.length; i < len; i++) {
+					const elementHash = $(element).data('key');
+					if (this.files[i].key === elementHash) {
+						return this.files[i];
+					}
+				}
+			});
+			this.updateFormValues();
+		}
+		/**
+		 * Remove file from preview and from file list
+		 *
+		 * @param {String} key
+		 */
+		deleteFile(key) {
+			const fileInfo = this.getFileInfo(key);
+			this.result.find(`[data-key="${fileInfo.key}"]`).remove();
+			this.files = this.files.filter((file) => file.key !== fileInfo.key);
+			this.updateFormValues();
+		}
+
+		/**
+		 * Update form input values
+		 */
+		updateFormValues() {
+			this.fileInput.val('');
+			const formValues = this.files.map((file) => {
+				return { key: file.key, name: file.name, size: file.size, type: file.type };
+			});
+			this.dataInput.val(JSON.stringify(formValues));
+		}
+	},
+	/**
+	 * Icon
+	 */
+	Icon: class Icon {
+		constructor(container) {
+			this.container = container;
+			this.init();
+		}
+		/**
+		 * Register function
+		 * @param {jQuery} container
+		 */
+		static register(container) {
+			if (container.hasClass('js-icon-container')) {
+				return new Icon(container);
+			}
+			const instances = [];
+			container.find('.js-icon-container').each((_, e) => {
+				instances.push(new Icon($(e)));
+			});
+
+			return instances;
+		}
+		/**
+		 * Initiation
+		 */
+		init() {
+			this.iconElement = $('.js-icon-show', this.container);
+			$('.js-clear-selection', this.container)
+				.off('click')
+				.on('click', () => {
+					this.clear();
+				});
+			$('.js-icon-select', this.container)
+				.off('click')
+				.on('click', () => {
+					App.Components.Icons.modalView().done((data) => {
+						if (data.type === 'icon') {
+							const span = document.createElement('span');
+							span.setAttribute('class', data.name);
+							this.iconElement.html('').append(span);
+						} else if (data.type === 'image') {
+							const image = document.createElement('img');
+							image.setAttribute('class', 'icon-img--picklist');
+							image.setAttribute('src', data.src);
+							this.iconElement.html('').append(image);
+						}
+						this.setValue(data);
+						this.setDisplayValue(data.name);
+					});
+				});
+		}
+		/**
+		 * Clear selection
+		 */
+		clear() {
+			let element = this.getField();
+			let fieldName = element.attr('name');
+			element.val('');
+			this.container.find(`#${fieldName}_display`).val('');
+			this.iconElement.html('');
+		}
+		/**
+		 * Set icon name
+		 * @param {string} data
+		 */
+		setDisplayValue(name) {
+			let fieldName = this.getField().attr('name');
+			this.container.find(`#${fieldName}_display`).val(name).attr('readonly', true);
+		}
+		/**
+		 * Set value
+		 * @param {Object} data
+		 */
+		setValue(data) {
+			let { type, name } = data;
+			if (data.key) {
+				name = data.key;
+			}
+			this.getField().val(JSON.stringify({ type: type, name: name }));
+		}
+		/**
+		 * Gets field
+		 */
+		getField() {
+			return this.container.find('.js-source-field');
+		}
+	},
+	Phone: {
+		/**
+		 * Register function
+		 * @param {jQuery} container
+		 */
+		register(container) {
+			Integrations_Pbx_Base.getInstance(container).registerEvents();
+		}
+	},
+	Mail: {
+		/**
+		 * Register function
+		 * @param {jQuery} container
+		 */
+		register(container) {
+			Integrations_Mail_Base.getInstance(container).registerEvents();
+		}
+	},
 	Utils: {
 		registerMobileDateRangePicker(element) {
 			this.hideMobileKeyboard(element);
@@ -2804,17 +3916,215 @@ window.App.Fields = {
 			picker.move();
 		},
 		/**
-		 * Set value
+		 * Set a value for the field
 		 *
-		 * @param   {object}  fieldElement  jQuery
-		 * @param   {string|boolean}  value
+		 * @param   {jQuery}  field Field element
+		 * @param   {mixed}  value The value to set
+		 * @param   {object}  params Additional parameters [optional]
+		 * @param   {boolean}  animation
 		 */
-		setValue(fieldElement, value) {
-			if (fieldElement.is('select')) {
-				App.Fields.Picklist.setValue(fieldElement, value);
-			} else {
-				fieldElement.val(value);
+		setValue(field, value, params, animation = true) {
+			const fieldInfo = field.data('fieldinfo');
+			switch (fieldInfo['type']) {
+				case 'picklist':
+				case 'languages':
+				case 'country':
+				case 'currencyList':
+				case 'modules':
+					App.Fields.Picklist.setValue(field, value, params);
+					break;
+				case 'multiReference':
+					App.Fields.MultiReference.setValue(field, value, params);
+					break;
+				default:
+					field.val(value);
+					break;
 			}
+			if (animation) {
+				const fieldValue = field.closest('.fieldValue');
+				fieldValue.addClass('border border-info');
+				setTimeout(function () {
+					fieldValue.removeClass('border border-info');
+				}, 5000);
+			}
+		}
+	},
+	/**
+	 * Map coordinates field class
+	 */
+	MapCoordinates: class MapCoordinates {
+		/**
+		 * Register function for detail view
+		 * @param {jQuery} container
+		 */
+		static register(container) {
+			$('.js-show-map__btn', container).each(function () {
+				let self = new MapCoordinates($(this), {});
+				self.registerEvents();
+			});
+		}
+		/**
+		 * Register function for edit view
+		 * @param {jQuery} container
+		 * @param {Object} options
+		 */
+		static registerEdit(container, options = {}) {
+			if (container.hasClass('js-map-coordinates')) {
+				let self = new MapCoordinates(container, options);
+				self.registerEditEvents();
+				return self;
+			}
+			const instances = [];
+			container.find('.js-map-coordinates').each((_, e) => {
+				let self = new MapCoordinates($(e), options);
+				self.registerEditEvents();
+				instances.push(self);
+			});
+			return instances;
+		}
+		/**
+		 * Constructor
+		 * @param {jQuery} container
+		 * @param {Object} options
+		 */
+		constructor(container, options) {
+			this.container = container;
+			this.fieldInfo = this.container.find('input:first').data('fieldinfo') || {};
+			this.values = this.container.data('fieldinfo') || {};
+			this.options = { ...options };
+		}
+		/**
+		 * Register events for edit view
+		 */
+		registerEditEvents() {
+			this.container.find('.js-map-edit__btn').on('click', () => {
+				this.showMap();
+			});
+			this.container.find('.js-geo-type').on('change', (e) => {
+				this.container.find('.js-geo-value').addClass('d-none');
+				this.container.find('.js-geo-value[data-type="' + $(e.currentTarget).val() + '"]').removeClass('d-none');
+			});
+			const locationBtn = this.container.find('.js-my-location__btn');
+			if (navigator.geolocation) {
+				navigator.permissions.query({ name: 'geolocation' }).then((response) => {
+					if (response.state === 'denied') {
+						locationBtn.addClass('d-none');
+					}
+				});
+			} else {
+				locationBtn.addClass('d-none');
+			}
+			locationBtn.on('click', () => {
+				this.detectLocation();
+			});
+		}
+		/**
+		 * Set value
+		 * @param {mixed} value
+		 * @param {string} type
+		 */
+		setValue(value, type) {
+			this.container.find('.js-geo-type').val(type).trigger('change');
+			if (typeof value === 'object') {
+				$.each(value, (index, val) => {
+					this.container.find(`.js-geo-value[name="${this.fieldInfo['name']}[${type}][${index}]"]`).val(val);
+				});
+			} else {
+				this.container.find(`.js-geo-value[name="${this.fieldInfo['name']}[${type}]"]`).val(value);
+			}
+		}
+		/**
+		 * Get value
+		 * @returns {object}
+		 */
+		getValue() {
+			let ret = { type: this.container.find('.js-geo-type').val(), decimal: {}, degrees: {} };
+			this.container.find(`.js-geo-value`).each((_, e) => {
+				e = $(e);
+				if (e.data('key')) {
+					ret[e.data('type')][e.data('key')] = e.val();
+				} else {
+					ret[e.data('type')] = e.val();
+				}
+			});
+			ret['value'] = ret[ret['type']];
+			return ret;
+		}
+		/**
+		 * Detect user location
+		 */
+		detectLocation() {
+			navigator.geolocation.getCurrentPosition((position) => {
+				this.setValue({ lat: position.coords.latitude, lon: position.coords.longitude }, 'decimal');
+			});
+		}
+		/**
+		 * Show map modal
+		 */
+		showMap() {
+			const progress = jQuery.progressIndicator({ position: 'html', blockInfo: { enabled: true } });
+			AppConnector.request({
+				module: 'OpenStreetMap',
+				view: 'MapModal',
+				point: true,
+				srcModule: app.getModuleName(this.container),
+				srcField: this.fieldInfo['name'],
+				value: this.getValue()
+			})
+				.done((data) => {
+					progress.progressIndicator({ mode: 'hide' });
+					app.showModalWindow(data, (modal) => {
+						const mapView = new OpenStreetMap_Map_Js();
+						mapView.registerFromField(modal, this);
+					});
+				})
+				.fail((_error, err) => {
+					progress.progressIndicator({ mode: 'hide' });
+					app.showNotify({
+						title: app.vtranslate('JS_MESSAGE'),
+						text: err,
+						type: 'error'
+					});
+				});
+		}
+		/**
+		 * Register events for detail view
+		 */
+		registerEvents() {
+			this.container.on('click', (e) => {
+				e.preventDefault();
+				const element = $(e.currentTarget),
+					value = element.data('value');
+				if (!value) {
+					window.open(element.attr('href'), element.attr('href'), 'toolbar=0,menubar=0,location=0');
+					return;
+				}
+				const fieldName = element.closest('.js-field-block-column').data('field'),
+					progress = jQuery.progressIndicator({ position: 'html', blockInfo: { enabled: true } });
+				AppConnector.request({
+					module: 'OpenStreetMap',
+					view: 'MapModal',
+					point: true,
+					srcModule: app.getModuleName(this.container),
+					srcField: fieldName,
+					value: value
+				})
+					.done((data) => {
+						progress.progressIndicator({ mode: 'hide' });
+						app.showModalWindow(data, (modal) => {
+							const mapView = new OpenStreetMap_Map_Js();
+							mapView.registerFromField(modal, this);
+						});
+					})
+					.fail((_error, err) => {
+						progress.progressIndicator({ mode: 'hide' });
+						app.showNotify({
+							title: app.vtranslate('JS_MESSAGE'),
+							text: err,
+							type: 'error'
+						});
+					});
+			});
 		}
 	}
 };

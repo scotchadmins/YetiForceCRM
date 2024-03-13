@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce Sp. z o.o
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Import_Utils_Helper
@@ -47,11 +47,6 @@ class Import_Utils_Helper
 			$description[] = '.' . strtoupper($fileType);
 		}
 		return implode(', ', $description);
-	}
-
-	public static function getMaxUploadSize()
-	{
-		return \App\Config::main('upload_maxsize');
 	}
 
 	/**
@@ -147,7 +142,7 @@ class Import_Utils_Helper
 	{
 		$currentUser = \App\User::getCurrentUserModel();
 
-		$uploadMaxSize = self::getMaxUploadSize();
+		$uploadMaxSize = \App\Config::getMaxUploadSize();
 		$importDirectory = App\Fields\File::getTmpPath();
 		$temporaryFileName = self::getImportFilePath($currentUser);
 		if ($_FILES['import_file']['error']) {
@@ -168,7 +163,7 @@ class Import_Utils_Helper
 			return false;
 		}
 		$fileInstance = \App\Fields\File::loadFromRequest($_FILES['import_file']);
-		if ($fileInstance->getEncoding() !== strtoupper($request->getByType('file_encoding', 'Text'))) {
+		if ('zip' !== $fileInstance->getExtension(true) && $fileInstance->getEncoding() !== strtoupper($request->getByType('file_encoding', 'Text'))) {
 			$request->set('error_message', \App\Language::translateArgs('LBL_IMPORT_FILE_DIFFERENT_ENCODING', 'Import', $fileInstance->getEncoding()));
 			return false;
 		}

@@ -1,30 +1,52 @@
 <?php
+/**
+ * Base abstract authorization file.
+ *
+ * @package API
+ *
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ */
 
 namespace Api\Core\Auth;
 
 /**
- * Base Abstract Authorization class.
- *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
- * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * Base abstract authorization class.
  */
 abstract class AbstractAuth
 {
-	protected $currentServer;
+	/** @var \Api\Controller Controller instance */
 	protected $api;
 
-	public function setApi($api)
+	/**
+	 * Set api controller.
+	 *
+	 * @param \Api\Controller $api
+	 *
+	 * @return void
+	 */
+	public function setApi(\Api\Controller $api): void
 	{
 		$this->api = $api;
 	}
 
-	abstract protected function authenticate($realm);
+	/**
+	 * Authenticate function.
+	 *
+	 * @param string $realm
+	 *
+	 * @throws \Api\Core\Exception
+	 *
+	 * @return bool
+	 */
+	abstract protected function authenticate(string $realm): bool;
 
-	abstract protected function validatePass($username, $password);
-
-	public function getCurrentServer()
-	{
-		return $this->currentServer;
-	}
+	/**
+	 * Set server data.
+	 *
+	 * @return self
+	 */
+	abstract protected function setServer(): self;
 }

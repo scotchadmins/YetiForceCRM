@@ -6,7 +6,7 @@
 * The Initial Developer of the Original Code is vtiger.
 * Portions created by vtiger are Copyright (C) vtiger.
 * All Rights Reserved.
-* Contributor(s): YetiForce.com
+* Contributor(s): YetiForce S.A.
 ********************************************************************************/
 -->*}
 {strip}
@@ -16,13 +16,12 @@
 		</a>
 		&nbsp;
 	{/if}
-	<a class="btn btn-sm btn-light" href="javascript:void(0);" name="drefresh"
-	   data-url="{$WIDGET->getUrl()}&content=data">
-		<span class="fas fa-sync-alt" title="{\App\Language::translate('LBL_REFRESH')}"></span>
-	</a>
+	<button class="btn btn-sm btn-light js-widget-refresh" title="{\App\Language::translate('LBL_REFRESH')}" data-url="{$WIDGET->getUrl()|escape}&content=data" data-js="click">
+		<span class="fas fa-sync-alt"></span>
+	</button>
 	{if !$WIDGET->isDefault()}
-		<a class="js-widget-remove btn btn-sm btn-light" data-js="click | bootbox" data-url="{$WIDGET->getDeleteUrl()}">
-			<span class="fas fa-times" title="{\App\Language::translate('LBL_CLOSE')}"></span>
-		</a>
+		<button class="btn btn-sm btn-light js-widget-remove" title="{\App\Language::translate('LBL_CLOSE')}" data-url="{$WIDGET->getDeleteUrl()|escape}" data-js="click">
+			<span class="fas fa-times"></span>
+		</button>
 	{/if}
 {/strip}

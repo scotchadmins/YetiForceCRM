@@ -5,28 +5,25 @@
  *
  * @package   View
  *
- * @copyright YetiForce Sp. z o.o.
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Dudek <a.dudek@yetiforce.com>
  * @author    Arkadiusz Adach <a.adach@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class Calendar_ActivityState_View extends Calendar_ActivityStateModal_View
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	protected function getTpl()
 	{
-		return 'Extended/ActivityState.tpl';
+		return 'Calendar/ActivityState.tpl';
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getLinks(): array
 	{
 		$links = [];
-		if ($this->record->isEditable() && \App\Config::main('isActiveSendingMails') && \App\Privilege::isPermitted('OSSMail') && 1 === \App\User::getCurrentUserModel()->getDetail('internal_mailer')) {
+		if ($this->record->isEditable() && \App\Mail::checkInternalMailClient()) {
 			$links[] = Vtiger_Link_Model::getInstanceFromValues([
 				'linklabel' => 'LBL_SEND_CALENDAR',
 				'linkdata' => ['url' => "index.php?module={$this->record->getModuleName()}&view=SendInvitationModal&record={$this->record->getId()}"],

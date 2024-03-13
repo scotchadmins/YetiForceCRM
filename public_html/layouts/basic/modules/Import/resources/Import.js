@@ -5,7 +5,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  ************************************************************************************/
 'use strict';
 
@@ -27,7 +27,7 @@ if (typeof ImportJs === 'undefined') {
 			var filePath = jQuery('#import_file').val();
 			if (filePath != '') {
 				var fileExtension = filePath.split('.').pop();
-				jQuery('#type').val(fileExtension);
+				jQuery('.js-type').val(fileExtension);
 				ImportJs.handleFileTypeChange();
 			}
 		},
@@ -149,15 +149,17 @@ if (typeof ImportJs === 'undefined') {
 			return true;
 		},
 		convertOptionsToJSONArray: function (objName, targetObjName) {
-			var obj = jQuery(objName);
-			var arr = [];
+			let obj = jQuery(objName);
+			let arr = [];
 			if (typeof obj !== 'undefined' && obj[0] != '') {
-				for (var i = 0; i < obj[0].length; ++i) {
-					arr.push(obj[0].options[i].value);
+				for (let i = 0; i < obj[0].length; ++i) {
+					if (obj[0].options[i].selected) {
+						arr.push(obj[0].options[i].value);
+					}
 				}
 			}
 			if (targetObjName !== 'undefined') {
-				var targetObj = $(targetObjName);
+				let targetObj = $(targetObjName);
 				if (typeof targetObj !== 'undefined') targetObj.val(JSON.stringify(arr));
 			}
 			return arr;
@@ -361,25 +363,24 @@ if (typeof ImportJs === 'undefined') {
 			});
 		},
 		deleteMap: function (module) {
-			app.showConfirmModal(app.vtranslate('LBL_DELETE_CONFIRMATION'), function (s) {
-				if (s) {
-					var selectedMapElement = jQuery('#saved_maps option:selected');
-					var mapId = selectedMapElement.attr('id');
-					var status = jQuery('#status');
+			app.showConfirmModal({
+				text: app.vtranslate('LBL_DELETE_CONFIRMATION'),
+				confirmedCallback: () => {
+					let selectedMapElement = jQuery('#saved_maps option:selected');
+					let mapId = selectedMapElement.attr('id');
+					let status = jQuery('#status');
 					status.show();
-					var postData = {
+					AppConnector.request({
 						module: module,
 						view: 'Import',
 						mode: 'deleteMap',
 						mapid: mapId
-					};
-					AppConnector.request(postData)
+					})
 						.done(function (data) {
 							let mapContainer = $('#savedMapsContainer').html(data);
 							status.hide();
 							App.Fields.Picklist.showSelect2ElementView(mapContainer.find('select'));
-							var parent = jQuery('#saved_maps');
-							App.Fields.Picklist.changeSelectElementView(parent);
+							App.Fields.Picklist.changeSelectElementView(jQuery('#saved_maps'));
 						})
 						.fail(function (error, err) {
 							console.error(error);

@@ -7,8 +7,8 @@ namespace App;
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -68,9 +68,7 @@ class Db extends \yii\db\Connection
 	 */
 	public $port;
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $schemaMap = [
 		'pgsql' => 'App\Db\Drivers\Pgsql\Schema', // PostgreSQL
 		'mysqli' => 'yii\db\mysql\Schema', // MySQL
@@ -165,14 +163,17 @@ class Db extends \yii\db\Connection
 		if (false !== stripos($conf['version_comment'], 'MariaDb')) {
 			$typeDb = 'MariaDb';
 		}
-		$memory = $conf['key_buffer_size'] + ($conf['query_cache_size'] ?? 0) + $conf['tmp_table_size'] + $conf['innodb_buffer_pool_size'] +
-		($conf['innodb_additional_mem_pool_size'] ?? 0) + $conf['innodb_log_buffer_size'] + ($conf['max_connections'] * ($conf['sort_buffer_size']
-				+ $conf['read_buffer_size'] + $conf['read_rnd_buffer_size'] + $conf['join_buffer_size'] + $conf['thread_stack'] + $conf['binlog_cache_size']));
+		$maxTmpTableSize = $conf['tmp_table_size'] > $conf['max_heap_table_size'] ? $conf['max_heap_table_size'] : $conf['tmp_table_size'];
+		$serverBuffers = $conf['key_buffer_size'] + $maxTmpTableSize + ($conf['innodb_buffer_pool_size'] ?? 0) + ($conf['innodb_additional_mem_pool_size'] ?? 0) +
+		($conf['innodb_log_buffer_size'] ?? 0) + ($conf['query_cache_size'] ?? 0) + ($conf['aria_pagecache_buffer_size'] ?? 0);
+		$perThreadBuffers = $conf['read_buffer_size'] + $conf['read_rnd_buffer_size'] + $conf['sort_buffer_size'] + $conf['thread_stack'] + $conf['max_allowed_packet'] + $conf['join_buffer_size'];
+		$totalPerThreadBuffers = $conf['max_connections'] * $perThreadBuffers;
 		return \array_merge($conf, [
 			'driver' => $this->getDriverName(),
 			'typeDb' => $typeDb,
 			'serverVersion' => $version,
-			'maximumMemorySize' => $memory,
+			'maxUsedMemory' => $serverBuffers + $totalPerThreadBuffers,
+			'maxUsedMemoryDesc' => \vtlib\Functions::showBytes($serverBuffers) . ' + ' . \vtlib\Functions::showBytes($totalPerThreadBuffers) . ' (' . $conf['max_connections'] . ' * ' . \vtlib\Functions::showBytes($perThreadBuffers) . ')',
 			'clientVersion' => $pdo->getAttribute(\PDO::ATTR_CLIENT_VERSION),
 			'connectionStatus' => $pdo->getAttribute(\PDO::ATTR_CONNECTION_STATUS),
 			'serverInfo' => $pdo->getAttribute(\PDO::ATTR_SERVER_INFO),
@@ -240,7 +241,19 @@ class Db extends \yii\db\Connection
 	 */
 	public function quoteSql($sql)
 	{
-		return str_replace('#__', $this->tablePrefix, $sql);
+		return $this->convertTablePrefix($sql);
+	}
+
+	/**
+	 * Convert table prefix.
+	 *
+	 * @param string $tableName
+	 *
+	 * @return string
+	 */
+	public function convertTablePrefix(string $tableName): string
+	{
+		return str_replace('#__', $this->tablePrefix, $tableName);
 	}
 
 	/**
@@ -250,11 +263,11 @@ class Db extends \yii\db\Connection
 	 *
 	 * @return string the row ID of the last row inserted, or the last value retrieved from the sequence object
 	 *
-	 * @see http://www.php.net/manual/en/function.PDO-lastInsertId.php
+	 * @see https://www.php.net/manual/en/function.PDO-lastInsertId.php
 	 */
 	public function getLastInsertID($sequenceName = '')
 	{
-		return parent::getLastInsertID(str_replace('#__', $this->tablePrefix, $sequenceName));
+		return parent::getLastInsertID($this->convertTablePrefix($sequenceName));
 	}
 
 	/**
@@ -319,7 +332,7 @@ class Db extends \yii\db\Connection
 	 */
 	public function isTableExists($tableName)
 	{
-		return \in_array(str_replace('#__', $this->tablePrefix, $tableName), $this->getSchema()->getTableNames());
+		return \in_array($this->convertTablePrefix($tableName), $this->getSchema()->getTableNames());
 	}
 
 	/**
@@ -354,7 +367,7 @@ class Db extends \yii\db\Connection
 		if (!$this->isTableExists($tableName)) {
 			return [];
 		}
-		$tableName = $this->quoteTableName(str_replace('#__', $this->tablePrefix, $tableName));
+		$tableName = $this->quoteTableName($this->convertTablePrefix($tableName));
 		$keys = [];
 		if ('mysql' === $this->getDriverName()) {
 			$dataReader = $this->createCommand()->setSql('SHOW KEYS FROM ' . $tableName)->query();

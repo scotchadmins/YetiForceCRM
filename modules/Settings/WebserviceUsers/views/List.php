@@ -3,9 +3,12 @@
 /**
  * WebserviceUsers List View Class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @package Settings.View
+ *
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class Settings_WebserviceUsers_List_View extends Settings_Vtiger_List_View
 {
@@ -19,18 +22,16 @@ class Settings_WebserviceUsers_List_View extends Settings_Vtiger_List_View
 	{
 		$qualifiedModuleName = $request->getModule(false);
 		if (!$request->has('typeApi')) {
-			$request->set('typeApi', current(Settings_WebserviceApps_Module_Model::getTypes()));
+			$request->set('typeApi', current(\Api\Core\Containers::LIST));
 		}
-		$typeApi = $request->getByType('typeApi', 'Alnum');
+		$typeApi = $request->getByType('typeApi', \App\Purifier::STANDARD);
 		$this->listViewModel = Settings_Vtiger_ListView_Model::getInstance($qualifiedModuleName);
 		$this->listViewModel->getModule()->typeApi = $typeApi;
 		parent::initializeListViewContents($request, $viewer);
 		$viewer->assign('TYPE_API', $typeApi);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$viewer = $this->getViewer($request);
@@ -39,13 +40,11 @@ class Settings_WebserviceUsers_List_View extends Settings_Vtiger_List_View
 		parent::process($request);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getFooterScripts(App\Request $request)
 	{
 		return array_merge(parent::getFooterScripts($request), $this->checkAndConvertJsScripts([
-			'libraries.clipboard.dist.clipboard'
+			'libraries.clipboard.dist.clipboard',
 		]));
 	}
 }

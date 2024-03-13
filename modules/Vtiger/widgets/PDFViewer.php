@@ -4,8 +4,8 @@
  *
  * @package Widget
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 /**
@@ -13,17 +13,13 @@
  */
 class Vtiger_PDFViewer_Widget extends Vtiger_Basic_Widget
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function isPermitted(): bool
 	{
 		return parent::isPermitted() && Users_Privileges_Model::getCurrentUserPrivilegesModel()->hasModuleActionPermission($this->Module, 'ExportPdf') && \Vtiger_PDF_Model::getTemplatesByModule($this->Module);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getWidget()
 	{
 		$this->Config['url'] = 'module=' . $this->Module . '&view=Detail&record=' . $this->Record . '&mode=showPDF';
@@ -34,9 +30,7 @@ class Vtiger_PDFViewer_Widget extends Vtiger_Basic_Widget
 		return parent::getWidget();
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getConfigTplName()
 	{
 		return 'PDFViewerConfig';

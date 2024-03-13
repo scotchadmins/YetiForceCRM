@@ -3,8 +3,8 @@
 /**
  * Record Class for IStorages.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class IStorages_Record_Model extends Vtiger_Record_Model
@@ -32,9 +32,7 @@ class IStorages_Record_Model extends Vtiger_Record_Model
 		return $hierarchy;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getDisplayValue($fieldName, $record = false, $rawText = false, $length = false)
 	{
 		// This is special field / displayed only in Products module [view=Detail relatedModule=IStorages]

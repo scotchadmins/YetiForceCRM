@@ -4,9 +4,10 @@
  *
  * @package   Tests
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 namespace Tests\Settings;
@@ -84,7 +85,7 @@ class ModuleManager extends \Tests\Base
 			'module_label' => 'TestModule',
 			'entitytype' => \Vtiger_Module_Model::ADVANCED_TYPE,
 			'entityfieldlabel' => 'TestModule',
-			'premium' => 2
+			'premium' => 2,
 		]);
 
 		$this->assertFileExists(ROOT_DIRECTORY . '/modules/TestModule/TestModule.php');
@@ -123,7 +124,7 @@ class ModuleManager extends \Tests\Base
 	 */
 	public function testCreateNewBlock()
 	{
-		$moduleModel = \Settings_LayoutEditor_Module_Model::getInstanceByName('TestModule');
+		$moduleModel = \Vtiger_Module_Model::getInstance('TestModule');
 		$blockInstance = new \Settings_LayoutEditor_Block_Model();
 		$blockInstance->set('label', 'label block');
 		$blockInstance->set('iscustom', 1);
@@ -154,14 +155,14 @@ class ModuleManager extends \Tests\Base
 		if ('Tree' === $type || 'CategoryMultipicklist' === $type) {
 			//Add a tree if it does not exist
 			if (empty(self::$treeId)) {
-				self::$treeId = (new TreesManager())->testAddTree(1, \Settings_LayoutEditor_Module_Model::getInstanceByName('TestModule')->getId());
+				self::$treeId = (new TreesManager())->testAddTree(1, \Vtiger_Module_Model::getInstance('TestModule')->getId());
 			}
 			$param['tree'] = self::$treeId;
 		} elseif ('MultiReferenceValue' === $type) {
 			$param['MRVField'] = $this->getMRVField();
 		}
 
-		$moduleModel = \Settings_LayoutEditor_Module_Model::getInstanceByName($param['sourceModule']);
+		$moduleModel = \Settings_LayoutEditor_Module_Model::getInstance('Settings:LayoutEditor')->setSourceModule($param['sourceModule']);
 		$fieldModel = $moduleModel->addField($param['fieldType'], self::$blockId, $param);
 		self::$fieldsId[$key] = $fieldModel->getId();
 		$details = $moduleModel->getTypeDetailsForAddField($type, $param);
@@ -220,6 +221,8 @@ class ModuleManager extends \Tests\Base
 			case 305: //MultiReferenceValue
 				$this->assertTrue((new \App\Db\Query())->from('s_#__multireference')->where(['source_module' => 'TestModule', 'dest_module' => 'Contacts'])->exists(), 'No record in the table "s_yf_multireference" for type ' . $type);
 				break;
+			default:
+				break;
 		}
 	}
 
@@ -234,7 +237,7 @@ class ModuleManager extends \Tests\Base
 		$moduleInstance = \vtlib\Module::getInstance('Contacts');
 		$source_Module->setRelatedList($moduleInstance, 'TestRel123', ['ADD', 'SELECT'], 'getRelatedList');
 
-		$moduleModel = \Settings_LayoutEditor_Module_Model::getInstanceByName('TestModule');
+		$moduleModel = \Settings_LayoutEditor_Module_Model::getInstance('Settings:LayoutEditor')->setSourceModule('TestModule');
 		$fields = [];
 		foreach ($moduleModel->getRelations() as $value) {
 			foreach ($value->getFields() as $valF) {
@@ -320,6 +323,8 @@ class ModuleManager extends \Tests\Base
 				break;
 			case 305: //MultiReferenceValue
 				$this->assertFalse((new \App\Db\Query())->from('s_#__multireference')->where(['source_module' => 'TestModule', 'dest_module' => 'Contacts'])->exists(), 'The record from "s_#__multireference" was not removed.');
+				break;
+			default:
 				break;
 		}
 	}

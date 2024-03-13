@@ -5,8 +5,8 @@
  *
  * @package View
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Sołek <a.solek@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -15,36 +15,26 @@
  */
 class Vtiger_TreeInventoryModal_View extends \App\Controller\Modal
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $autoRegisterEvents = false;
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $successBtn = 'LBL_SELECT';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function preProcessAjax(App\Request $request)
 	{
 		$this->modalIcon = "yfm-{$request->getModule()}";
 		parent::preProcessAjax($request);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	protected function preProcessTplName(App\Request $request)
 	{
 		return 'Modals/TreeHeader.tpl';
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		if (!\App\Privilege::isPermitted($request->getModule()) || !\App\Privilege::isPermitted($request->getByType('src_module', \App\Purifier::ALNUM))) {
@@ -68,9 +58,7 @@ class Vtiger_TreeInventoryModal_View extends \App\Controller\Modal
 		$viewer->view('Modals/TreeModal.tpl', $moduleName);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getModalScripts(App\Request $request)
 	{
 		$scripts = [
@@ -81,9 +69,7 @@ class Vtiger_TreeInventoryModal_View extends \App\Controller\Modal
 		return array_merge($this->checkAndConvertJsScripts($scripts), parent::getModalScripts($request));
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getModalCss(App\Request $request)
 	{
 		return array_merge($this->checkAndConvertCssStyles([

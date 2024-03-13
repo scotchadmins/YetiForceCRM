@@ -5,94 +5,15 @@
  *
  * @package View
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Vtiger_RecordsList_View extends \App\Controller\Modal
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $modalSize = 'modal-fullscreen';
-
-	/**
-	 * {@inheritdoc}
-	 */
-	public function checkPermission(App\Request $request)
-	{
-		$currentUserPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
-		if (!$request->isEmpty('related_parent_module') && !$currentUserPrivilegesModel->hasModulePermission($request->getByType('related_parent_module', 2))) {
-			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
-		}
-		if (!$request->isEmpty('src_module') && (!$currentUserPrivilegesModel->isAdminUser() && !$currentUserPrivilegesModel->hasModulePermission($request->getByType('src_module', 2)))) {
-			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
-		}
-		if (!$request->isEmpty('related_parent_id', true) && !\App\Privilege::isPermitted($request->getByType('related_parent_module', 2), 'DetailView', $request->getInteger('related_parent_id'))) {
-			throw new \App\Exceptions\NoPermittedToRecord('ERR_NO_PERMISSIONS_FOR_THE_RECORD', 406);
-		}
-		if (!$request->isEmpty('src_record', true) && !\in_array($request->getByType('src_module', 2), ['Users', 'WebserviceUsers']) && !\App\Privilege::isPermitted($request->getByType('src_module', 2), 'DetailView', $request->getInteger('src_record'))) {
-			throw new \App\Exceptions\NoPermittedToRecord('ERR_NO_PERMISSIONS_FOR_THE_RECORD', 406);
-		}
-	}
-
-	/**
-	 * {@inheritdoc}
-	 */
-	protected function preProcessTplName(App\Request $request)
-	{
-		return 'Modals/RecordsListHeader.tpl';
-	}
-
-	/**
-	 * {@inheritdoc}
-	 */
-	public function preProcessAjax(App\Request $request)
-	{
-		if ($request->has('modal_params')) {
-			$viewer = $this->getViewer($request);
-			$viewer->assign('MODAL_PARAMS', $request->getArray('modal_params'));
-		}
-		$this->moduleName = $request->getModule();
-		$this->modalIcon = "modCT_{$this->moduleName} yfm-{$this->moduleName}";
-		$this->initializeContent($request);
-		parent::preProcessAjax($request);
-	}
-
-	/**
-	 * {@inheritdoc}
-	 */
-	public function process(App\Request $request)
-	{
-		$viewer = $this->getViewer($request);
-		$viewer->assign('ONLY_BODY', $request->getBoolean('onlyBody'));
-		if ('getPagination' === $request->getMode()) {
-			$viewer->assign('VIEWNAME', 'recordsList');
-			$viewer->view('Pagination.tpl', $request->getModule());
-		} else {
-			$viewer->view('Modals/RecordsList.tpl', $request->getModule());
-		}
-	}
-
-	/**
-	 * {@inheritdoc}
-	 */
-	public function postProcessAjax(App\Request $request)
-	{
-	}
-
-	/**
-	 * {@inheritdoc}
-	 */
-	public function getModalScripts(App\Request $request)
-	{
-		return array_merge(parent::getModalScripts($request), $this->checkAndConvertJsScripts([
-			'modules.Vtiger.resources.ListSearch',
-			"modules.{$request->getModule()}.resources.ListSearch",
-		]));
-	}
-
 	/** @var bool Show switch */
 	public $showSwitch = false;
 	/** @var string Switch label */
@@ -114,6 +35,82 @@ class Vtiger_RecordsList_View extends \App\Controller\Modal
 	/** @var mixed Record list model */
 	public $recordListModel;
 
+	/** {@inheritdoc} */
+	public function checkPermission(App\Request $request)
+	{
+		$currentUserPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
+		if (!$currentUserPrivilegesModel->hasModulePermission($request->getModule())) {
+			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
+		}
+		if (!$request->isEmpty('related_parent_module') && !$currentUserPrivilegesModel->hasModulePermission($request->getByType('related_parent_module', 2))) {
+			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
+		}
+		if (!$request->isEmpty('related_parent_id', true)) {
+			$this->relatedParentId = $request->getInteger('related_parent_id');
+			$this->relatedParentModule = $request->isEmpty('related_parent_module', true) ? \App\Record::getType($this->relatedParentId) : $request->getByType('related_parent_module', \App\Purifier::ALNUM);
+			if (!\App\Privilege::isPermitted($this->relatedParentModule, 'DetailView', $this->relatedParentId)) {
+				throw new \App\Exceptions\NoPermittedToRecord('ERR_NO_PERMISSIONS_FOR_THE_RECORD', 406);
+			}
+		}
+
+		$srcModule = $request->isEmpty('src_module', true) ? '' : $request->getByType('src_module', \App\Purifier::ALNUM);
+		if ($srcModule && (!\App\Security\AdminAccess::isPermitted($srcModule) && !$currentUserPrivilegesModel->hasModulePermission($srcModule))) {
+			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
+		}
+		if (!$request->isEmpty('src_record', true) && (!$srcModule || ('Users' !== $srcModule && (
+				(\App\Module::getModuleId($srcModule) && !\App\Privilege::isPermitted($srcModule, 'DetailView', $request->getInteger('src_record'))) || (!\App\Module::getModuleId($srcModule) && !\App\Security\AdminAccess::isPermitted($srcModule))
+			)))
+		) {
+			throw new \App\Exceptions\NoPermittedToRecord('ERR_NO_PERMISSIONS_FOR_THE_RECORD', 406);
+		}
+	}
+
+	/** {@inheritdoc} */
+	protected function preProcessTplName(App\Request $request)
+	{
+		return 'Modals/RecordsListHeader.tpl';
+	}
+
+	/** {@inheritdoc} */
+	public function preProcessAjax(App\Request $request)
+	{
+		if ($request->has('modal_params')) {
+			$viewer = $this->getViewer($request);
+			$viewer->assign('MODAL_PARAMS', $request->getArray('modal_params'));
+		}
+		$this->moduleName = $request->getModule();
+		$this->modalIcon = "modCT_{$this->moduleName} yfm-{$this->moduleName}";
+		$this->initializeContent($request);
+		parent::preProcessAjax($request);
+	}
+
+	/** {@inheritdoc} */
+	public function process(App\Request $request)
+	{
+		$viewer = $this->getViewer($request);
+		$viewer->assign('ONLY_BODY', $request->getBoolean('onlyBody'));
+		if ('getPagination' === $request->getMode()) {
+			$viewer->assign('VIEWNAME', 'recordsList');
+			$viewer->view('Pagination.tpl', $request->getModule());
+		} else {
+			$viewer->view('Modals/RecordsList.tpl', $request->getModule());
+		}
+	}
+
+	/** {@inheritdoc} */
+	public function postProcessAjax(App\Request $request)
+	{
+	}
+
+	/** {@inheritdoc} */
+	public function getModalScripts(App\Request $request)
+	{
+		return array_merge(parent::getModalScripts($request), $this->checkAndConvertJsScripts([
+			'modules.Vtiger.resources.ListSearch',
+			"modules.{$request->getModule()}.resources.ListSearch",
+		]));
+	}
+
 	/**
 	 * Function to initialize the required data to display the record list view contents.
 	 *
@@ -126,19 +123,26 @@ class Vtiger_RecordsList_View extends \App\Controller\Modal
 	{
 		$viewer = $this->getViewer($request);
 		$this->moduleName = $request->getModule();
-		$this->sourceModule = $request->getByType('src_module', 2);
-		$this->sourceField = $request->isEmpty('src_field', true) ? '' : $request->getByType('src_field', 2);
+		$this->sourceModule = $request->isEmpty('src_module', true) ? '' : $request->getByType('src_module', \App\Purifier::ALNUM);
+		$this->sourceField = $request->isEmpty('src_field', true) ? '' : $request->getByType('src_field', \App\Purifier::ALNUM);
 		$this->sourceRecord = $request->isEmpty('src_record', true) ? 0 : $request->getInteger('src_record');
-		$this->relatedParentModule = $request->isEmpty('related_parent_module', true) ? '' : $request->getByType('related_parent_module', 2);
-		$this->relatedParentId = $request->isEmpty('related_parent_id') ? '' : $request->getInteger('related_parent_id');
+		if (!isset($this->relatedParentModule)) {
+			$this->relatedParentModule = $request->isEmpty('related_parent_module', true) ? '' : $request->getByType('related_parent_module', 2);
+		}
+		if (!isset($this->relatedParentId)) {
+			$this->relatedParentId = $request->isEmpty('related_parent_id') ? '' : $request->getInteger('related_parent_id');
+		}
 		$filterFields = $request->getArray('filterFields', 'Text');
 		$multiSelectMode = $request->has('multi_select') ? $request->getBoolean('multi_select') : false;
-		$currencyId = $request->isEmpty('currency_id', true) ? '' : $request->getInteger('currency_id');
 
 		$moduleModel = Vtiger_Module_Model::getInstance($this->moduleName);
 		$recordStructureInstance = Vtiger_RecordStructure_Model::getInstanceForModule($moduleModel);
 
-		$cvId = $request->getInteger('cvId');
+		if ($request->isEmpty('cvId')) {
+			[$cvId, $defaultFilterOrderBy] = $this->getViewByUserPreferences();
+		} else {
+			$cvId = $request->getInteger('cvId');
+		}
 		$pageNumber = $request->isEmpty('page', true) ? 1 : $request->getInteger('page');
 		$totalCount = $request->isEmpty('totalCount', true) ? false : $request->getInteger('totalCount');
 		$pagingModel = new Vtiger_Paging_Model();
@@ -148,15 +152,18 @@ class Vtiger_RecordsList_View extends \App\Controller\Modal
 		}
 
 		$this->setRelatedParent($request);
-		$this->setRecordListModel($request);
-
+		$this->setRecordListModel($request, $cvId);
 		$orderBy = $request->getArray('orderby', \App\Purifier::STANDARD, [], \App\Purifier::SQL);
 		if (empty($orderBy)) {
-			$moduleInstance = CRMEntity::getInstance($this->moduleName);
-			if ($moduleInstance->default_order_by && $moduleInstance->default_sort_order) {
-				$orderBy = [];
-				foreach ((array) $moduleInstance->default_order_by as $value) {
-					$orderBy[$value] = $moduleInstance->default_sort_order;
+			if (!empty($defaultFilterOrderBy)) {
+				$orderBy = $defaultFilterOrderBy;
+			} else {
+				$moduleInstance = CRMEntity::getInstance($this->moduleName);
+				if ($moduleInstance->default_order_by && $moduleInstance->default_sort_order) {
+					$orderBy = [];
+					foreach ((array) $moduleInstance->default_order_by as $value) {
+						$orderBy[$value] = $moduleInstance->default_sort_order;
+					}
 				}
 			}
 		}
@@ -189,6 +196,7 @@ class Vtiger_RecordsList_View extends \App\Controller\Modal
 		}
 		$transformedSearchParams = $this->recordListModel->getQueryGenerator()->parseBaseSearchParamsToCondition($searchParams);
 		$this->recordListModel->set('search_params', $transformedSearchParams);
+		$this->recordListModel->loadSearchLockedFields($request);
 		//To make smarty to get the details easily accesible
 		foreach ($request->getArray('search_params') as $fieldListGroup) {
 			$searchParamsRaw[] = $fieldListGroup;
@@ -199,9 +207,7 @@ class Vtiger_RecordsList_View extends \App\Controller\Modal
 				$searchParams[$fieldName] = $fieldSearchInfo;
 			}
 		}
-		if ($currencyId) {
-			$this->recordListModel->set('currency_id', $currencyId);
-		}
+
 		if (!empty($this->relatedParentModule) && !empty($this->relatedParentId)) {
 			$listViewHeaders = $this->recordListModel->getHeaders();
 			$listViewEntries = $this->recordListModel->getEntries($pagingModel);
@@ -239,7 +245,6 @@ class Vtiger_RecordsList_View extends \App\Controller\Modal
 		$viewer->assign('RELATED_PARENT_MODULE', $this->relatedParentModule);
 		$viewer->assign('RELATED_PARENT_ID', $this->relatedParentId);
 		$viewer->assign('ORDER_BY', $orderBy);
-		$viewer->assign('CURRENCY_ID', $currencyId);
 		$viewer->assign('FILTER_FIELDS', $filterFields);
 		$viewer->assign('ADDITIONAL_INFORMATIONS', $request->getBoolean('additionalInformations'));
 		$viewer->assign('RECORD_STRUCTURE_MODEL', $recordStructureInstance);
@@ -251,20 +256,47 @@ class Vtiger_RecordsList_View extends \App\Controller\Modal
 		$viewer->assign('SEARCH_PARAMS', $searchParamsRaw);
 		$viewer->assign('RECORD_SELECTED', $request->getBoolean('record_selected', false));
 		$viewer->assign('CUSTOM_VIEWS', CustomView_Record_Model::getAllByGroup($request->getModule()));
+		$viewer->assign('LOCKED_FIELDS', $request->isEmpty('lockedFields', true) ? [] : $request->getArray('lockedFields'));
+		$viewer->assign('LOCKED_EMPTY_FIELDS', $request->isEmpty('lockedEmptyFields', true) ? [] : $request->getArray('lockedEmptyFields'));
+		$viewer->assign('CUSTOM_VIEW_ENABLED', $request->isEmpty('cvEnabled', true));
+		$viewer->assign('ADDITIONAL_DATA', $request->has('additionalData') ? $request->getArray('additionalData') : []);
 		$viewer->assign('CV_ID', $cvId);
+	}
+
+	/**
+	 * Get view by user preferences.
+	 *
+	 * @return array
+	 */
+	public function getViewByUserPreferences(): array
+	{
+		$defaultFilterOrderBy = [];
+		$defaultModuleCvId = 0;
+		$userRecordListFilter = \App\User::getCurrentUserModel()->getDetail('users_record_list_filter');
+		if ($userRecordListFilter) {
+			if ('PLL_DEFAULT_FROM_LIST_VIEW' === $userRecordListFilter) {
+				$defaultModuleCvId = App\CustomView::getInstance($this->moduleName)->getDefaultCvId();
+			} elseif ('PLL_LAST_SELECTED_IN_LIST' === $userRecordListFilter && ($lastSelectedFilter = App\CustomView::getCurrentView($this->moduleName))) {
+				$defaultModuleCvId = $lastSelectedFilter;
+			}
+			if ($defaultModuleCvId) {
+				$defaultFilterOrderBy = CustomView_Record_Model::getInstanceById($defaultModuleCvId)->getSortOrderBy();
+			}
+		}
+		return [$defaultModuleCvId, $defaultFilterOrderBy];
 	}
 
 	/**
 	 * Set record list model.
 	 *
 	 * @param App\Request $request
+	 * @param int         $cvId
 	 */
-	public function setRecordListModel(App\Request $request)
+	public function setRecordListModel(App\Request $request, int $cvId)
 	{
 		if ($this->relatedParentId && !\App\Record::isExists($this->relatedParentId)) {
 			$this->relatedParentId = $this->relatedParentModule = '';
 		}
-		$cvId = $request->isEmpty('cvId', true) ? 0 : $request->getByType('cvId', 'Alnum');
 		if (!empty($this->relatedParentModule) && !empty($this->relatedParentId)) {
 			$this->showSwitch = !$request->has('showSwitch') || $request->getBoolean('showSwitch');
 			$parentRecordModel = Vtiger_Record_Model::getInstanceById($this->relatedParentId, $this->relatedParentModule);
@@ -303,6 +335,9 @@ class Vtiger_RecordsList_View extends \App\Controller\Modal
 					$this->relatedParentId = $relatedParentIdTemp;
 					$this->relatedParentModule = $relatedParentModuleTemp;
 					$this->parentRelationId = $hierarchy['dest_relationid'];
+					if (!$this->switchLabel && $hierarchy['label']) {
+						$this->switchLabel = $hierarchy['label'];
+					}
 					break;
 				}
 			}

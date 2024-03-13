@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Vtiger_Import_View extends Vtiger_Index_View
@@ -41,12 +41,12 @@ class Vtiger_Import_View extends Vtiger_Index_View
 		$relationId = $request->getInteger('relationId');
 		if (!$userPrivilegesModel->hasModuleActionPermission($request->getModule(), 'Import') || !$userPrivilegesModel->hasModuleActionPermission($request->getModule(), 'CreateView') || (
 			$relationId && (
-				!($relationModel = Vtiger_Relation_Model::getInstanceById($relationId)) ||
-				!$relationModel->isAddActionSupported() ||
-				$relationModel->getRelationModuleName() !== $request->getModule() ||
-				!($recordModel = Vtiger_Record_Model::getInstanceById($request->getInteger('src_record'))) ||
-				!$recordModel->isViewable() ||
-				$relationModel->getParentModuleModel()->getName() !== $recordModel->getModuleName()
+				!($relationModel = Vtiger_Relation_Model::getInstanceById($relationId))
+				|| !$relationModel->isAddActionSupported()
+				|| $relationModel->getRelationModuleName() !== $request->getModule()
+				|| !($recordModel = Vtiger_Record_Model::getInstanceById($request->getInteger('src_record')))
+				|| !$recordModel->isViewable()
+				|| $relationModel->getParentModuleModel()->getName() !== $recordModel->getModuleName()
 			))) {
 			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
 		}
@@ -96,7 +96,6 @@ class Vtiger_Import_View extends Vtiger_Index_View
 	 */
 	public function importBasicStep(App\Request $request)
 	{
-		$uploadMaxSize = App\Config::main('upload_maxsize');
 		$moduleName = $request->getModule();
 		$importModule = Vtiger_Module_Model::getInstance('Import')->setImportModule($moduleName);
 		$importModule->set('src_record', $request->getInteger('src_record'));
@@ -113,8 +112,8 @@ class Vtiger_Import_View extends Vtiger_Index_View
 		$viewer->assign('AVAILABLE_BLOCKS', $importModule->getFieldsByBlocks());
 		$viewer->assign('FOR_MODULE_MODEL', $importModule->getImportModuleModel());
 		$viewer->assign('ERROR_MESSAGE', $request->getByType('error_message', 'Text'));
-		$viewer->assign('IMPORT_UPLOAD_SIZE', $uploadMaxSize);
-		$viewer->assign('IMPORT_UPLOAD_SIZE_MB', round($uploadMaxSize / 1024 / 1024, 2));
+		$viewer->assign('IMPORT_UPLOAD_SIZE', \App\Config::getMaxUploadSize());
+		$viewer->assign('IMPORT_UPLOAD_SIZE_MB', \App\Config::getMaxUploadSize(true, true));
 		$viewer->assign('MODULE_MODEL', $importModule);
 		return $viewer->view('ImportBasicStep.tpl', 'Import');
 	}
@@ -154,7 +153,7 @@ class Vtiger_Import_View extends Vtiger_Index_View
 			$viewer->assign('USER_INPUT', $request);
 			$mandatoryFields = [];
 			foreach ($moduleModel->getMandatoryFieldModels() as $fieldName => $fieldModel) {
-				if ($fieldModel->isEditable()) {
+				if ($fieldModel->isEditable('Create')) {
 					$mandatoryFields[$fieldName] = \App\Language::translate($fieldModel->getFieldLabel(), $moduleName);
 				}
 			}
@@ -211,7 +210,7 @@ class Vtiger_Import_View extends Vtiger_Index_View
 		$user = App\User::getCurrentUserModel();
 		if (!$user->isAdmin() && $user->getId() !== $ownerId) {
 			$viewer->assign('MESSAGE', 'LBL_PERMISSION_DENIED');
-			$viewer->view('ExceptionError.tpl', 'Vtiger');
+			$viewer->view('Exceptions/ExceptionError.tpl', 'Vtiger');
 			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
 		}
 		[$noOfRecords, $noOfRecordsDeleted] = $this->undoRecords($moduleName);
@@ -234,7 +233,7 @@ class Vtiger_Import_View extends Vtiger_Index_View
 			if (App\Record::isExists($recordId)) {
 				$recordModel = Vtiger_Record_Model::getInstanceById($recordId, $moduleName);
 				if ($recordModel->privilegeToMoveToTrash()) {
-					$recordModel->changeState('Trash');
+					$recordModel->changeState(\App\Record::STATE_TRASH);
 					++$noOfRecordsDeleted;
 				} elseif ($recordModel->privilegeToDelete()) {
 					$recordModel->delete();

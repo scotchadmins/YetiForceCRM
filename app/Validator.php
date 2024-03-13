@@ -4,8 +4,8 @@
  *
  * @package   App
  *
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
- * @copyright YetiForce Sp. z o.o
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
@@ -330,10 +330,11 @@ class Validator
 	 */
 	public static function url(string $url): bool
 	{
+		if (!parse_url($url, PHP_URL_SCHEME)) {
+			$url = 'http://' . $url;
+		}
 		if (mb_strlen($url) != \strlen($url) && \function_exists('idn_to_ascii') && \defined('INTL_IDNA_VARIANT_UTS46')) {
-			$url = preg_replace_callback('/:\/\/([^\/]+)/', function ($matches) {
-				return '://' . idn_to_ascii($matches[1], IDNA_NONTRANSITIONAL_TO_ASCII, INTL_IDNA_VARIANT_UTS46);
-			}, $url);
+			$url = preg_replace_callback('/:\/\/([^\/]+)/', fn ($matches) => '://' . idn_to_ascii($matches[1], IDNA_NONTRANSITIONAL_TO_ASCII, INTL_IDNA_VARIANT_UTS46), $url);
 		}
 		return false !== filter_var($url, FILTER_VALIDATE_URL);
 	}
@@ -446,6 +447,18 @@ class Validator
 	}
 
 	/**
+	 * Check if input is an ip or domain value.
+	 *
+	 * @param string $input
+	 *
+	 * @return bool
+	 */
+	public static function ipOrDomain($input): bool
+	{
+		return self::ip($input) || self::domain($input);
+	}
+
+	/**
 	 * Function verifies if given value is text.
 	 *
 	 * @param string $input
@@ -455,5 +468,58 @@ class Validator
 	public static function text(string $input): bool
 	{
 		return Purifier::decodeHtml(Purifier::purify($input)) === $input;
+	}
+
+	/**
+	 * Check directory name.
+	 *
+	 * @param string $input
+	 *
+	 * @return bool
+	 */
+	public static function dirName(string $input): bool
+	{
+		return !preg_match('/[\\/:\*\?"<>|]/', $input) && false === strpos($input, '.', -1);
+	}
+
+	/**
+	 * Check path.
+	 *
+	 * @param string $input
+	 *
+	 * @return bool
+	 */
+	public static function path(string $input): bool
+	{
+		$parts = explode('/', trim(str_replace(\DIRECTORY_SEPARATOR, '/', $input), '/'));
+		return !array_filter($parts, fn ($dir) => !self::dirName($dir));
+	}
+
+	/**
+	 * Check base64.
+	 *
+	 * @param string $input
+	 *
+	 * @return bool
+	 */
+	public static function base64(string $input): bool
+	{
+		if (empty($input)) {
+			return false;
+		}
+		$explode = explode(',', $input);
+		return 2 === \count($explode) && 1 === preg_match('%^[a-zA-Z0-9/+]*={0,2}$%', $explode[1]);
+	}
+
+	/**
+	 * Check font icon name.
+	 *
+	 * @param string $input
+	 *
+	 * @return bool
+	 */
+	public static function fontIcon(string $input): bool
+	{
+		return !empty($input) && preg_match('/^[[:alnum:]_\- ]+$/', $input);
 	}
 }

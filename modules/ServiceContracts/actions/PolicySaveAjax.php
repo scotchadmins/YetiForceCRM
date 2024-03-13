@@ -4,27 +4,29 @@
  *
  * @package   Action
  *
- * @copyright YetiForce Sp. z o.o.
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Rafal Pospiech <r.pospiech@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class ServiceContracts_PolicySaveAjax_Action extends \App\Controller\Action
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
-		$record = Vtiger_DetailView_Model::getInstance($request->getModule(), $request->getInteger('record'));
-		if (!$record->getRecord()->isViewable()) {
+		if ($request->isEmpty('record')) {
+			throw new \App\Exceptions\NoPermittedToRecord('ERR_NO_PERMISSIONS_FOR_THE_RECORD', 406);
+		}
+
+		$record = Vtiger_Record_Model::getInstanceById($request->getInteger('record'), $request->getModule());
+		$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
+		if (!$record->isViewable() || !$userPrivilegesModel->hasModuleActionPermission($record->getModuleName(), 'ServiceContractsSla') || !$userPrivilegesModel->hasModulePermission($request->getByType('target', \App\Purifier::ALNUM))) {
 			throw new \App\Exceptions\NoPermittedToRecord('ERR_NO_PERMISSIONS_FOR_THE_RECORD', 406);
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$result = [];
@@ -71,9 +73,9 @@ class ServiceContracts_PolicySaveAjax_Action extends \App\Controller\Action
 				$data['conditions'] = '';
 			}
 			$data['business_hours'] = implode(',', $request->getArray('business_hours', 'Integer')[$rowIndex]);
-			$data['reaction_time'] = $request->getArray('reaction_time', 'TimePeriod')[$rowIndex];
-			$data['idle_time'] = $request->getArray('idle_time', 'TimePeriod')[$rowIndex];
-			$data['resolve_time'] = $request->getArray('resolve_time', 'TimePeriod')[$rowIndex];
+			$data['reaction_time'] = $request->getArray('reaction_time', 'timePeriod')[$rowIndex];
+			$data['idle_time'] = $request->getArray('idle_time', 'timePeriod')[$rowIndex];
+			$data['resolve_time'] = $request->getArray('resolve_time', 'timePeriod')[$rowIndex];
 			$data['crmid'] = $crmId;
 			$data['tabid'] = $targetModule;
 			$data['id'] = \App\Utils\ServiceContracts::saveSlaPolicy($data, false);

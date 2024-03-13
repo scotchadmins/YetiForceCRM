@@ -2,9 +2,9 @@
 
 /**
  * Reservations module model class.
- *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @package   Model
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class Reservations_Module_Model extends Vtiger_Module_Model
 {
@@ -13,24 +13,16 @@ class Reservations_Module_Model extends Vtiger_Module_Model
 		return 'index.php?module=' . $this->get('name') . '&view=Calendar';
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getSideBarLinks($linkParams)
 	{
-		$links = Vtiger_Link_Model::getAllByType($this->getId(), ['SIDEBARLINK'], $linkParams);
-		$links['SIDEBARLINK'][] = Vtiger_Link_Model::getInstanceFromValues([
+		$links = parent::getSideBarLinks($linkParams);
+		array_unshift($links['SIDEBARLINK'], Vtiger_Link_Model::getInstanceFromValues([
 			'linktype' => 'SIDEBARLINK',
-			'linklabel' => 'LBL_CALENDAR_VIEW',
+			'linklabel' => 'LBL_CALENDAR',
 			'linkurl' => $this->getCalendarViewUrl(),
-			'linkicon' => 'fas fa-calendar-alt',
-		]);
-		$links['SIDEBARLINK'][] = Vtiger_Link_Model::getInstanceFromValues([
-			'linktype' => 'SIDEBARLINK',
-			'linklabel' => 'LBL_RECORDS_LIST',
-			'linkurl' => $this->getListViewUrl(),
-			'linkicon' => 'fas fa-list',
-		]);
+			'linkicon' => 'fas fa-calendar-alt'
+		]));
 		return $links;
 	}
 
@@ -44,9 +36,7 @@ class Reservations_Module_Model extends Vtiger_Module_Model
 		return 'Calendar';
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getLayoutTypeForQuickCreate(): string
 	{
 		return 'standard';

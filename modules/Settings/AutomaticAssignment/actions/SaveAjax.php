@@ -3,93 +3,75 @@
 /**
  * Automatic assignment save action model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @package Settings.Action
+ *
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Settings_AutomaticAssignment_SaveAjax_Action extends Settings_Vtiger_Save_Action
 {
-	/**
-	 * Constructor.
-	 */
+	/** {@inheritdoc} */
 	public function __construct()
 	{
-		Settings_Vtiger_Tracker_Model::lockTracking();
 		parent::__construct();
 		$this->exposeMethod('save');
-		$this->exposeMethod('deleteElement');
-		$this->exposeMethod('changeRoleType');
+		$this->exposeMethod('preSaveValidation');
 	}
 
 	/**
-	 * Save.
+	 * Function to get the record model based on the request parameters.
 	 *
 	 * @param \App\Request $request
+	 *
+	 * @return Vtiger_Record_Model or Module specific Record Model instance
 	 */
-	public function save(App\Request $request)
+	protected function getRecordModelFromRequest(App\Request $request)
 	{
-		$data = $request->getMultiDimensionArray('param', [
-			'tabid' => 'Integer',
-			'field' => 'Alnum',
-			'roleid' => 'Alnum',
-			'value' => 'Text',
-			'roles' => ['Alnum'],
-			'smowners' => ['Integer'],
-			'assign' => 'Integer',
-			'conditions' => 'Text',
-			'user_limit' => 'Integer',
-			'active' => 'Integer'
-		]);
 		if ($request->isEmpty('record')) {
 			$recordModel = Settings_AutomaticAssignment_Record_Model::getCleanInstance();
 		} else {
 			$recordModel = Settings_AutomaticAssignment_Record_Model::getInstanceById($request->getInteger('record'));
 		}
-
-		$dataFull = array_merge($recordModel->getData(), $data);
-		$recordModel->setData($dataFull);
-		$recordModel->checkDuplicate = true;
-		$recordModel->save();
-
-		$responceToEmit = new Vtiger_Response();
-		$responceToEmit->setResult($recordModel->getId());
-		$responceToEmit->emit();
+		$recordModel->setDataFromRequest($request);
+		return $recordModel;
 	}
 
 	/**
-	 * Function changes the type of a given role.
+	 * PreSave validation function.
 	 *
-	 * @param \App\Request $request
+	 * @param App\Request $request
+	 *
+	 * @return void
 	 */
-	public function changeRoleType(App\Request $request)
+	public function preSaveValidation(App\Request $request)
 	{
-		$member = $request->getByType('param', 'Text');
-		$recordId = $request->getInteger('record');
-		if ($recordId) {
-			$recordModel = Settings_AutomaticAssignment_Record_Model::getInstanceById($recordId);
-		} else {
-			$recordModel = Settings_AutomaticAssignment_Record_Model::getCleanInstance();
+		$recordModel = $this->getRecordModelFromRequest($request);
+		$response = new Vtiger_Response();
+		$response->setResult($recordModel->validate());
+		$response->emit();
+	}
+
+	/**
+	 * Save function.
+	 *
+	 * @param App\Request $request
+	 *
+	 * @return void
+	 */
+	public function save(App\Request $request)
+	{
+		try {
+			$recordModel = $this->getRecordModelFromRequest($request);
+			$recordId = $recordModel->getId();
+			$recordModel->save();
+			\Settings_Vtiger_Tracker_Model::addDetail($recordModel->getPreviousValue(), $recordId ? array_intersect_key($recordModel->getData(), $recordModel->getPreviousValue()) : $recordModel->getData());
+			$result = ['success' => true, 'url' => $recordModel->getModule()->getDefaultUrl()];
+		} catch (\App\Exceptions\AppException $e) {
+			$result = ['success' => false, 'message' => $e->getDisplayMessage()];
 		}
-		$recordModel->changeRoleType($member);
-
-		$responceToEmit = new Vtiger_Response();
-		$responceToEmit->setResult($recordModel->getId());
-		$responceToEmit->emit();
-	}
-
-	/**
-	 * Function removes given value from record.
-	 *
-	 * @param \App\Request $request
-	 */
-	public function deleteElement(App\Request $request)
-	{
-		$recordId = $request->getInteger('record');
-		$recordModel = Settings_AutomaticAssignment_Record_Model::getInstanceById($recordId);
-		$recordModel->deleteElement($request->getByType('name'), $request->getByType('value', 'Text'));
-
-		$responceToEmit = new Vtiger_Response();
-		$responceToEmit->setResult($recordModel->getId());
-		$responceToEmit->emit();
+		$response = new Vtiger_Response();
+		$response->setResult($result);
+		$response->emit();
 	}
 }

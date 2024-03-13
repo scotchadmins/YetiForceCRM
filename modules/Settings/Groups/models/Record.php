@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce Sp. z o.o.
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 /**
@@ -14,14 +14,17 @@
  */
 class Settings_Groups_Record_Model extends Settings_Vtiger_Record_Model
 {
+	/** @var array Record changes */
+	protected $changes = [];
+
 	/**
 	 * Function to get the Id.
 	 *
-	 * @return <Number> Group Id
+	 * @return int Group Id
 	 */
 	public function getId()
 	{
-		return $this->get('groupid');
+		return (int) $this->get('groupid');
 	}
 
 	/**
@@ -29,11 +32,12 @@ class Settings_Groups_Record_Model extends Settings_Vtiger_Record_Model
 	 *
 	 * @param int $id Group Id
 	 *
-	 * @return <Settings_Groups_Reord_Model> instance
+	 * @return $this instance
 	 */
 	public function setId($id)
 	{
-		return $this->set('groupid', $id);
+		$this->set('groupid', $id);
+		return $this;
 	}
 
 	/**
@@ -44,16 +48,6 @@ class Settings_Groups_Record_Model extends Settings_Vtiger_Record_Model
 	public function getName()
 	{
 		return $this->get('groupname');
-	}
-
-	/**
-	 * Function to get the description of the group.
-	 *
-	 * @return string
-	 */
-	public function getDescription()
-	{
-		return $this->get('description');
 	}
 
 	/**
@@ -73,7 +67,7 @@ class Settings_Groups_Record_Model extends Settings_Vtiger_Record_Model
 	 */
 	public function getDeleteActionUrl()
 	{
-		return 'index.php?module=Groups&parent=Settings&view=DeleteAjax&record=' . $this->getId();
+		return 'index.php?module=Groups&parent=Settings&view=Delete&record=' . $this->getId();
 	}
 
 	/**
@@ -83,20 +77,68 @@ class Settings_Groups_Record_Model extends Settings_Vtiger_Record_Model
 	 */
 	public function getDetailViewUrl()
 	{
-		return '?module=Groups&parent=Settings&view=Detail&record=' . $this->getId();
+		return 'index.php?module=Groups&parent=Settings&view=Detail&record=' . $this->getId();
+	}
+
+	/**
+	 * Function to get Module instance.
+	 *
+	 * @return Settings_Groups_Module_Model
+	 */
+	public function getModule()
+	{
+		return $this->module;
+	}
+
+	/**
+	 * Set module Instance.
+	 *
+	 * @param Settings_Groups_Module_Model $moduleModel
+	 *
+	 * @return $this
+	 */
+	public function setModule($moduleModel)
+	{
+		$this->module = $moduleModel;
+		return $this;
+	}
+
+	/** {@inheritdoc} */
+	public function set($key, $value)
+	{
+		if ($this->getId() && !\in_array($key, ['id']) && (\array_key_exists($key, $this->value) && $this->value[$key] !== $value)) {
+			$this->changes[$key] = $this->get($key);
+		}
+		return parent::set($key, $value);
+	}
+
+	/**
+	 * Get pervious value by field.
+	 *
+	 * @param string $fieldName
+	 *
+	 * @return mixed
+	 */
+	public function getPreviousValue(string $fieldName = '')
+	{
+		return $fieldName ? ($this->changes[$fieldName] ?? null) : $this->changes;
 	}
 
 	/**
 	 * Function to get all the members of the groups.
 	 *
-	 * @return <Array> Settings_Profiles_Record_Model instances
+	 * @return array
 	 */
-	public function getMembers()
+	public function getMembers(): array
 	{
-		if (!isset($this->members)) {
-			$this->members = Settings_Groups_Member_Model::getAllByGroup($this);
+		$members = [];
+		foreach ($this->getFieldInstanceByName('members')->getEditViewDisplayValue($this->get('members') ?? '') as $member) {
+			[$type] = explode(':', $member, 2);
+			$memberInstance = new Settings_Groups_Member_Model();
+			$memberInstance->set('id', $member);
+			$members[$type][] = $memberInstance;
 		}
-		return $this->members;
+		return $members;
 	}
 
 	/**
@@ -112,126 +154,212 @@ class Settings_Groups_Record_Model extends Settings_Vtiger_Record_Model
 	/**
 	 * Function to get the Modules.
 	 *
-	 * @return <Array>
+	 * @return $this
 	 */
-	public function getModules()
+	public function setModules()
 	{
-		if (!isset($this->modules)) {
-			$groupId = $this->getId();
-			if (empty($groupId)) {
-				return [];
-			}
-			$dataReader = (new App\Db\Query())->select(['vtiger_tab.tabid', 'vtiger_tab.name'])
-				->from('vtiger_group2modules')
-				->innerJoin('vtiger_tab', 'vtiger_tab.tabid = vtiger_group2modules.tabid')
-				->where(['vtiger_group2modules.groupid' => $groupId])
-				->createCommand()->query();
+		if ($this->isEmpty('modules')) {
 			$modules = [];
-			while ($row = $dataReader->read()) {
-				$modules[$row['tabid']] = $row['name'];
+			if ($this->getId()) {
+				$modules = (new App\Db\Query())->select(['vtiger_group2modules.tabid'])->from('vtiger_group2modules')->where(['vtiger_group2modules.groupid' => $this->getId()])
+					->column();
 			}
-			$dataReader->close();
-			$this->modules = $modules;
+			parent::set('modules', $this->getFieldInstanceByName('modules')->getDBValue($modules));
 		}
-		return $this->modules;
+
+		return $this;
 	}
 
 	/**
-	 * Function to save the role.
+	 * Function to save.
 	 */
 	public function save()
 	{
-		$db = App\Db::getInstance();
-		$groupId = $this->getId();
-		$mode = 'edit';
-		$oldUsersList = $this->getUsersList();
-
-		if (empty($groupId)) {
-			$mode = '';
-			$groupId = $db->getUniqueId('vtiger_users');
-			$this->setId($groupId);
+		$db = App\Db::getInstance('admin');
+		$transaction = $db->beginTransaction();
+		try {
+			if ($errorLabel = $this->validate()) {
+				throw new \App\Exceptions\AppException($errorLabel);
+			}
+			$userIds = array_unique(array_merge(
+				$this->getUsersList($this->getPreviousValue('members') ?? ''),
+				$this->getLeaderUsers($this->getPreviousValue('parentid'))
+			));
+			$this->saveToDb();
+			$transaction->commit();
+		} catch (\Throwable $ex) {
+			$transaction->rollBack();
+			\App\Log::error($ex->__toString());
+			throw $ex;
 		}
+		\App\Cache::clear();
+		$userIds = array_unique(array_merge($userIds,
+			$this->getUsersList($this->get('members') ?? ''),
+			$this->getLeaderUsers($this->get('parentid'))
+		));
+		$this->recalculate($userIds);
+	}
 
-		if ('edit' == $mode) {
-			$db->createCommand()->update('vtiger_groups', [
-				'groupname' => $this->getName(),
-				'description' => $this->getDescription(),
-			], ['groupid' => $groupId])->execute();
-		} else {
-			$db->createCommand()->insert('vtiger_groups', [
-				'groupid' => $groupId,
-				'groupname' => $this->getName(),
-				'description' => $this->getDescription(),
-			])->execute();
+	/**
+	 * Get leader users.
+	 *
+	 * @param int|null $leader
+	 *
+	 * @return array
+	 */
+	public function getLeaderUsers(?int $leader): array
+	{
+		$users = [];
+		if ($leader) {
+			if ('Users' === \App\Fields\Owner::getType($leader)) {
+				$users[] = $leader;
+			} else {
+				$users = \App\PrivilegeUtil::getUsersByGroup($leader);
+			}
 		}
-		$members = $this->get('group_members');
-		if (\is_array($members)) {
-			$db->createCommand()->delete('vtiger_users2group', ['groupid' => $groupId])->execute();
-			$db->createCommand()->delete('vtiger_group2grouprel', ['groupid' => $groupId])->execute();
-			$db->createCommand()->delete('vtiger_group2role', ['groupid' => $groupId])->execute();
-			$db->createCommand()->delete('vtiger_group2rs', ['groupid' => $groupId])->execute();
+		return $users;
+	}
 
-			$noOfMembers = \count($members);
-			for ($i = 0; $i < $noOfMembers; ++$i) {
-				$id = $members[$i];
-				$idComponents = Settings_Groups_Member_Model::getIdComponentsFromQualifiedId($id);
-				if ($idComponents && 2 == \count($idComponents)) {
-					$memberType = $idComponents[0];
-					$memberId = $idComponents[1];
-
-					if (Settings_Groups_Member_Model::MEMBER_TYPE_USERS == $memberType) {
-						$db->createCommand()->insert('vtiger_users2group', ['userid' => $memberId, 'groupid' => $groupId])->execute();
-					}
-					if (Settings_Groups_Member_Model::MEMBER_TYPE_GROUPS == $memberType) {
-						$db->createCommand()->insert('vtiger_group2grouprel', ['containsgroupid' => $memberId, 'groupid' => $groupId])->execute();
-					}
-					if (Settings_Groups_Member_Model::MEMBER_TYPE_ROLES == $memberType) {
-						$db->createCommand()->insert('vtiger_group2role', ['roleid' => $memberId, 'groupid' => $groupId])->execute();
-					}
-					if (Settings_Groups_Member_Model::MEMBER_TYPE_ROLE_AND_SUBORDINATES == $memberType) {
-						$db->createCommand()->insert('vtiger_group2rs', ['roleandsubid' => $memberId, 'groupid' => $groupId])->execute();
+	/**
+	 * Save data to the database.
+	 */
+	public function saveToDb()
+	{
+		$db = \App\Db::getInstance('admin');
+		$tablesData = $this->getId() ? array_intersect_key($this->getData(), $this->changes) : array_intersect_key($this->getData(), array_flip($this->getModule()->getEditableFields()));
+		if ($tablesData) {
+			$baseTable = $this->getModule()->baseTable;
+			$baseTableIndex = $this->getModule()->baseIndex;
+			foreach ($this->getValuesToSave($tablesData) as $tableName => $tableData) {
+				if (!$this->getId() && $baseTable === $tableName) {
+					$db->createCommand()->insert($tableName, $tableData)->execute();
+					$this->setId((int) $tableData[$baseTableIndex]);
+				} elseif ($baseTable === $tableName) {
+					$db->createCommand()->update($tableName, $tableData, [$baseTableIndex => $this->getId()])->execute();
+				} else {
+					$db->createCommand()->delete($tableName, ['groupid' => $this->getId()])->execute();
+					if ($names = $tableData['names'] ?? []) {
+						$values = $tableData['values'] ?? [];
+						foreach ($values as &$value) {
+							$value[] = $this->getId();
+						}
+						$db->createCommand()->batchInsert($tableName, $names, $values)->execute();
 					}
 				}
 			}
 		}
-		$modules = $this->get('modules');
-		if (\is_array($modules)) {
-			$oldModules = array_flip($this->getModules());
-			$removed = array_diff($oldModules, $modules);
-			$add = array_diff($modules, $oldModules);
-
-			foreach ($removed as $moduleName => $tabId) {
-				$db->createCommand()->delete('vtiger_group2modules', ['groupid' => $groupId, 'tabid' => $tabId])->execute();
-				\App\Privilege::setUpdater($moduleName);
-			}
-			foreach ($add as $tabId) {
-				$db->createCommand()->insert('vtiger_group2modules', ['groupid' => $groupId, 'tabid' => $tabId])->execute();
-				\App\Privilege::setUpdater(\App\Module::getModuleName($tabId));
-			}
-		}
-		\App\Cache::clear();
-		$this->recalculate($oldUsersList);
 	}
 
 	/**
-	 * Function to recalculate user priviliges files.
+	 * Function formats data for saving.
 	 *
-	 * @param <Array> $oldUsersList
+	 * @param array $data
+	 *
+	 * @return array
 	 */
-	public function recalculate($oldUsersList)
+	private function getValuesToSave(array $data): array
+	{
+		$forSave = [];
+		if (!$this->getId()) {
+			$forSave[$this->getModule()->baseTable][$this->getModule()->baseIndex] = \App\Db::getInstance('admin')->getUniqueId('vtiger_users');
+		}
+		foreach ($data as $fieldName => $value) {
+			$fieldModel = $this->getFieldInstanceByName($fieldName);
+			switch ($fieldName) {
+				case 'members':
+					$members = $fieldModel->getEditViewDisplayValue($value);
+					$tables = [
+						\App\PrivilegeUtil::MEMBER_TYPE_USERS => ['table' => 'vtiger_users2group', 'memberColumn' => 'userid', 'groupColumn' => 'groupid'],
+						\App\PrivilegeUtil::MEMBER_TYPE_GROUPS => ['table' => 'vtiger_group2grouprel', 'memberColumn' => 'containsgroupid', 'groupColumn' => 'groupid'],
+						\App\PrivilegeUtil::MEMBER_TYPE_ROLES => ['table' => 'vtiger_group2role', 'memberColumn' => 'roleid', 'groupColumn' => 'groupid'],
+						\App\PrivilegeUtil::MEMBER_TYPE_ROLE_AND_SUBORDINATES => ['table' => 'vtiger_group2rs', 'memberColumn' => 'roleandsubid', 'groupColumn' => 'groupid']
+					];
+					$forSave += array_fill_keys(array_column($tables, 'table'), []);
+					foreach ($members as $member) {
+						[$type, $memberId] = explode(':', $member);
+						$tableName = $tables[$type]['table'];
+						$memberColumn = $tables[$type]['memberColumn'];
+						$groupColumn = $tables[$type]['groupColumn'];
+
+						$forSave[$tableName]['names'] = [$memberColumn, $groupColumn];
+						$forSave[$tableName]['values'][] = [$memberId];
+					}
+					break;
+				case 'modules':
+					$modules = $fieldModel->getEditViewDisplayValue($value);
+					$tableName = 'vtiger_group2modules';
+					$forSave[$tableName] = [];
+					foreach ($modules as $tabId) {
+						$forSave[$tableName]['names'] = ['tabid', 'groupid'];
+						$forSave[$tableName]['values'][] = [$tabId];
+					}
+					break;
+				default:
+					$forSave[$fieldModel->getTableName()][$fieldModel->getColumnName()] = $value;
+					break;
+			}
+		}
+
+		return $forSave;
+	}
+
+	/**
+	 * Sets data from request.
+	 *
+	 * @param App\Request $request
+	 */
+	public function setDataFromRequest(App\Request $request)
+	{
+		foreach ($this->getModule()->getEditableFields() as $fieldName) {
+			if ($request->has($fieldName)) {
+				switch ($fieldName) {
+					case 'parentid':
+						$fieldModel = $this->getFieldInstanceByName($fieldName);
+						$value = $request->getByType($fieldName, $fieldModel->get('purifyType'));
+						$fieldUITypeModel = $fieldModel->getUITypeModel();
+						$fieldUITypeModel->validate($value, true);
+						if ($value && ($ownerList = $fieldUITypeModel->getOwnerList($this)) && !isset($ownerList['LBL_USERS'][$value]) && !isset($ownerList['LBL_GROUPS'][$value])) {
+							$value = 0;
+						}
+						break;
+					default:
+						$fieldModel = $this->getFieldInstanceByName($fieldName);
+						$value = $request->getByType($fieldName, $fieldModel->get('purifyType'));
+						$fieldUITypeModel = $fieldModel->getUITypeModel();
+						$fieldUITypeModel->validate($value, true);
+						$value = $fieldModel->getDBValue($value);
+						break;
+				}
+				$this->set($fieldName, $value);
+			}
+		}
+	}
+
+	/**
+	 * Function returns field instances for given name.
+	 *
+	 * @param string $name
+	 *
+	 * @return Vtiger_Field_Model
+	 */
+	public function getFieldInstanceByName($name)
+	{
+		$fieldModel = $this->getModule()->getFieldInstanceByName($name);
+		if ($this->has($name)) {
+			$fieldModel->set('fieldvalue', $this->get($name) ?? '');
+		}
+		return $fieldModel;
+	}
+
+	/**
+	 * Function to recalculate user privileges files.
+	 *
+	 * @param array $userIdsList
+	 */
+	public function recalculate(array $userIdsList)
 	{
 		$php_max_execution_time = \App\Config::main('php_max_execution_time');
 		set_time_limit($php_max_execution_time);
-
-		$userIdsList = [];
-		foreach ($oldUsersList as $userId => $userRecordModel) {
-			$userIdsList[$userId] = $userId;
-		}
-
-		$this->members = null;
-		foreach ($this->getUsersList() as $userId => $userRecordModel) {
-			$userIdsList[$userId] = $userId;
-		}
 
 		foreach ($userIdsList as $userId) {
 			\App\UserPrivilegesFile::createUserPrivilegesfile($userId);
@@ -241,73 +369,18 @@ class Settings_Groups_Record_Model extends Settings_Vtiger_Record_Model
 	/**
 	 * Function to get all users related to this group.
 	 *
-	 * @param bool $nonAdmin true/false
+	 * @param string $members
 	 *
-	 * @return <Array> Users models list <Users_Record_Model>
+	 * @return array
 	 */
-	public function getUsersList($nonAdmin = false)
+	public function getUsersList(string $members): array
 	{
 		$userIdsList = [];
-		$members = $this->getMembers();
-
-		if (isset($members['Users'])) {
-			foreach ($members['Users'] as $memberModel) {
-				$userId = $memberModel->get('userId');
-				$userIdsList[$userId] = $userId;
-			}
+		if ($members) {
+			$fieldModel = $this->getFieldInstanceByName('members');
+			$userIdsList = \App\PrivilegeUtil::getQueryToUsersByMembers($fieldModel->getEditViewValue($members))->column();
 		}
 
-		if (isset($members['Groups'])) {
-			foreach ($members['Groups'] as $memberModel) {
-				$groupModel = self::getInstance($memberModel->get('groupId'));
-				$groupMembers = $groupModel->getMembers();
-
-				foreach ($groupMembers['Users'] as $groupMemberModel) {
-					$userId = $groupMemberModel->get('userId');
-					$userIdsList[$userId] = $userId;
-				}
-			}
-		}
-
-		if (isset($members['Roles'])) {
-			foreach ($members['Roles'] as $memberModel) {
-				$roleModel = new Settings_Roles_Record_Model();
-				$roleModel->set('roleid', $memberModel->get('roleId'));
-
-				$roleUsers = $roleModel->getUsers();
-				foreach ($roleUsers as $userId => $userRecordModel) {
-					$userIdsList[$userId] = $userId;
-				}
-			}
-		}
-
-		if (isset($members['RoleAndSubordinates'])) {
-			foreach ($members['RoleAndSubordinates'] as $memberModel) {
-				$roleModel = Settings_Roles_Record_Model::getInstanceById($memberModel->get('roleId'));
-				$roleUsers = $roleModel->getUsers();
-				foreach ($roleUsers as $userId => $userRecordModel) {
-					$userIdsList[$userId] = $userId;
-				}
-				$childernRoles = $roleModel->getAllChildren();
-				foreach ($childernRoles as $role) {
-					$childRoleModel = new Settings_Roles_Record_Model();
-					$childRoleModel->set('roleid', $role->getId());
-
-					$roleUsers = $childRoleModel->getUsers();
-					foreach ($roleUsers as $userId => $userRecordModel) {
-						$userIdsList[$userId] = $userId;
-					}
-				}
-			}
-		}
-		if ($nonAdmin) {
-			foreach ($userIdsList as $key => $userId) {
-				$userRecordModel = Users_Record_Model::getInstanceById($userId, 'Users');
-				if ($userRecordModel->isAdminUser()) {
-					unset($userIdsList[$key]);
-				}
-			}
-		}
 		return $userIdsList;
 	}
 
@@ -339,43 +412,8 @@ class Settings_Groups_Record_Model extends Settings_Vtiger_Record_Model
 		$eventHandler->trigger('GroupBeforeDelete');
 		$this->transferOwnership($transferToGroup);
 		\App\PrivilegeUtil::deleteRelatedSharingRules($groupId, 'Groups');
-		$db->createCommand()->delete('vtiger_group2grouprel', ['groupid' => $groupId])->execute();
-		$db->createCommand()->delete('vtiger_group2role', ['groupid' => $groupId])->execute();
-		$db->createCommand()->delete('vtiger_group2rs', ['groupid' => $groupId])->execute();
-		$db->createCommand()->delete('vtiger_users2group', ['groupid' => $groupId])->execute();
-		$db->createCommand()->delete('vtiger_group2modules', ['groupid' => $groupId])->execute();
 		$db->createCommand()->delete('vtiger_groups', ['groupid' => $groupId])->execute();
 		\App\Cache::clear();
-	}
-
-	/**
-	 * Function to get the list view actions for the record.
-	 *
-	 * @return <Array> - Associate array of Vtiger_Link_Model instances
-	 */
-	public function getRecordLinks()
-	{
-		$links = [];
-		$recordLinks = [
-			[
-				'linktype' => 'LISTVIEWRECORD',
-				'linklabel' => 'LBL_EDIT_RECORD',
-				'linkurl' => $this->getEditViewUrl(),
-				'linkicon' => 'yfi yfi-full-editing-view',
-				'linkclass' => 'btn-sm btn-primary'
-			],
-			[
-				'linktype' => 'LISTVIEWRECORD',
-				'linklabel' => 'LBL_DELETE_RECORD',
-				'linkurl' => "javascript:Settings_Vtiger_List_Js.triggerDelete(event,'" . $this->getDeleteActionUrl() . "')",
-				'linkicon' => 'fas fa-trash-alt',
-				'linkclass' => 'btn-sm btn-danger'
-			],
-		];
-		foreach ($recordLinks as $recordLink) {
-			$links[] = Vtiger_Link_Model::getInstanceFromValues($recordLink);
-		}
-		return $links;
 	}
 
 	/**
@@ -385,6 +423,11 @@ class Settings_Groups_Record_Model extends Settings_Vtiger_Record_Model
 	 */
 	public static function getAll()
 	{
+		$cacheName = __CLASS__;
+		$key = __FUNCTION__;
+		if (\App\Cache::staticHas($cacheName, $key)) {
+			return \App\Cache::staticGet($cacheName, $key);
+		}
 		$dataReader = (new App\Db\Query())->from('vtiger_groups')->createCommand()->query();
 		$groups = [];
 		while ($row = $dataReader->read()) {
@@ -393,91 +436,212 @@ class Settings_Groups_Record_Model extends Settings_Vtiger_Record_Model
 			$groups[$group->getId()] = $group;
 		}
 		$dataReader->close();
-
+		\App\Cache::staticSave($cacheName, $key, $groups);
 		return $groups;
+	}
+
+	/**
+	 * Function to get the clean instance.
+	 *
+	 * @return \self
+	 */
+	public static function getCleanInstance(): self
+	{
+		$cacheName = __CLASS__;
+		$key = 'Clean';
+		if (\App\Cache::staticHas($cacheName, $key)) {
+			return \App\Cache::staticGet($cacheName, $key);
+		}
+		$moduleInstance = Settings_Vtiger_Module_Model::getInstance('Settings:Groups');
+		$instance = new self();
+		$instance->module = $moduleInstance;
+		\App\Cache::staticSave($cacheName, $key, $instance);
+
+		return $instance;
 	}
 
 	/**
 	 * Function to get the instance of Group model, given group id or name.
 	 *
-	 * @param <Object> $value
+	 * @param int|string $value
 	 *
 	 * @return Settings_Groups_Record_Model instance, if exists. Null otherwise
 	 */
 	public static function getInstance($value)
 	{
+		$instance = null;
 		if (vtlib\Utils::isNumber($value)) {
 			$dataReader = (new App\Db\Query())->from('vtiger_groups')->where(['groupid' => $value])->createCommand()->query();
 		} else {
 			$dataReader = (new App\Db\Query())->from('vtiger_groups')->where(['groupname' => $value])->createCommand()->query();
 		}
 		if ($dataReader->count() > 0) {
-			$role = new self();
-			$role->setData($dataReader->read());
-
-			return $role;
+			$instance = self::getCleanInstance();
+			$data = $dataReader->read();
+			$data['members'] = $instance->getFieldInstanceByName('members')->getDBValue(Settings_Groups_Member_Model::getAllByTypeForGroup($data['groupid']));
+			$instance->setData($data)->setModules();
 		}
-		return null;
+		$dataReader->close();
+
+		return $instance;
 	}
 
-	/** Function to get the instance of the group by Name.
-	 * @param type  $name             -- name of the group
-	 * @param array $excludedRecordId
+	/**
+	 * Data validation.
 	 *
-	 * @return null/group instance
+	 * @return string|null
 	 */
-	public static function getInstanceByName($name, $excludedRecordId = [])
+	public function validate(): ?string
+	{
+		$error = null;
+		if ($this->checkDuplicate()) {
+			$error = self::ERROR_DUPLICATE;
+		} else {
+			$error = $this->checkLoop();
+		}
+		return $error ? self::GROUP_ERRORS[$error] : $error;
+	}
+
+	/**
+	 * Check duplicate.
+	 *
+	 * @return bool
+	 */
+	public function checkDuplicate(): bool
 	{
 		$query = new App\Db\Query();
-		$query->from('vtiger_groups')->where(['groupname' => $name]);
-		$containsEmpty = \in_array('', $excludedRecordId, true);
-
-		if (!empty($excludedRecordId && !$containsEmpty)) {
-			$query->andWhere(['not in', 'groupid', $excludedRecordId]);
+		$query->from('vtiger_groups')->where(['groupname' => $this->get('groupname')]);
+		if ($this->getId()) {
+			$query->andWhere(['<>', 'groupid', $this->getId()]);
 		}
-		$dataReader = $query->createCommand()->query();
-		if ($dataReader->count() > 0) {
-			$role = new self();
-			$role->setData($dataReader->read());
 
-			return $role;
-		}
-		return null;
+		return $query->exists();
 	}
 
-	public function getDisplayData()
+	/**
+	 * Get elements by member type.
+	 *
+	 * @param string $type
+	 *
+	 * @return array
+	 */
+	public function getMembersByType(string $type): array
 	{
-		$data = $this->getData();
-		$modules = [];
-		if (!\is_array($data['modules'])) {
-			$data['modules'] = [$data['modules']];
-		}
-		if (!\is_array($data['group_members'])) {
-			$data['group_members'] = [$data['group_members']];
-		}
-		foreach ($data['modules'] as $tabId) {
-			$modules[] = \App\Module::getModuleName($tabId);
-		}
-		$modules = implode(',', $modules);
-		$data['modules'] = $modules;
-		$groupMembers = [];
-		foreach ($data['group_members'] as $member) {
-			$info = explode(':', $member);
-			if ('Users' == $info[0]) {
-				$userModel = Users_Record_Model::getInstanceById($info[1], 'Users');
-				$groupMembers[] = $userModel->getName();
-			}
-			if ('Roles' == $info[0] || 'RoleAndSubordinates' == $info[0]) {
-				$roleModel = Settings_Roles_Record_Model::getInstanceById($info[1]);
-				$groupMembers[] = $roleModel->getName();
-			}
-			if ('Groups' == $info[0]) {
-				$groupModel = self::getInstance($info[1]);
-				$groupMembers[] = $groupModel->getName();
+		$fieldModel = $this->getFieldInstanceByName('members');
+		$members = $fieldModel->getEditViewValue($this->get($fieldModel->getName()));
+		$needle = $type . ':';
+		$length = \strlen($needle);
+		foreach ($members as $key => $member) {
+			if (0 === strncmp($member, $needle, $length)) {
+				$members[$key] = substr($member, $length);
+			} else {
+				unset($members[$key]);
 			}
 		}
-		$data['group_members'] = implode(',', $groupMembers);
 
-		return $data;
+		return $members;
+	}
+
+	/** @var int Error ID - The limit of allowed group nests has been exceeded */
+	public const ERROR_LOOP_LIMIT = 1;
+	/** @var int Error ID - Indefinite loop */
+	public const ERROR_LOOP_INF = 2;
+	/** @var int Error ID - Duplicate record */
+	public const ERROR_DUPLICATE = 3;
+	/** @var array Labels by error ID */
+	public const GROUP_ERRORS = [
+		self::ERROR_LOOP_LIMIT => 'LBL_ALLOWED_GROUP_NESTS_EXCEEDED',
+		self::ERROR_LOOP_INF => 'LBL_INDEFINITE_LOOP',
+		self::ERROR_DUPLICATE => 'LBL_GROUP_DUPLICATE',
+	];
+
+	/**
+	 * Check group correlations.
+	 *
+	 * @return int|null
+	 */
+	public function checkLoop(): ?int
+	{
+		$error = null;
+		$groupsDown = $allGroups = $this->getMembersByType(\App\PrivilegeUtil::MEMBER_TYPE_GROUPS);
+		if (!$groupsDown) {
+			return $error;
+		}
+		$i = 2;
+		$groupsUp = [];
+		$max = \App\PrivilegeUtil::GROUP_LOOP_LIMIT;
+		if ($this->getId()) {
+			$allGroups[] = $this->getId();
+			$groupsUp[] = $this->getId();
+		}
+		while ($i <= $max) {
+			if ($groupsDown) {
+				$groupsDown = (new App\Db\Query())->select(['containsgroupid'])->from('vtiger_group2grouprel')->where(['groupid' => $groupsDown])->column();
+			}
+			if ($groupsUp) {
+				$groupsUp = (new App\Db\Query())->select(['groupid'])->from('vtiger_group2grouprel')->where(['containsgroupid' => $groupsUp])->column();
+			}
+			if ($groupsUp && $groupsDown) {
+				++$i;
+			}
+			if ($i >= $max) {
+				$error = self::ERROR_LOOP_LIMIT;
+				break;
+			}
+			if (!$groupsDown && !$groupsUp) {
+				break;
+			}
+			$allGroups = array_merge($allGroups, $groupsDown, $groupsUp);
+			if (\count($allGroups) !== \count(array_flip($allGroups))) {
+				$error = self::ERROR_LOOP_INF;
+				break;
+			}
+			++$i;
+		}
+
+		return $error;
+	}
+
+	/**
+	 * Gets display value.
+	 *
+	 * @param string $key
+	 *
+	 * @return mixed
+	 */
+	public function getDisplayValue(string $key)
+	{
+		$qualifiedModuleName = $this->getModule()->getName(true);
+		switch ($key) {
+			case 'parentid':
+				$value = $this->get($key) ? App\Fields\Owner::getLabel($this->get($key)) : '';
+				break;
+			case 'groupname':
+				$value = App\Language::translate($this->get($key), $qualifiedModuleName);
+				break;
+			case 'members':
+				$members = [];
+				$groupMembers = $this->getFieldInstanceByName($key)->getEditViewDisplayValue($this->get($key), $this);
+				foreach ($groupMembers as $memberValue) {
+					$members[] = \App\Language::translate(App\Labels::member($memberValue), $qualifiedModuleName, null, false);
+				}
+				$value = App\TextUtils::textTruncateWithTooltip(implode(', ', $members), false, true);
+				break;
+			case 'modules':
+				$result = [];
+				$modules = explode(' |##| ', $this->get($key));
+				foreach ($modules as $moduleId) {
+					$moduleName = \App\Module::getModuleName((int) $moduleId);
+					$displayValue = App\Language::translate($moduleName, $moduleName);
+					$result[] = $displayValue;
+				}
+				$modules = implode(', ', $result);
+				$value = App\TextUtils::textTruncateWithTooltip($modules, false, true);
+				break;
+			default:
+				$value = App\TextUtils::textTruncateWithTooltip($this->get($key));
+				break;
+		}
+		return $value;
 	}
 }

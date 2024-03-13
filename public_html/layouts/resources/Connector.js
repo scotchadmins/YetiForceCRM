@@ -142,26 +142,48 @@ window.AppConnector = {
 		}
 		jQuery.ajax(params);
 		if (pjaxMode) {
-			if (typeof params.data.historyUrl !== 'undefined') {
-				fullUrl = params.data.historyUrl;
-			}
-			if (fullUrl === '') {
-				fullUrl = 'index.php?' + $.param(params.data);
-			} else if (fullUrl.indexOf('index.php?') === -1) {
-				fullUrl = 'index.php?' + fullUrl;
-			}
-			if (app.isWindowTop() && history.pushState && fullUrl !== '') {
-				const currentHref = window.location.href;
-				if (!history.state) {
-					history.replaceState(currentHref, 'title 1', currentHref);
-				}
-				history.pushState(fullUrl, 'title 2', fullUrl);
-			}
+			app.changeUrl(params);
 		}
 		return aDeferred.promise();
 	},
+	/**
+	 * Send form data
+	 * @param {string} url
+	 * @param {object} postData
+	 * @param {object} formAttr
+	 */
+	requestForm: function (url, postData = {}, formAttr = {}) {
+		$.extend(formAttr, {
+			method: 'post',
+			action: url,
+			style: 'display:none;'
+		});
+		let form = $('<form></form>', formAttr);
+		if (typeof csrfMagicName !== 'undefined') {
+			postData[csrfMagicName] = csrfMagicToken;
+		}
+		$.each(postData, (index, value) => {
+			let isMultiple = typeof value === 'object' && value.length && index.slice(-2) === '[]';
+			const item = document.createElement(isMultiple ? 'select' : 'input');
 
-	requestForm: function (url, params = {}) {
-		app.openUrlMethodPost(url, params);
+			item.setAttribute('type', 'hidden');
+			item.setAttribute('name', index);
+
+			if (isMultiple) {
+				item.setAttribute('multiple', 'multiple');
+				for (let i in value) {
+					let option = document.createElement('option');
+					option.setAttribute('value', value[i]);
+					option.setAttribute('selected', true);
+					item.appendChild(option);
+				}
+			} else {
+				item.setAttribute('value', value);
+			}
+			form.append(item);
+		});
+		$('body').append(form);
+		form.trigger('submit');
+		form.remove();
 	}
 };

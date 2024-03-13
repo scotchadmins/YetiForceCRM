@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class HelpDesk_Record_Model extends Vtiger_Record_Model
@@ -32,6 +32,7 @@ class HelpDesk_Record_Model extends Vtiger_Record_Model
 	public function getActiveServiceContracts()
 	{
 		$query = (new \App\Db\Query())->from('vtiger_servicecontracts')
+			->select(['servicecontractsid', 'subject', 'due_date'])
 			->innerJoin('vtiger_crmentity', 'vtiger_servicecontracts.servicecontractsid = vtiger_crmentity.crmid')
 			->where(['deleted' => 0, 'contract_status' => 'In Progress', 'sc_related_to' => $this->get('parent_id')])
 			->orderBy(['due_date' => SORT_ASC]);
@@ -84,16 +85,16 @@ class HelpDesk_Record_Model extends Vtiger_Record_Model
 	 */
 	public function checkValidateToClose(string $status): array
 	{
-		if ((\App\Config::module($this->getModuleName(), 'CHECK_IF_RECORDS_HAS_TIME_CONTROL') ||
-		 \App\Config::module($this->getModuleName(), 'CHECK_IF_RELATED_TICKETS_ARE_CLOSED')) &&
-		  \in_array($status, \App\RecordStatus::getStates($this->getModuleName(), \App\RecordStatus::RECORD_STATE_CLOSED))) {
+		if ((\App\Config::module($this->getModuleName(), 'CHECK_IF_RECORDS_HAS_TIME_CONTROL')
+		 || \App\Config::module($this->getModuleName(), 'CHECK_IF_RELATED_TICKETS_ARE_CLOSED'))
+		  && \in_array($status, \App\RecordStatus::getStates($this->getModuleName(), \App\RecordStatus::RECORD_STATE_CLOSED))) {
 			return [
 				'hasTimeControl' => [
 					'result' => $this->checkIfHasTimeControl(),
-					'message' => \App\Language::translate('LBL_ADD_TIME_CONTROL', $this->getModuleName())],
+					'message' => \App\Language::translate('LBL_ADD_TIME_CONTROL', $this->getModuleName()), ],
 				'relatedTicketsClosed' => [
 					'result' => $this->checkIfRelatedTicketsClosed(),
-					'message' => \App\Language::translate('LBL_CLOSE_RELATED_TICKETS', $this->getModuleName())]
+					'message' => \App\Language::translate('LBL_CLOSE_RELATED_TICKETS', $this->getModuleName()), ],
 			];
 		}
 		return ['hasTimeControl' => ['result' => true], 'relatedTicketsClosed' => ['result' => true]];
@@ -125,7 +126,7 @@ class HelpDesk_Record_Model extends Vtiger_Record_Model
 		if (\App\Config::module($this->getModuleName(), 'CHECK_IF_RELATED_TICKETS_ARE_CLOSED')) {
 			$queryGenerator = new App\QueryGenerator($this->getModuleName());
 			$queryGenerator->permissions = false;
-			$queryGenerator->addNativeCondition(['parentid' => $this->getId()]);
+			$queryGenerator->addCondition('parentid', $this->getId(), 'eid');
 			$statusFieldName = \App\RecordStatus::getFieldName($this->getModuleName());
 			$queryGenerator->addCondition($statusFieldName, array_merge(
 				\App\RecordStatus::getStates($this->getModuleName(), \App\RecordStatus::RECORD_STATE_NO_CONCERN),

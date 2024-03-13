@@ -1,15 +1,19 @@
 <?php
+/**
+ * The main file for handling attachments.
+ *
+ * @package App
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ */
 
 namespace App\Main;
 
 /**
  * Basic class to handle files.
- *
- * @package App
- *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
- * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class File
 {
@@ -25,9 +29,13 @@ class File
 			}
 		}
 		\App\Session::init();
+		if (\App\Config::security('csrfActive')) {
+			require_once 'config/csrf_config.php';
+			\CsrfMagic\Csrf::init();
+		}
 		$this->getLogin();
-		$moduleName = $request->getModule();
-		$action = $request->getByType('action', 1);
+		$moduleName = $request->getModule(false);
+		$action = $request->getByType('action', \App\Purifier::STANDARD);
 		if (!$moduleName || !$action) {
 			throw new \App\Exceptions\NoPermitted('Method Not Allowed', 405);
 		}
@@ -36,7 +44,8 @@ class File
 		$handlerClass = \Vtiger_Loader::getComponentClassName('File', $action, $moduleName);
 		$handler = new $handlerClass();
 		if ($handler) {
-			$method = $request->getRequestMethod();
+			$handler->validateRequest($request);
+			$method = \App\Request::getRequestMethod();
 			$permissionFunction = $method . 'CheckPermission';
 			if (!$handler->{$permissionFunction}($request)) {
 				throw new \App\Exceptions\NoPermitted('ERR_NOT_ACCESSIBLE', 403);

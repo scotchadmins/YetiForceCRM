@@ -2,9 +2,13 @@
 /**
  * Cron - Send notifications via mail.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
- * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ * @package Cron
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @author    Radoslaw Skrzypczak <r.skrzypczak@yetiforce.com>
+ * @author    Adrian Kon <a.kon@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
 /**
@@ -14,9 +18,7 @@ class Notification_Notifications_Cron extends \App\CronHandler
 {
 	const MODULE_NAME = 'Notification';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process()
 	{
 		$query = (new \App\Db\Query())->from('u_#__watchdog_schedule');
@@ -25,9 +27,6 @@ class Notification_Notifications_Cron extends \App\CronHandler
 			$this->executeScheduled($row);
 		}
 		$dataReader->close();
-		if (\App\Config::module('Notification', 'AUTO_MARK_NOTIFICATIONS_READ_AFTER_EMAIL_SEND')) {
-			$this->markAsRead();
-		}
 	}
 
 	/**
@@ -41,8 +40,9 @@ class Notification_Notifications_Cron extends \App\CronHandler
 		$timestampEndDate = empty($row['last_execution']) ? $currentTime : strtotime($row['last_execution'] . ' +' . $row['frequency'] . 'min');
 		if ($currentTime >= $timestampEndDate) {
 			$endDate = $this->getEndDate($currentTime, $timestampEndDate, $row['frequency']);
-			if (\App\Privilege::isPermitted(self::MODULE_NAME, 'ReceivingMailNotifications', false, $row['userid']) && $this->existNotifications($row['userid'], $row['last_execution'], $endDate)) {
-				\App\Mailer::sendFromTemplate([
+			$notificationsToSend = $this->existNotifications($row['userid'], $row['last_execution'], $endDate);
+			if (\App\Privilege::isPermitted(self::MODULE_NAME, 'ReceivingMailNotifications', false, $row['userid']) && $notificationsToSend) {
+				$ifEmailSend = \App\Mailer::sendFromTemplate([
 					'moduleName' => 'Notification',
 					'template' => 'SendNotificationsViaMail',
 					'to' => \App\User::getUserModel($row['userid'])->getDetail('email1'),
@@ -50,6 +50,9 @@ class Notification_Notifications_Cron extends \App\CronHandler
 					'endDate' => $endDate,
 					'userId' => $row['userid'],
 				]);
+				if ($ifEmailSend && \App\Config::module('Notification', 'AUTO_MARK_NOTIFICATIONS_READ_AFTER_EMAIL_SEND')) {
+					$this->markSentNotificationsAsRead($notificationsToSend);
+				}
 			}
 			\App\Db::getInstance()->createCommand()
 				->update('u_#__watchdog_schedule', ['last_execution' => $endDate], ['userid' => $row['userid']])
@@ -64,14 +67,14 @@ class Notification_Notifications_Cron extends \App\CronHandler
 	 * @param string $startDate
 	 * @param string $endDate
 	 *
-	 * @return int
+	 * @return array
 	 */
-	private function existNotifications($userId, $startDate, $endDate)
+	private function existNotifications($userId, $startDate, $endDate): array
 	{
 		$scheduleData = Vtiger_Watchdog_Model::getWatchingModulesSchedule($userId, true);
 		if ($scheduleData) {
 			$modules = $scheduleData['modules'];
-			return Notification_Module_Model::getEmailSendEntries($userId, $modules, $startDate, $endDate, true);
+			return Notification_Module_Model::getEmailSendEntries($userId, $modules, $startDate, $endDate);
 		}
 		return [];
 	}
@@ -94,26 +97,16 @@ class Notification_Notifications_Cron extends \App\CronHandler
 	}
 
 	/**
-	 * Function get date.
+	 * Function set notifications as read.
 	 *
-	 * @param string $currentTime
-	 * @param string $timestampEndDate
-	 * @param int    $frequency
+	 * @param mixed $notificationsToSend
 	 */
-	private function markAsRead()
+	private function markSentNotificationsAsRead($notificationsToSend): void
 	{
-		$notifications = (new \App\Db\Query())
-			->select(['smownerid', 'crmid'])
-			->from('u_#__notification')
-			->innerJoin('vtiger_crmentity', 'u_#__notification.notificationid = vtiger_crmentity.crmid')
-			->where(['vtiger_crmentity.deleted' => 0, 'notification_status' => 'PLL_UNREAD'])
-			->orderBy(['smownerid' => SORT_ASC, 'createdtime' => SORT_ASC])
-			->createCommand()->queryAllByGroup(2);
-		foreach ($notifications as $noticesByUser) {
-			$noticesByUser = \array_slice($noticesByUser, 0, App\Config::module('Home', 'MAX_NUMBER_NOTIFICATIONS'));
-			foreach ($noticesByUser as $noticeId) {
-				$notice = Vtiger_Record_Model::getInstanceById($noticeId);
-				$notice->setMarked();
+		foreach ($notificationsToSend as $notificationsType) {
+			foreach ($notificationsType as $notification) {
+				$noticeRecordModel = \Vtiger_Record_Model::getInstanceById($notification->get('notificationid'), 'Notification');
+				$noticeRecordModel->setMarked();
 			}
 		}
 	}

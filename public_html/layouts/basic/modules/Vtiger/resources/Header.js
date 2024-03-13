@@ -5,7 +5,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  *************************************************************************************/
 'use strict';
 
@@ -110,9 +110,7 @@ $.Class(
 		},
 		registerCalendarButtonClickEvent: function () {
 			let element = $('#calendarBtn');
-			let dateFormat = element.data('dateFormat');
 			let currentDate = element.data('date');
-			let vtigerDateFormat = app.convertToDatePickerFormat(dateFormat);
 			element.on('click', function (e) {
 				e.stopImmediatePropagation();
 				element.closest('div.nav').find('div.open').removeClass('open');
@@ -124,7 +122,7 @@ $.Class(
 				}
 			});
 			element.DatePicker({
-				format: vtigerDateFormat,
+				format: App.Fields.Date.convertToDatePickerFormat(element.data('dateFormat')),
 				date: currentDate,
 				calendars: 1,
 				starts: 1,
@@ -250,42 +248,48 @@ $.Class(
 			});
 		},
 		registerReminderNotice: function () {
-			let self = this;
 			$('#page').before(
-				`<div class="remindersNoticeContainer" tabindex="-1" role="dialog" aria-label="${app.vtranslate(
+				`<div class="remindersNoticeContainer js-reminders-sidebar c-sidebar-right" tabindex="-1" role="dialog" aria-label="${app.vtranslate(
 					'JS_REMINDER'
 				)}" aria-hidden="true"></div>`
 			);
 			let block = $('.remindersNoticeContainer');
 			let remindersNotice = $('.remindersNotice');
-			remindersNotice.on('click', function () {
+			remindersNotice.on('click', () => {
 				if (!remindersNotice.hasClass('autoRefreshing')) {
 					Vtiger_Index_Js.requestReminder();
 				}
-				self.hideActionMenu();
-				self.hideBreadcrumbActionMenu();
-				block.toggleClass('toggled');
-				self.hideReminderNotification();
-				app.closeSidebar();
-				self.hideSearchMenu();
+				let open = !block.hasClass('toggled');
+				this.closeSidebars();
+				if (open) {
+					block.addClass('toggled');
+				}
 			});
 		},
 		registerReminderNotification: function () {
-			let self = this;
-			$('#page').before('<div class="remindersNotificationContainer" tabindex="-1" role="dialog"></div>');
+			$('#page').before(
+				'<div class="remindersNotificationContainer js-reminders-sidebar c-sidebar-right" tabindex="-1" role="dialog"></div>'
+			);
 			let block = $('.remindersNotificationContainer');
 			let remindersNotice = $('.notificationsNotice');
-			remindersNotice.on('click', function () {
+			remindersNotice.on('click', () => {
 				if (!remindersNotice.hasClass('autoRefreshing')) {
 					Vtiger_Index_Js.getNotificationsForReminder();
 				}
-				self.hideActionMenu();
-				self.hideBreadcrumbActionMenu();
-				block.toggleClass('toggled');
-				self.hideReminderNotice();
-				app.closeSidebar();
-				self.hideSearchMenu();
+				let open = !block.hasClass('toggled');
+				this.closeSidebars();
+				if (open) {
+					block.addClass('toggled');
+				}
 			});
+		},
+		/** Close all sidebars */
+		closeSidebars() {
+			this.hideActionMenu();
+			this.hideBreadcrumbActionMenu();
+			this.hideReminderSideBar();
+			this.hideSearchMenu();
+			app.closeSidebar();
 		},
 		toggleBreadcrumbActions(container) {
 			let actionsContainer = container.find('.js-header-toggle__actions');
@@ -307,22 +311,21 @@ $.Class(
 		registerMobileEvents: function () {
 			const self = this,
 				container = this.getContentsContainer();
-			$('.rightHeaderBtnMenu').on('click', function () {
-				self.hideActionMenu();
-				self.hideBreadcrumbActionMenu();
-				self.hideSearchMenu();
-				self.hideReminderNotice();
-				self.hideReminderNotification();
-				$('.mobileLeftPanel ').toggleClass('mobileMenuOn');
+			$('.js-sidebar-btn').on('click', () => {
+				this.hideActionMenu();
+				this.hideBreadcrumbActionMenu();
+				this.hideReminderSideBar();
+				this.hideSearchMenu();
 			});
-			$('.js-quick-action-btn').on('click', function () {
-				let currentTarget = $(this);
+			$('.js-quick-action-btn').on('click', (e) => {
+				let currentTarget = $(e.currentTarget);
+
 				app.closeSidebar();
-				self.hideBreadcrumbActionMenu();
-				self.hideSearchMenu();
-				self.hideReminderNotice();
-				self.hideReminderNotification();
+				this.hideBreadcrumbActionMenu();
+				this.hideReminderSideBar();
+				this.hideSearchMenu();
 				$('.actionMenu').toggleClass('actionMenuOn');
+
 				if (currentTarget.hasClass('active')) {
 					currentTarget.removeClass('active');
 					currentTarget.attr('aria-expanded', 'false');
@@ -332,8 +335,8 @@ $.Class(
 					currentTarget.attr('aria-expanded', 'true');
 					currentTarget.popover('disable');
 				}
-				$('.quickCreateModules').on('click', function () {
-					self.hideActionMenu();
+				$('.quickCreateModules').on('click', () => {
+					this.hideActionMenu();
 				});
 			});
 			$('.searchMenuBtn').on('click', function () {
@@ -341,8 +344,7 @@ $.Class(
 				app.closeSidebar();
 				self.hideActionMenu();
 				self.hideBreadcrumbActionMenu();
-				self.hideReminderNotice();
-				self.hideReminderNotification();
+				self.hideReminderSideBar();
 				$('.searchMenu').toggleClass('toogleSearchMenu');
 				if (currentTarget.hasClass('active')) {
 					currentTarget.removeClass('active');
@@ -352,18 +354,14 @@ $.Class(
 					$('.searchMenuBtn .c-header__btn').attr('aria-expanded', 'true');
 				}
 			});
-			$('.js-header__btn--mail .dropdown').on('show.bs.dropdown', function () {
+			$('.js-header__btn--mail .dropdown').on('show.bs.dropdown', () => {
 				app.closeSidebar();
-				self.hideActionMenu();
-				self.hideBreadcrumbActionMenu();
-				self.hideReminderNotice();
-				self.hideReminderNotification();
-				self.hideSearchMenu();
+				this.hideActionMenu();
+				this.hideBreadcrumbActionMenu();
+				this.hideReminderSideBar();
+				this.hideSearchMenu();
 			});
 			this.toggleBreadcrumbActions(container);
-		},
-		hideMobileMenu: function () {
-			$('.mobileLeftPanel ').removeClass('mobileMenuOn');
 		},
 		hideSearchMenu: function () {
 			$('.searchMenu').removeClass('toogleSearchMenu');
@@ -374,11 +372,9 @@ $.Class(
 		hideBreadcrumbActionMenu: function () {
 			$('.js-header-toggle__actions').removeClass('is-active');
 		},
-		hideReminderNotice: function () {
-			$('.remindersNoticeContainer').removeClass('toggled');
-		},
-		hideReminderNotification: function () {
-			$('.remindersNotificationContainer').removeClass('toggled');
+		/** Hide all reminder sidebars */
+		hideReminderSideBar: function () {
+			$('.js-reminders-sidebar').removeClass('toggled');
 		},
 		registerFooTable: function () {
 			let container = $('.tableRWD');
@@ -404,21 +400,25 @@ $.Class(
 		},
 		registerSiteBarButton(container) {
 			const key = 'ShowHideRightPanel' + app.getModuleName();
-			if (app.cacheGet(key) == 'show') {
+			let cache = !container.find('.toggleSiteBarRightButton').data('nocache');
+			if (cache && app.cacheGet(key) == 'show') {
 				this.toggleSiteBar(container.find('.toggleSiteBarRightButton'));
-			} else if (app.cacheGet(key) == null) {
+			} else if (cache && app.cacheGet(key) == null) {
 				if (container.find('.siteBarRight').data('showpanel') == 1) {
 					this.toggleSiteBar(container.find('.toggleSiteBarRightButton'));
 				}
 			}
 			container.find('.toggleSiteBarRightButton').on('click', (e) => {
-				let toogleButton = $(e.currentTarget);
-				if (toogleButton.closest('.siteBarRight').hasClass('hideSiteBar')) {
-					app.cacheSet(key, 'show');
-				} else {
-					app.cacheSet(key, 'hide');
+				let toggleButton = $(e.currentTarget);
+				if (!toggleButton.data('nocache')) {
+					if (toggleButton.closest('.siteBarRight').hasClass('hideSiteBar')) {
+						app.cacheSet(key, 'show');
+					} else {
+						app.cacheSet(key, 'hide');
+					}
 				}
-				this.toggleSiteBar(toogleButton);
+
+				this.toggleSiteBar(toggleButton);
 			});
 		},
 		toggleSiteBar(toogleButton) {
@@ -431,24 +431,6 @@ $.Class(
 			$('.buttonTextHolder .dropdown-menu a').on('click', function () {
 				$(this).parents('.d-inline-block').find('.dropdown-toggle .textHolder').html($(this).text());
 			});
-		},
-		listenTextAreaChange: function () {
-			let thisInstance = this;
-			$('textarea').on('keyup', function () {
-				let elem = $(this);
-				if (!elem.data('has-scroll')) {
-					elem.data('has-scroll', true);
-					elem.on('scroll keyup', function () {
-						thisInstance.resizeTextArea($(this));
-					});
-				}
-				thisInstance.resizeTextArea($(this));
-			});
-		},
-		resizeTextArea: function (elem) {
-			elem.height(1);
-			elem.scrollTop(0);
-			elem.height(elem[0].scrollHeight - elem[0].clientHeight + elem.height());
 		},
 		registerKnowledgeBaseModal() {
 			$('.js-knowledge-base-modal').on('click', () => {
@@ -480,7 +462,6 @@ $.Class(
 				quickCreateModal = container.find('.quickCreateModules');
 			app.showNewScrollbarLeft(menuContainer, { suppressScrollX: true });
 			app.showNewScrollbar(menuContainer.find('.subMenu').last(), { suppressScrollX: true });
-			thisInstance.listenTextAreaChange();
 			thisInstance.registerFooTable(); //Enable footable
 			$('.js-clear-history').on('click', () => {
 				app.clearBrowsingHistory();
@@ -525,7 +506,7 @@ $.Class(
 		}
 	}
 );
-$(document).ready(function () {
+jQuery(function () {
 	window.addEventListener('popstate', (event) => {
 		if (event.state) {
 			window.location.href = event.state;

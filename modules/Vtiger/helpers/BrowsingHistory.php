@@ -1,11 +1,13 @@
 <?php
-
 /**
  * Browsing history.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @package Helper
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Michał Lorencik <m.lorencik@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Vtiger_BrowsingHistory_Helper
 {
@@ -28,6 +30,7 @@ class Vtiger_BrowsingHistory_Helper
 		$dateToday = DateTimeField::convertToUserTimeZone('today')->format('U');
 		$dateYesterday = DateTimeField::convertToUserTimeZone('yesterday')->format('U');
 		foreach ($results as &$value) {
+			$value['title'] = \App\Utils\Completions::decodeEmoji($value['title']);
 			$userDate = DateTimeField::convertToUserTimeZone($value['date'])->format('Y-m-d H:i:s');
 			if (strtotime($userDate) >= $dateToday) {
 				$value['hour'] = true;
@@ -68,14 +71,21 @@ class Vtiger_BrowsingHistory_Helper
 			return false;
 		}
 		$url = App\RequestUtil::getBrowserInfo()->requestUri;
-		parse_str(parse_url(\App\Purifier::decodeHtml($url), PHP_URL_QUERY), $urlQuery);
+		$parsedUrl = parse_url(\App\Purifier::decodeHtml($url), PHP_URL_QUERY);
+		if (empty($parsedUrl)) {
+			return false;
+		}
+		parse_str($parsedUrl, $urlQuery);
 		$validViews = ['Index', 'List', 'Detail', 'Edit', 'DashBoard', 'ListPreview', 'TreeRecords', 'Tree'];
 		if (!empty($urlQuery['module']) && !empty($urlQuery['view']) && \in_array($urlQuery['view'], $validViews)) {
+			if (\is_string($title)) {
+				$title = \App\Utils\Completions::encodeEmoji($title);
+			}
 			if (!empty($urlQuery['record'])) {
-				$title .= ' | ' . App\Record::getLabel($urlQuery['record']);
+				$title .= ' | ' . \App\Utils\Completions::encodeEmoji(App\Record::getLabel($urlQuery['record']));
 			}
 			if (mb_strlen($title) > 255) {
-				$title = \App\TextParser::textTruncate($title, 255, false);
+				$title = \App\TextUtils::textTruncate($title, 255, false);
 			}
 			\App\Db::getInstance()->createCommand()
 				->insert('u_#__browsinghistory', [

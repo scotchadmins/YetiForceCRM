@@ -4,9 +4,10 @@
  *
  * @package View
  *
- * @copyright YetiForce Sp. z o.o.
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
 /**
@@ -14,17 +15,11 @@
  */
 class Vtiger_MeetingModal_View extends \App\Controller\Modal
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $modalIcon = 'mdi mdi-card-account-phone';
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $successBtn = '';
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $showFooter = false;
 	/**
 	 * @var string Meeting URL
@@ -35,9 +30,7 @@ class Vtiger_MeetingModal_View extends \App\Controller\Modal
 	 */
 	protected $moderator = false;
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		$moduleName = $request->getModule();
@@ -47,9 +40,7 @@ class Vtiger_MeetingModal_View extends \App\Controller\Modal
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$this->initMeetingData($request);
@@ -71,7 +62,7 @@ class Vtiger_MeetingModal_View extends \App\Controller\Modal
 				$expires = $date->format('Y-m-d H:i:s (T P)');
 			}
 		}
-		$sendInvitation = ($isActive || $simpleUrl) && \App\Config::main('isActiveSendingMails') && \App\Privilege::isPermitted('OSSMail');
+		$sendInvitation = ($isActive || $simpleUrl) && \App\Mail::checkInternalMailClient();
 		$templateId = \App\Config::component('MeetingService', 'emailTemplateModule', [])[$moduleName] ?? \App\Config::component('MeetingService', 'emailTemplateDefault', 0);
 		if ($sendInvitation && $templateId && ($template = \App\Mail::getTemplate($templateId, false))) {
 			$textParser = \App\TextParser::getInstanceById($recordId, $moduleName);
@@ -105,18 +96,14 @@ class Vtiger_MeetingModal_View extends \App\Controller\Modal
 		$this->moderator = $recordModel->isEditable();
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getPageTitle(App\Request $request)
 	{
 		$label = \App\Record::getLabel($request->getInteger('record'));
 		return $label ? $label : parent::getPageTitle($request);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getModalScripts(App\Request $request)
 	{
 		return array_merge($this->checkAndConvertJsScripts([

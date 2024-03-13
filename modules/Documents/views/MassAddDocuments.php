@@ -3,8 +3,8 @@
 /**
  * Action to mass upload files.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Tomasz Kur <t.kur@yetiforce.com>
  */
 class Documents_MassAddDocuments_View extends Vtiger_BasicModal_View
@@ -34,6 +34,12 @@ class Documents_MassAddDocuments_View extends Vtiger_BasicModal_View
 		$moduleName = $request->getModule();
 		$viewer = $this->getViewer($request);
 		$viewer->assign('MODULE', $moduleName);
+		if ($request->has('sourceModule')) {
+			$viewer->assign('SOURCE_MODULE', $request->getByType('sourceModule', \App\Purifier::ALNUM));
+		}
+		if ($request->has('sourceRecord')) {
+			$viewer->assign('SOURCE_RECORD', $request->getInteger('sourceRecord'));
+		}
 		$viewer->view('MassAddDocuments.tpl', $moduleName);
 		parent::postProcess($request);
 	}

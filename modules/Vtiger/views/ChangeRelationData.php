@@ -4,8 +4,8 @@
  *
  * @package   View
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  * @author    Arkadiusz Dudek <a.dudek@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
@@ -15,14 +15,10 @@
  */
 class Vtiger_ChangeRelationData_View extends \App\Controller\Modal
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $modalSize = '';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		$recordModel = Vtiger_Record_Model::getInstanceById($request->getInteger('record'));
@@ -31,9 +27,7 @@ class Vtiger_ChangeRelationData_View extends \App\Controller\Modal
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getPageTitle(App\Request $request)
 	{
 		return \App\Language::translate('LBL_CHANGE_RELATION_DATA', $request->getModule());
@@ -57,7 +51,7 @@ class Vtiger_ChangeRelationData_View extends \App\Controller\Modal
 		$data = $relationModel->getRelationData($parentRecordId, $recordId);
 		$fieldModels = [];
 
-		foreach ($relationModel->getFields() as $fieldModel) {
+		foreach ($relationModel->getFields(true) as $fieldModel) {
 			$fieldModel->set('fieldvalue', $data[$fieldModel->getName()] ?? '');
 			$fieldModels[$fieldModel->getName()] = $fieldModel;
 		}

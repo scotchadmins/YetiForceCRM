@@ -1,4 +1,4 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
 	<div id="currencyUpdateContainer">
 		<div class="o-breadcrumb widget_header row mb-2">
@@ -29,8 +29,9 @@
 						<div class="row">
 							<div class="col-md-5">
 								<select name="bank" id="bank" class="select2 form-control">
+									<option value="0" {if !$ACTIVE_BANK}selected{/if}>{\App\Language::translate('LBL_SELECT_OPTION', $QUALIFIED_MODULE)}</option>
 									{foreach from=$BANK item=key}
-										<option value="{$key.id}" {if $key.active eq '1'}selected{/if} data-name="{$key.bank_name}">{\App\Language::translate($key.bank_name, $QUALIFIED_MODULE)}</option>
+										<option value="{$key.id}" {if $key.active eq '1'}selected{/if} data-name="{$key.bank_name|escape}">{\App\Language::translate($key.bank_name, $QUALIFIED_MODULE)}</option>
 									{/foreach}
 								</select>
 							</div>
@@ -38,15 +39,15 @@
 								{*<button class="btn btn-success float-right" name="save" type="submit"><strong>{\App\Language::translate('LBL_SET_DEFAULT_BANK', $QUALIFIED_MODULE)}</strong></button>*}
 								{if count($SUPPORTED_CURRENCIES) gt 0}
 									<button class="btn btn-info"
-											id="supportedCurrencies"
-											title="{\App\Language::translate('LBL_CURRENCIES_SUPPORTED', $QUALIFIED_MODULE)}"
-											type="button"><span class="fas fa-info-circle"></span></button>
+										id="supportedCurrencies"
+										title="{\App\Language::translate('LBL_CURRENCIES_SUPPORTED', $QUALIFIED_MODULE)}"
+										type="button"><span class="fas fa-info-circle"></span></button>
 								{/if}
 								{if count($UNSUPPORTED_CURRENCIES) gt 0}
 									<button class="btn btn-danger ml-1"
-											id="unsupportedCurrencies"
-											title="{\App\Language::translate('LBL_CURRENCIES_UNSUPPORTED', $QUALIFIED_MODULE)}"
-											type="button"><span class="fas fa-exclamation-triangle"></span></button>
+										id="unsupportedCurrencies"
+										title="{\App\Language::translate('LBL_CURRENCIES_UNSUPPORTED', $QUALIFIED_MODULE)}"
+										type="button"><span class="fas fa-exclamation-triangle"></span></button>
 								{/if}
 							</div>
 						</div>
@@ -83,7 +84,7 @@
 					<td class="fieldLabel">
 						<span class="float-right"><strong>{\App\Language::translate('LBL_CAL_DATE', $QUALIFIED_MODULE)}:</strong></label>
 					</td>
-					<td class="fieldValue" >
+					<td class="fieldValue">
 						<div class="input-group">
 							<div class=" input-group-prepend">
 								<span class="input-group-text u-cursor-pointer js-date__btn" data-js="click">

@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce Sp. z o.o
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
 class Settings_Workflows_Edit_View extends Settings_Vtiger_Index_View
@@ -56,7 +56,7 @@ class Settings_Workflows_Edit_View extends Settings_Vtiger_Index_View
 		}
 		$viewer->assign('WORKFLOW_MODEL', $workflowModel);
 		$viewer->assign('ALL_MODULES', Settings_Workflows_Module_Model::getSupportedModules());
-		$viewer->assign('TRIGGER_TYPES', Settings_Workflows_Module_Model::getTriggerTypes());
+		$viewer->assign('TRIGGER_TYPES', Settings_Workflows_Module_Model::TRIGGER_TYPES);
 
 		$viewer->assign('MODULE', $moduleName);
 		$viewer->assign('QUALIFIED_MODULE', $qualifiedModuleName);
@@ -104,15 +104,16 @@ class Settings_Workflows_Edit_View extends Settings_Vtiger_Index_View
 						$value = $request->isEmpty($name) ? null : $request->getByType($name, 'TimeInUserFormat');
 						break;
 					case 'schdate':
-						$value = $request->isEmpty($name) ? null : $request->getByType($name, 'DateTimeInUserFormat');
+						$value = $request->isEmpty($name) ? null : $request->getByType($name, 'dateTimeInUserFormat');
 						break;
 					case 'schannualdates':
 						$value = $request->isEmpty($name) ? null : implode(',', $request->getExploded($name, ',', 'DateInUserFormat'));
 						break;
 					case 'params':
 						$value = $request->getMultiDimensionArray($name, [
-							'showTasks' => 'Bool',
-							'enableTasks' => 'Bool'
+							'iterationOff' => \App\Purifier::BOOL,
+							'showTasks' => \App\Purifier::BOOL,
+							'enableTasks' => \App\Purifier::BOOL,
 						]
 						);
 						$value = \App\Json::encode($value);
@@ -166,13 +167,12 @@ class Settings_Workflows_Edit_View extends Settings_Vtiger_Index_View
 			$selectedModuleName = $request->getByType('module_name', 2);
 			$workFlowModel = Settings_Workflows_Record_Model::getCleanInstance($selectedModuleName);
 		}
-		$moduleModel = $workFlowModel->getModule();
-		$viewer->assign('TASK_TYPES', Settings_Workflows_TaskType_Model::getAllForModule($moduleModel));
+		$viewer->assign('TASK_RECORDS', $workFlowModel->getTaskTypes());
 		$viewer->assign('SOURCE_MODULE', $selectedModuleName);
 		$viewer->assign('RECORD', $recordId);
 		$viewer->assign('MODULE', $moduleName);
 		$viewer->assign('WORKFLOW_MODEL', $workFlowModel);
-		$viewer->assign('TASK_LIST', $workFlowModel->getTasks());
+		$viewer->assign('TASK_LIST', $workFlowModel->getTasks(false));
 		$viewer->assign('QUALIFIED_MODULE', $qualifiedModuleName);
 		$viewer->view('Step3.tpl', $qualifiedModuleName);
 	}

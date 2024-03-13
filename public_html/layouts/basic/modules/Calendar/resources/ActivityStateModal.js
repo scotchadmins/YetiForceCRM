@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 jQuery.Class(
@@ -7,26 +7,14 @@ jQuery.Class(
 	{
 		registerActivityState() {
 			const self = this;
-			$('.js-activity-buttons button:not(.close)').on('click', function (e) {
-				let currentTarget = $(e.currentTarget),
-					viewName = app.getViewName();
+			$('.js-activity-buttons').on('click', 'button:not(.close, .js-postpone), .js-postpone-time', function (e) {
+				let currentTarget = $(e.currentTarget);
 				app.hideModalWindow();
 				if (1 === currentTarget.data('type')) {
 					self.updateActivityState(currentTarget);
 				} else {
 					let isReminder = currentTarget.closest('#calendar-reminder-modal').length;
-					if (app.getModuleName() === 'Calendar' && viewName === 'CalendarExtended' && !isReminder) {
-						let calendarInstance = new Calendar_CalendarExtended_Js();
-						calendarInstance.getCalendarSidebarData({
-							module: 'Calendar',
-							view: 'EventForm',
-							record: currentTarget.data('id'),
-							isDuplicate: true,
-							addRelation: true,
-							sourceModule: 'Calendar',
-							sourceRecord: currentTarget.data('id')
-						});
-					} else if (currentTarget.hasClass('showQuickCreate') || isReminder) {
+					if (currentTarget.hasClass('showQuickCreate') || isReminder) {
 						let progressIndicatorElement = $.progressIndicator({
 								position: 'html',
 								blockInfo: {
@@ -38,6 +26,9 @@ jQuery.Class(
 								currentTarget.data('id') +
 								'&fillFields=all',
 							params = {};
+						if (currentTarget.data('postpone-time')) {
+							url = url + '&postponeTime=' + encodeURIComponent(currentTarget.data('postpone-time'));
+						}
 						params.noCache = true;
 						App.Components.QuickCreate.getForm(url, 'Calendar', params).done(function (data) {
 							progressIndicatorElement.progressIndicator({ mode: 'hide' });
@@ -98,12 +89,11 @@ jQuery.Class(
 						listinstance.getListViewRecords();
 					}
 					if (viewName === 'DashBoard') {
-						new Vtiger_DashBoard_Js().getContainer().find('a[name="drefresh"]').trigger('click');
+						new Vtiger_DashBoard_Js().getContainer().find('.js-widget-refresh').trigger('click');
 					}
-					if (app.getModuleName() === 'Calendar' && (viewName === 'Calendar' || viewName === 'CalendarExtended')) {
-						const calendarInstance = new window[`Calendar_${viewName}_Js`]();
-						calendarInstance.loadCalendarData();
-						calendarInstance.getCalendarCreateView();
+					if (app.getModuleName() === 'Calendar' && viewName === 'Calendar') {
+						app.pageController.loadCalendarData();
+						app.pageController.getCalendarCreateView();
 					}
 					//updates the Calendar Reminder popup's status
 					Vtiger_Index_Js.requestReminder();

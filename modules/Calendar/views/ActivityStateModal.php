@@ -5,14 +5,16 @@
  *
  * @package   View
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Arkadiusz Adach <a.adach@yetiforce.com>
  */
 class Calendar_ActivityStateModal_View extends Vtiger_BasicModal_View
 {
+	/** @var Vtiger_Record_Model Record model.*/
+	private $record;
 	/**
 	 * Get tpl path file.
 	 *
@@ -23,9 +25,7 @@ class Calendar_ActivityStateModal_View extends Vtiger_BasicModal_View
 		return 'ActivityStateModal.tpl';
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		$this->record = $request->isEmpty('record', true) ? null : Vtiger_Record_Model::getInstanceById($request->getInteger('record'), $request->getModule());
@@ -34,22 +34,19 @@ class Calendar_ActivityStateModal_View extends Vtiger_BasicModal_View
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$moduleName = $request->getModule();
 		$viewer = $this->getViewer($request);
 		$viewer->assign('LINKS', $this->getLinks());
 		$viewer->assign('RECORD', $this->record);
+		$viewer->assign('TIME_POSTPONE', \App\Config::module('Calendar', 'timePostponeIntervals', []));
 		$viewer->assign('SCRIPTS', $this->getScripts($request));
 		$viewer->view($this->getTpl(), $moduleName);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getScripts(App\Request $request)
 	{
 		return $this->checkAndConvertJsScripts([
@@ -65,7 +62,7 @@ class Calendar_ActivityStateModal_View extends Vtiger_BasicModal_View
 	public function getLinks(): array
 	{
 		$links = [];
-		if ($this->record->isEditable() && \App\Config::main('isActiveSendingMails') && \App\Privilege::isPermitted('OSSMail') && 1 === \App\User::getCurrentUserModel()->getDetail('internal_mailer')) {
+		if ($this->record->isEditable() && \App\Mail::checkInternalMailClient()) {
 			$links[] = Vtiger_Link_Model::getInstanceFromValues([
 				'linklabel' => 'LBL_SEND_CALENDAR',
 				'linkdata' => ['url' => "index.php?module={$this->record->getModuleName()}&view=SendInvitationModal&record={$this->record->getId()}"],

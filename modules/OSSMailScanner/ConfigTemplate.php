@@ -2,8 +2,8 @@
 /**
  * OSSMailScanner module config.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 return [
 	'ONE_MAIL_FOR_MULTIPLE_RECIPIENTS' => [
@@ -15,6 +15,17 @@ return [
 	'attachHtmlAndTxtToMessageBody' => [
 		'default' => false,
 		'description' => "Attach the content of HTML and TXT files to the email message body.\nThe content of all attachments will be added at the very end of the email body.\n@var bool",
+		'validation' => '\App\Validator::bool',
+		'sanitization' => '\App\Purifier::bool'
+	],
+	'mailBodyGraphicDocumentsFolder' => [
+		'default' => 'T2',
+		'description' => "Folder for documents with graphic files\n@var string",
+		'validation' => '\App\Validator::alnum'
+	],
+	'attachMailBodyGraphicUrl' => [
+		'default' => true,
+		'description' => "Do you want to attach graphic files from the email body as documents: From URL src=https://www.example.domain/image_file ?\n@var bool When the option is disabled, graphic files aren't saved in the CRM",
 		'validation' => '\App\Validator::bool',
 		'sanitization' => '\App\Purifier::bool'
 	],

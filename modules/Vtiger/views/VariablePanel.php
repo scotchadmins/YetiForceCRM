@@ -5,8 +5,8 @@
  *
  * @package View
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class Vtiger_VariablePanel_View extends \App\Controller\View\Page
@@ -37,16 +37,15 @@ class Vtiger_VariablePanel_View extends \App\Controller\View\Page
 	 */
 	public function process(App\Request $request)
 	{
-		$viewer = $this->getViewer($request);
 		$moduleName = $request->getModule();
+		$sourceModule = $request->isEmpty('selectedModule') ? '' : $request->getByType('selectedModule', \App\Purifier::ALNUM);
+		$type = $request->getByType('type');
+
+		$viewer = $this->getViewer($request);
 		$viewer->assign('MODULE', $moduleName);
-		if ($request->isEmpty('selectedModule')) {
-			$viewer->assign('SELECTED_MODULE', '');
-		} else {
-			$viewer->assign('SELECTED_MODULE', $request->getByType('selectedModule', 2));
-		}
-		$viewer->assign('PARSER_TYPE', $request->getByType('type', 1));
-		$viewer->assign('GRAY', true);
+		$viewer->assign('SELECTED_MODULE', $sourceModule);
+		$viewer->assign('TEXT_PARSER', \App\TextParser::getInstance($sourceModule)->setType($type));
+		$viewer->assign('PARSE_TYPE', $type);
 		$viewer->view('VariablePanel.tpl', $moduleName);
 	}
 }

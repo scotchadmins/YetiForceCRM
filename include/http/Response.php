@@ -72,8 +72,10 @@ class Vtiger_Response
 	 * @param mixed      $code
 	 * @param mixed|null $message
 	 * @param mixed      $trace
+	 *
+	 * @return void
 	 */
-	public function setError($code = 500, $message = null, $trace = false)
+	public function setError($code = 500, $message = null, $trace = false): void
 	{
 		if (null === $message) {
 			$message = $code;
@@ -92,11 +94,12 @@ class Vtiger_Response
 	 *
 	 * @return void
 	 */
-	public function setException(Throwable $e)
+	public function setException(Throwable $e): void
 	{
 		$error = [
 			'code' => $e->getCode(),
 		];
+		$statusCode = \is_int($e->getCode()) ? $e->getCode() : 500;
 		if (\Config\Debug::$DISPLAY_EXCEPTION_BACKTRACE) {
 			$error['trace'] = str_replace(ROOT_DIRECTORY . \DIRECTORY_SEPARATOR, '', $e->getTraceAsString());
 		}
@@ -106,9 +109,11 @@ class Vtiger_Response
 		if ($show && ($e instanceof \App\Exceptions\AppException)) {
 			$error['message'] = $e->getDisplayMessage();
 		}
-		$this->setHeader(\App\Request::_getServer('SERVER_PROTOCOL') . ' ' . $e->getCode() . ' ' . str_ireplace(["\r\n", "\r", "\n"], ' ', $reasonPhrase));
+		$this->setHeader(\App\Request::_getServer('SERVER_PROTOCOL') . ' ' . $statusCode . ' ' . str_ireplace(["\r\n", "\r", "\n"], ' ', $reasonPhrase));
 		$this->error = $error;
-		http_response_code($e->getCode());
+		if (is_numeric($statusCode)) {
+			http_response_code($statusCode);
+		}
 	}
 
 	/**

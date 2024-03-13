@@ -4,8 +4,8 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -19,12 +19,39 @@ class Cli
 	/** @var \League\CLImate\CLImate CLImate instance. */
 	public $climate;
 
+	/** @var bool Php support exec */
+	public $exec = true;
+
 	/**
 	 * Construct.
 	 */
 	public function __construct()
 	{
+		$this->exec = \function_exists('exec');
 		$this->climate = new \League\CLImate\CLImate();
+		if (!$this->exec) {
+			$this->climate->setUtil(new \League\CLImate\Util\UtilFactory(new class() extends \League\CLImate\Util\System\System {
+				public function width()
+				{
+					return 120;
+				}
+
+				public function height()
+				{
+					return 40;
+				}
+
+				protected function systemHasAnsiSupport()
+				{
+					return true;
+				}
+
+				public function exec($command, $full = false)
+				{
+					return '';
+				}
+			}));
+		}
 		$this->climate->clear();
 		if (\function_exists('getmyuid') && getmyuid() !== fileowner(__FILE__)) {
 			$this->climate->to('error')->lightRed('Error:  YetiForce CLI works only on the OS user who owns the CRM files');
@@ -40,7 +67,7 @@ class Cli
 		$this->climate->white('Version: ' . Version::get() . ' | CRM URL: ' . \Config\Main::$site_URL);
 		$this->climate->lightGreen()->border('─', 200);
 		\App\User::setCurrentUserId(\Users::getActiveAdminId());
-		\App\Language::setTemporaryLanguage('en_US');
+		\App\Language::setTemporaryLanguage('en-US');
 
 		$this->climate->arguments->add([
 			'module' => [
@@ -84,6 +111,11 @@ class Cli
 	 */
 	public function modulesList(): void
 	{
+		if (!$this->exec) {
+			$this->showHelp();
+			$this->climate->usage();
+			return;
+		}
 		$modules = $this->getModulesList();
 		$modules['Exit'] = 'Exit';
 		$input = $this->climate->radio('Module:', $modules);
@@ -128,6 +160,11 @@ class Cli
 			$this->climate->to('error')->lightRed("Error: Module '$module' does not exist");
 			return;
 		}
+		if (!$this->exec) {
+			$this->showHelp();
+			$this->climate->usage();
+			return;
+		}
 		$instance = new $className($this);
 		$input = $this->climate->radio('Action:', array_merge($instance->methods, ['Exit' => 'Exit']));
 		$action = $input->prompt();
@@ -147,7 +184,8 @@ class Cli
 	private function showHelp(): void
 	{
 		if ($this->climate->arguments->defined('module')) {
-			$className = "\\App\\Cli\\{$this->climate->arguments->get('module')}";
+			$module = $this->climate->arguments->get('module');
+			$className = "\\App\\Cli\\{$module}";
 			if (!class_exists($className)) {
 				$this->climate->to('error')->lightRed("Error: Module '{$this->climate->arguments->get('module')}' does not exist");
 				return;
@@ -164,10 +202,19 @@ class Cli
 				$this->climate->white('Action list for module ' . $this->climate->arguments->get('module'));
 				$this->climate->columns(array_merge([' > Action name <' => ' > Description <'], $instance->methods));
 				$this->climate->lightGreen()->border('─', 200);
+				foreach (array_keys($instance->methods) as $method) {
+					$this->climate->white("php cli.php -m $module -a $method");
+				}
+				$this->climate->lightGreen()->border('─', 200);
 			}
 		} else {
 			$modules = $this->getModulesList();
-			$this->climate->white('Modules list:')->columns(array_keys($modules));
+			$modules = array_keys($modules);
+			$this->climate->white('Modules list:')->columns($modules);
+			$this->climate->lightGreen()->border('─', 200);
+			foreach ($modules as $module) {
+				$this->climate->white("php cli.php -m $module");
+			}
 			$this->climate->lightGreen()->border('─', 200);
 		}
 	}

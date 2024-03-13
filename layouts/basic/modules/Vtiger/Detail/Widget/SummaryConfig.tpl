@@ -1,4 +1,4 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
 	<div class="modal fade" tabindex="-1">
 		<div class="modal-dialog">
@@ -14,7 +14,7 @@
 						<div class="modal-Fields">
 							<div class="row">
 								<div class="col-md-12">
-									<p class="float-left" > <strong>{\App\Language::translate('Type widget', $QUALIFIED_MODULE)}</strong>: </p>
+									<p class="float-left"> <strong>{\App\Language::translate('Type widget', $QUALIFIED_MODULE)}</strong>: </p>
 									<p class="float-left">&nbsp; {\App\Language::translate($TYPE, $QUALIFIED_MODULE)} </p>
 								</div>
 							</div>

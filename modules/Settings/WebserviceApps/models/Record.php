@@ -3,9 +3,13 @@
 /**
  * Record Model.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @package Settings.Model
+ *
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Tomasz Kur <t.kur@yetiforce.com>
+ * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Settings_WebserviceApps_Record_Model extends Settings_Vtiger_Record_Model
 {
@@ -35,7 +39,7 @@ class Settings_WebserviceApps_Record_Model extends Settings_Vtiger_Record_Model
 	}
 
 	/**
-	 * Functtion to get instance without data.
+	 * Function to get instance without data.
 	 *
 	 * @return \self
 	 */
@@ -57,10 +61,7 @@ class Settings_WebserviceApps_Record_Model extends Settings_Vtiger_Record_Model
 			return false;
 		}
 		$model = self::getCleanInstance();
-		$data = (new \App\Db\Query())->from('w_#__servers')
-			->where(['id' => $recordId])
-			->one(\App\Db::getInstance('webservice'));
-		if ($data) {
+		if ($data = \App\Fields\ServerAccess::get($recordId)) {
 			$model->setData($data);
 		}
 		return $model;
@@ -74,6 +75,7 @@ class Settings_WebserviceApps_Record_Model extends Settings_Vtiger_Record_Model
 		\App\Db::getInstance('webservice')->createCommand()
 			->delete('w_#__servers', ['id' => $this->getId()])
 			->execute();
+		\App\Cache::delete('App\Fields\ServerAccess::get', $this->getId());
 	}
 
 	/**
@@ -84,7 +86,7 @@ class Settings_WebserviceApps_Record_Model extends Settings_Vtiger_Record_Model
 	private function checkDuplicate(): bool
 	{
 		$where = ['and'];
-		$where[] = ['name' => $this->get('name')];
+		$where[] = ['type' => $this->get('type'), 'name' => $this->get('name')];
 		if (!$this->isEmpty('id')) {
 			$where[] = ['<>', 'id', $this->getId()];
 		}
@@ -103,8 +105,9 @@ class Settings_WebserviceApps_Record_Model extends Settings_Vtiger_Record_Model
 		$data = [
 			'status' => $this->get('status') ? 1 : 0,
 			'name' => $this->get('name'),
-			'acceptable_url' => $this->get('acceptable_url'),
-			'pass' => App\Encryption::getInstance()->encrypt($this->get('pass')),
+			'url' => (string) $this->get('url'),
+			'ips' => (string) $this->get('ips'),
+			'pass' => $this->get('pass') ? App\Encryption::getInstance()->encrypt($this->get('pass')) : '',
 		];
 		if ($this->isEmpty('id')) {
 			$data['type'] = $this->get('type');
@@ -114,5 +117,6 @@ class Settings_WebserviceApps_Record_Model extends Settings_Vtiger_Record_Model
 		} else {
 			$db->createCommand()->update('w_#__servers', $data, ['id' => $this->getId()])->execute();
 		}
+		\App\Cache::delete('App\Fields\ServerAccess::get', $this->getId());
 	}
 }

@@ -1,7 +1,7 @@
 <?php
 /**
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 include_once 'modules/Vtiger/CRMEntity.php';
@@ -74,14 +74,14 @@ class SRecurringOrders extends Vtiger_CRMEntity
 	public $default_order_by = '';
 	public $default_sort_order = 'ASC';
 
-	/**
-	 * Invoked when special actions are performed on the module.
-	 *
-	 * @param string Module name
-	 * @param string Event Type
-	 * @param mixed $moduleName
-	 * @param mixed $eventType
-	 */
+	/** {@inheritdoc} */
+	protected function init(): void
+	{
+		parent::init();
+		$this->tableJoinClause['vtiger_recurring_info'] = 'LEFT JOIN';
+	}
+
+	/** {@inheritdoc} */
 	public function moduleHandler($moduleName, $eventType)
 	{
 		if ('module.postinstall' === $eventType) {
@@ -96,13 +96,5 @@ class SRecurringOrders extends Vtiger_CRMEntity
 			}
 			CRMEntity::getInstance('ModTracker')->enableTrackingForModule(\App\Module::getModuleId($moduleName));
 		}
-	}
-
-	public function getJoinClause($tableName)
-	{
-		if ('vtiger_recurring_info' == $tableName) {
-			return 'LEFT JOIN';
-		}
-		return parent::getJoinClause($tableName);
 	}
 }

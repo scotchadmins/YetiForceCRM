@@ -1,8 +1,8 @@
 <?php
 
 /**
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Maciej Stencel <m.stencel@yetiforce.com>
  */
 class Settings_CurrencyUpdate_Index_View extends Settings_Vtiger_Index_View
@@ -21,35 +21,33 @@ class Settings_CurrencyUpdate_Index_View extends Settings_Vtiger_Index_View
 		$moduleModel->refreshBanks();
 
 		$downloadBtn = !$request->isEmpty('download') ? $request->getByType('download') : false;
-		$dateCur = '';
 		if (!$request->isEmpty('duedate')) {
-			$date = \App\Fields\Date::formatToDB($request->getByType('duedate', 'DateInUserFormat'));
-			if (strtotime($date) > strtotime(date('Y-m-d'))) {
-				$date = date('Y-m-d');
+			$dateStart = \App\Fields\Date::formatToDB($request->getByType('duedate', 'DateInUserFormat'));
+			if (strtotime($dateStart) > strtotime(date('Y-m-d'))) {
+				$dateStart = date('Y-m-d');
 			}
-			$dateCur = $date;
+			$dateEnd = $dateStart;
 		} else {
-			$dateCur = date('Y-m-d');
+			$dateStart = date('Y-m-d'); //date('Y-m-01');
+			$dateEnd = date('Y-m-t');
 		}
 
 		// take currency rates for yesterday
-		if (0 == strcmp(date('Y-m-d'), $dateCur)) {
-			$dateCur = strtotime('-1 day', strtotime($dateCur));
-			$dateCur = date('Y-m-d', $dateCur);
+		if (0 == strcmp(date('Y-m-d'), $dateStart)) {
+			$dateStart = date('Y-m-d', strtotime('-1 day', strtotime($dateStart)));
 		}
-
-		$dateCur = vtlib\Functions::getLastWorkingDay($dateCur);
+		$dateStart = vtlib\Functions::getLastWorkingDay($dateStart);
 
 		// get currency if not already archived
 		if ($downloadBtn) {
-			$moduleModel->fetchCurrencyRates($dateCur);
+			$moduleModel->fetchCurrencyRates($dateStart);
 		}
 
 		$selectBankId = $moduleModel->getActiveBankId();
 
-		$history = $moduleModel->getRatesHistory($selectBankId, $dateCur, $request);
+		$history = $moduleModel->getRatesHistory($selectBankId, $request->isEmpty('duedate') ? date('Y-m-01') : $dateStart, $dateEnd);
 		$bankTab = [];
-
+		$active = false;
 		$db = new \App\Db\Query();
 		$db->from('yetiforce_currencyupdate_banks');
 		$dataReader = $db->createCommand()->query();
@@ -59,6 +57,9 @@ class Settings_CurrencyUpdate_Index_View extends Settings_Vtiger_Index_View
 			$bankName = $row['bank_name'];
 			$bankTab[$i]['bank_name'] = $bankName;
 			$bankTab[$i]['active'] = $row['active'];
+			if (1 === $row['active']) {
+				$active = true;
+			}
 			++$i;
 		}
 		$dataReader->close();
@@ -71,8 +72,9 @@ class Settings_CurrencyUpdate_Index_View extends Settings_Vtiger_Index_View
 		$viewer->assign('QUALIFIED_MODULE', $qualifiedModule);
 		$viewer->assign('MODULE_MODEL', $moduleModel);
 		$viewer->assign('MODULENAME', 'CurrencyUpdate');
-		$viewer->assign('DATE', ($request->has('duedate') ? (new Vtiger_Date_UIType())->getDisplayValue($dateCur) : ''));
+		$viewer->assign('DATE', ($request->has('duedate') ? (new Vtiger_Date_UIType())->getDisplayValue($dateStart) : ''));
 		$viewer->assign('CURRNUM', $curr_num);
+		$viewer->assign('ACTIVE_BANK', $active);
 		$viewer->assign('BANK', $bankTab);
 		$viewer->assign('HISTORIA', $history);
 		$viewer->assign('MAINCURR', $mainCurrencyInfo);

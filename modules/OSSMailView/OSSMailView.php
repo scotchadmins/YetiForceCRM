@@ -3,8 +3,8 @@
 /**
  * OSSMailView CRMEntity class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class OSSMailView extends CRMEntity
 {
@@ -73,18 +73,13 @@ class OSSMailView extends CRMEntity
 	public $default_order_by = 'date';
 	public $default_sort_order = 'DESC';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function moduleHandler($moduleName, $eventType)
 	{
 		$dbCommand = App\Db::getInstance()->createCommand();
 		if ('module.postinstall' === $eventType) {
 			$displayLabel = 'OSSMailView';
 			$dbCommand->update('vtiger_tab', ['customized' => 0], ['name' => $displayLabel])->execute();
-			$dbCommand->insert('vtiger_ossmailscanner_config', ['conf_type' => 'email_list', 'parameter' => 'widget_limit', 'value' => '10'])->execute();
-			$dbCommand->insert('vtiger_ossmailscanner_config', ['conf_type' => 'email_list', 'parameter' => 'target', 'value' => '_blank'])->execute();
-			$dbCommand->insert('vtiger_ossmailscanner_config', ['conf_type' => 'email_list', 'parameter' => 'permissions', 'value' => 'vtiger'])->execute();
 			CRMEntity::getInstance('ModTracker')->enableTrackingForModule(\App\Module::getModuleId($moduleName));
 			$registerLink = true;
 			$module = vtlib\Module::getInstance($moduleName);

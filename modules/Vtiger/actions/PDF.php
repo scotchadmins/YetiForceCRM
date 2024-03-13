@@ -1,17 +1,21 @@
 <?php
 
 /**
- * Returns special functions for PDF Settings.
+ * Export PDF action file.
  *
  * @package Action
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Maciej Stencel <m.stencel@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Adrian Koń <a.kon@yetiforce.com>
  * @author    Rafal Pospiech <r.pospiech@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ */
+
+/**
+ * Export PDF action class.
  */
 class Vtiger_PDF_Action extends \App\Controller\Action
 {
@@ -26,8 +30,8 @@ class Vtiger_PDF_Action extends \App\Controller\Action
 	 */
 	public function checkPermission(App\Request $request)
 	{
-		$currentUserPriviligesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
-		if (!$currentUserPriviligesModel->hasModuleActionPermission($request->getModule(), 'ExportPdf')) {
+		$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
+		if (!$userPrivilegesModel->hasModuleActionPermission($request->getModule(), 'ExportPdf')) {
 			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
 		}
 	}
@@ -48,17 +52,17 @@ class Vtiger_PDF_Action extends \App\Controller\Action
 	 * Function to validate date.
 	 *
 	 * @param App\Request $request
+	 *
+	 * @return void
 	 */
-	public function validateRecords(App\Request $request)
+	public function validateRecords(App\Request $request): void
 	{
 		$moduleName = $request->getModule();
-		$templates = $request->getArray('templates', \App\Purifier::INTEGER);
-		$recordId = $request->getInteger('record');
-		$records = $recordId ? [$recordId] : \Vtiger_Mass_Action::getRecordsListFromRequest($request);
+		$recordId = $request->isEmpty('record', true) ? null : $request->getInteger('record');
 		$result = false;
-		foreach ($templates as $templateId) {
+		foreach ($request->getArray('templates', \App\Purifier::INTEGER) as $templateId) {
 			$templateRecord = Vtiger_PDF_Model::getInstanceById($templateId);
-			foreach ($records as $recordId) {
+			foreach ($this->getRecords($request) as $recordId) {
 				if (\App\Privilege::isPermitted($moduleName, 'DetailView', $recordId) && $templateRecord->checkFiltersForRecord((int) $recordId)) {
 					$result = true;
 					break 2;
@@ -66,7 +70,10 @@ class Vtiger_PDF_Action extends \App\Controller\Action
 			}
 		}
 		$response = new Vtiger_Response();
-		$response->setResult(['valid' => $result, 'message' => \App\Language::translateArgs('LBL_NO_DATA_AVAILABLE', $moduleName)]);
+		$response->setResult([
+			'valid' => $result,
+			'message' => \App\Language::translateArgs('LBL_NO_DATA_AVAILABLE', $moduleName),
+		]);
 		$response->emit();
 	}
 
@@ -76,43 +83,59 @@ class Vtiger_PDF_Action extends \App\Controller\Action
 	 * @param App\Request $request
 	 *
 	 * @throws \App\Exceptions\NoPermitted
+	 *
+	 * @return void
 	 */
-	public function generate(App\Request $request)
+	public function generate(App\Request $request): void
 	{
-		$moduleName = $request->getModule();
-		$recordId = $request->getInteger('record');
-		$recordIds = $recordId ? [$recordId] : \Vtiger_Mass_Action::getRecordsListFromRequest($request);
+		$pdfModuleName = $request->getModule();
+		$view = $request->getByType('fromview', \App\Purifier::STANDARD);
+		$recordId = $request->isEmpty('record', true) ? null : $request->getInteger('record');
+		if ($isRelatedView = ('RelatedList' === $view)) {
+			$pdfModuleName = $request->getByType('relatedModule', \App\Purifier::ALNUM);
+		}
+		$recordIds = $this->getRecords($request);
 
 		$templateIds = $request->getArray('pdf_template', 'Integer');
+		$attachAsDocument = 1 === $request->getInteger('attach_as_document', 0) && !empty(\App\Relation::getByModule($pdfModuleName, true, 'Documents'));
 		$singlePdf = 1 === $request->getInteger('single_pdf');
 		$emailPdf = 1 === $request->getInteger('email_pdf');
-		$pdfFlag = $request->getByType('flag', \App\Purifier::STANDARD) ?: '';
-		$view = $request->getByType('fromview', \App\Purifier::STANDARD);
+		$pdfFlag = $request->getByType('flag', \App\Purifier::STANDARD) ?: null;
 		$key = 'inventoryColumns';
 		$userVariables = $request->getArray('userVariables', \App\Purifier::TEXT);
 
-		$handlerClass = Vtiger_Loader::getComponentClassName('Model', 'PDF', $moduleName);
+		$handlerClass = Vtiger_Loader::getComponentClassName('Model', 'PDF', $pdfModuleName);
 		$pdfModel = new $handlerClass();
-		$templates = $recordId ? $pdfModel->getActiveTemplatesForRecord($recordId, $view, $moduleName) : $pdfModel->getActiveTemplatesForModule($moduleName, $view);
+		$templates = ($recordId && !$isRelatedView) ? $pdfModel->getActiveTemplatesForRecord($recordId, $view, $pdfModuleName) : $pdfModel->getActiveTemplatesForModule($pdfModuleName, $view);
 
-		if (($emailPdf && !\App\Privilege::isPermitted('OSSMail'))
-			|| ($request->has($key) && !\App\Privilege::isPermitted($moduleName, 'RecordPdfInventory'))
+		if (($emailPdf && !\App\Mail::checkInternalMailClient())
+			|| ($request->has($key) && !\App\Privilege::isPermitted($pdfModuleName, 'RecordPdfInventory'))
 			|| array_diff($templateIds, array_keys($templates))
 			) {
 			throw new \App\Exceptions\NoPermitted('LBL_EXPORT_ERROR');
 		}
+		$eventHandler = new App\EventHandler();
+		$eventHandler->setModuleName($pdfModuleName);
+		$eventHandler->setParams([
+			'records' => $recordIds,
+			'templates' => $templateIds,
+			'viewInstance' => $this,
+			'pdfModel' => $pdfModel,
+		]);
+		$eventHandler->trigger('PdfGenerateInit');
+		$recordIds = $eventHandler->getParam('records');
+
 		$increment = $skip = $pdfFiles = [];
-		$html = '';
 		$countTemplates = \count($templateIds);
 		$countRecords = \count($recordIds);
-		$pdf = new \App\Pdf\YetiForcePDF();
 		foreach ($recordIds as $recordId) {
 			foreach ($templateIds as $templateId) {
 				if (isset($skip[$templateId])) {
 					continue;
 				}
-				$filePath = $saveFlag = '';
-				$template = Vtiger_PDF_Model::getInstanceById($templateId);
+				$pdf = \App\Pdf\Pdf::getInstanceByTemplateId($templateId);
+				$template = $pdf->getTemplate();
+				$filePath = '';
 				switch ($template->get('type')) {
 					case Vtiger_PDF_Model::TEMPLATE_TYPE_SUMMARY:
 						$skip[$templateId] = true;
@@ -123,9 +146,9 @@ class Vtiger_PDF_Action extends \App\Controller\Action
 							}
 						}
 						$template->setVariable('recordsId', $validRecords);
-						foreach (['viewname', 'search_value', 'search_key', 'search_params', 'operator'] as $keyName) {
+						foreach (['viewname', 'search_value', 'search_key', 'search_params', 'operator', 'cvId', 'relatedModule', 'relationId'] as $keyName) {
 							if ('search_params' === $keyName) {
-								$template->setVariable($keyName, App\Condition::validSearchParams($moduleName, $request->getArray($keyName)));
+								$template->setVariable($keyName, App\Condition::validSearchParams($pdfModuleName, $request->getArray($keyName)));
 							} else {
 								$template->setVariable($keyName, $request->isEmpty($keyName) ? '' : $request->getByType($keyName, \App\Purifier::ALNUM));
 							}
@@ -152,63 +175,50 @@ class Vtiger_PDF_Action extends \App\Controller\Action
 					}
 				}
 
-				$pdf->setPageSize($template->getFormat(), $template->getOrientation())
-					->setWatermark($watermark = $pdf->getTemplateWatermark($template))
-					->setFileName($template->parseVariables($template->get('filename')))
-					->parseParams($template->getParameters())
-					->loadHtml($template->parseVariables($template->getBody()))
-					->setHeader($template->parseVariables($template->getHeader()))
-					->setFooter($template->parseVariables($template->getFooter()));
+				$pdf->loadTemplateData();
+				$eventHandler->addParams('pdf', $pdf);
+				$eventHandler->trigger('PdfGenerate');
+
 				$attach = $template->attachFiles ?? [];
-				if (!$singlePdf && ($attach || $emailPdf || ($countTemplates > 1 || (1 === $countTemplates && !isset($skip[$templateId]) && $countRecords > 1)))) {
+				if ($attachAsDocument || $attach || $emailPdf || ($countTemplates > 1 || (1 === $countTemplates && !isset($skip[$templateId]) && $countRecords > 1))) {
 					$fileName = ($pdf->getFileName() ?: time());
 					$increment[$fileName] = $increment[$fileName] ?? 0;
 					$fileName .= ($increment[$fileName]++ > 0 ? '_' . $increment[$fileName] : '') . '.pdf';
 
 					$filePath = $template->getPath();
-					$saveFlag = 'F';
-					$pdfFiles[] = ['name' => $fileName, 'path' => $filePath, 'recordId' => $recordId, 'moduleName' => $moduleName];
+					$mode = 'F';
+					$pdfFiles[] = ['name' => $fileName, 'path' => $filePath, 'recordId' => $recordId, 'moduleName' => $pdfModuleName];
 					foreach ($attach as $info) {
 						if (!isset($pdfFiles[$info['path']])) {
 							$tmpFileName = 'cache' . \DIRECTORY_SEPARATOR . 'pdf' . \DIRECTORY_SEPARATOR;
 							$tmpFileName = $tmpFileName . basename(tempnam($tmpFileName, 'Attach' . time()));
 							if (\copy($info['path'], $tmpFileName)) {
-								$pdfFiles[$info['path']] = ['name' => $info['name'], 'path' => $tmpFileName, 'recordId' => $recordId, 'moduleName' => $moduleName];
+								$pdfFiles[$info['path']] = ['name' => $info['name'], 'path' => $tmpFileName, 'recordId' => $recordId, 'moduleName' => $pdfModuleName];
 							}
 						}
 					}
 				}
-				if ($singlePdf) {
-					$html = $html ? substr_replace($html, '<div style="page-break-after: always;">', -6, 0) : $html;
-					$html .= '<div data-page-group
-					data-format="' . $template->getFormat() . '"
-					data-orientation="' . $template->getOrientation() . '"
-					data-margin-left="' . $pdf->defaultMargins['left'] . '"
-					data-margin-right="' . $pdf->defaultMargins['right'] . '"
-					data-margin-top="' . $pdf->defaultMargins['top'] . '"
-					data-margin-bottom="' . $pdf->defaultMargins['bottom'] . '"
-					data-header-top="' . $pdf->getHeaderMargin() . '"
-					data-footer-bottom="' . $pdf->getFooterMargin() . '"
-					>' . $watermark ? "<div data-watermark style=\"text-align:center\">{$watermark}</div>" : '' . '</div>';
-					$html .= $pdf->getHtml() . '</div>';
-				} else {
-					$pdf->output($filePath, $saveFlag);
-					if ($increment) {
-						$pdf = new \App\Pdf\YetiForcePDF();
-					}
+				if ($attachAsDocument && 1 === $countTemplates && 1 === $countRecords) {
+					$mode = 'AttachAndOutput';
 				}
+				$pdf->output($filePath, $mode ?? $pdfFlag ?? 'D');
 			}
 		}
 		if ($singlePdf) {
-			$pdf->setHeader('')->setFooter('')->setWatermark('');
-			$pdf->loadHTML($html);
-			$pdf->setFileName(\App\Language::translate('LBL_PDF_MANY_IN_ONE'));
-			$pdf->output('', $pdfFlag);
+			\App\Pdf\Pdf::merge(array_column($pdfFiles, 'path'), \App\Fields\File::sanitizeUploadFileName(\App\Language::translate('LBL_PDF_MANY_IN_ONE')) . '.pdf', $pdfFlag ?: 'D');
 		} elseif ($emailPdf) {
 			$pdfFiles = array_values($pdfFiles);
 			Vtiger_PDF_Model::attachToEmail(\App\Json::encode($pdfFiles));
-		} elseif ($pdfFiles) {
+		} elseif ($pdfFiles && ($countRecords > 1 || $countTemplates > 1)) {
 			Vtiger_PDF_Model::zipAndDownload($pdfFiles);
+		}
+
+		if ($attachAsDocument && !$emailPdf) {
+			Vtiger_PDF_Model::attachAsDocument($pdfFiles);
+		} elseif (!$emailPdf) {
+			foreach ($pdfFiles as $fileToDelete) {
+				unlink($fileToDelete['path']);
+			}
 		}
 	}
 
@@ -217,22 +227,17 @@ class Vtiger_PDF_Action extends \App\Controller\Action
 	 *
 	 * @param \App\Request $request
 	 *
-	 * @return bool true if valid template exists for this record
+	 * @return void
 	 */
-	public function hasValidTemplate(App\Request $request)
+	public function hasValidTemplate(App\Request $request): void
 	{
-		$recordId = $request->getInteger('record');
+		$recordId = $request->isEmpty('record', true) ? null : $request->getInteger('record');
 		$moduleName = $request->getModule();
-		$view = $request->getByType('view');
 		if (!\App\Privilege::isPermitted($moduleName, 'DetailView', $recordId)) {
 			throw new \App\Exceptions\NoPermittedToRecord('ERR_NO_PERMISSIONS_FOR_THE_RECORD', 406);
 		}
-		$pdfModel = new Vtiger_PDF_Model();
-		$valid = $pdfModel->checkActiveTemplates($recordId, $moduleName, $view);
-		$output = ['valid' => $valid];
-
 		$response = new Vtiger_Response();
-		$response->setResult($output);
+		$response->setResult(['valid' => (new Vtiger_PDF_Model())->checkActiveTemplates($recordId, $moduleName, $request->getByType('view'))]);
 		$response->emit();
 	}
 
@@ -240,15 +245,16 @@ class Vtiger_PDF_Action extends \App\Controller\Action
 	 * Save inventory column scheme.
 	 *
 	 * @param App\Request $request
+	 *
+	 * @return void
 	 */
-	public function saveInventoryColumnScheme(App\Request $request)
+	public function saveInventoryColumnScheme(App\Request $request): void
 	{
-		$moduleName = $request->getModule();
+		$moduleName = $request->has('relatedModule') ? $request->getByType('relatedModule', \App\Purifier::ALNUM) : $request->getModule();
 		if (!\App\Privilege::isPermitted($moduleName, 'RecordPdfInventory')) {
 			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED');
 		}
-		$recordId = $request->getInteger('record');
-		$records = $recordId ? [$recordId] : \Vtiger_Mass_Action::getRecordsListFromRequest($request);
+		$records = $this->getRecords($request);
 		$columns = $request->getArray('inventoryColumns');
 		$save = [];
 		foreach ($records as $recordId) {
@@ -258,8 +264,37 @@ class Vtiger_PDF_Action extends \App\Controller\Action
 		$response = new Vtiger_Response();
 		$response->setResult([
 			'message' => \App\Language::translate('LBL_SCHEME_SAVED', 'Settings:PDF'),
-			'records' => $records
+			'records' => $records,
 		]);
 		$response->emit();
+	}
+
+	/**
+	 * Get record ids.
+	 *
+	 * @param \App\Request $request
+	 *
+	 * @return int[]
+	 */
+	private function getRecords(App\Request $request): array
+	{
+		if ($request->has('relatedModule')) {
+			$records = \Vtiger_RelationAjax_Action::getRecordsListFromRequest($request);
+		} elseif (!$request->isEmpty('record', true)) {
+			$records = [$request->getInteger('record')];
+		} else {
+			$records = \Vtiger_Mass_Action::getRecordsListFromRequest($request);
+		}
+		return $records;
+	}
+
+	/** {@inheritdoc} */
+	public function validateRequest(App\Request $request)
+	{
+		if ('generate' === $request->getMode()) {
+			$request->validateReadAccess();
+		} else {
+			$request->validateWriteAccess();
+		}
 	}
 }

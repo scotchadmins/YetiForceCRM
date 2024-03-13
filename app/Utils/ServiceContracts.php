@@ -4,8 +4,8 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -51,7 +51,7 @@ class ServiceContracts
 		}
 		while ($date <= $end) {
 			$datesEnd = (clone $date)->setTime(23, 59, 59);
-			if (isset($days[$date->format('N')]) || ($holidays && isset($holidaysDates[$date->format('Y-m-d')]))) {
+			if (isset($days[$date->format('N')]) && (!$holidays || ($holidays && !isset($holidaysDates[$date->format('Y-m-d')])))) {
 				$dates[] = [
 					'start' => clone $date,
 					'end' => clone ($end < $datesEnd ? $end : $datesEnd),
@@ -155,18 +155,18 @@ class ServiceContracts
 	/**
 	 * Get sla policy from service contracts by crm id.
 	 *
-	 * @param int      $crmId
+	 * @param int      $serviceContractId Service contracts id
 	 * @param int|null $sourceModuleId
 	 *
 	 * @return array
 	 */
-	public static function getSlaPolicyForServiceContracts(int $crmId, ?int $sourceModuleId = null): array
+	public static function getSlaPolicyForServiceContracts(int $serviceContractId, ?int $sourceModuleId = null): array
 	{
-		if (\App\Cache::has('UtilsServiceContracts::getSlaPolicyForServiceContracts', $crmId)) {
-			$rows = \App\Cache::get('UtilsServiceContracts::getSlaPolicyForServiceContracts', $crmId);
+		if (\App\Cache::has('UtilsServiceContracts::getSlaPolicyForServiceContracts', $serviceContractId)) {
+			$rows = \App\Cache::get('UtilsServiceContracts::getSlaPolicyForServiceContracts', $serviceContractId);
 		} else {
-			$rows = (new \App\Db\Query())->from('u_#__servicecontracts_sla_policy')->where(['crmid' => $crmId])->all();
-			\App\Cache::save('UtilsServiceContracts::getSlaPolicyForServiceContracts', $crmId, $rows);
+			$rows = (new \App\Db\Query())->from('u_#__servicecontracts_sla_policy')->where(['crmid' => $serviceContractId])->all();
+			\App\Cache::save('UtilsServiceContracts::getSlaPolicyForServiceContracts', $serviceContractId, $rows);
 		}
 		if ($sourceModuleId) {
 			foreach ($rows as $key => $value) {
@@ -181,15 +181,20 @@ class ServiceContracts
 	/**
 	 * Delete sla policy for service contracts.
 	 *
-	 * @param int $crmId
-	 * @param int $sourceModuleId
+	 * @param int      $crmId
+	 * @param int      $sourceModuleId
+	 * @param int|null $rowId
 	 *
 	 * @return void
 	 */
-	public static function deleteSlaPolicy(int $crmId, int $sourceModuleId)
+	public static function deleteSlaPolicy(int $crmId, int $sourceModuleId, ?int $rowId = null)
 	{
+		$where = ['crmid' => $crmId, 'tabid' => $sourceModuleId];
+		if ($rowId) {
+			$where['id'] = $rowId;
+		}
 		\App\Db::getInstance()->createCommand()
-			->delete('u_#__servicecontracts_sla_policy', ['crmid' => $crmId, 'tabid' => $sourceModuleId])->execute();
+			->delete('u_#__servicecontracts_sla_policy', $where)->execute();
 		\App\Cache::delete('UtilsServiceContracts::getSlaPolicyForServiceContracts', $crmId);
 	}
 
@@ -217,15 +222,15 @@ class ServiceContracts
 	/**
 	 * Get rules for service contracts.
 	 *
-	 * @param int                  $id
-	 * @param \Vtiger_Record_Model $recordModel
+	 * @param int                  $serviceContractId Service contracts id
+	 * @param \Vtiger_Record_Model $recordModel       Record the model that will be updated
 	 *
 	 * @return array
 	 */
-	public static function getRulesForServiceContracts(int $id, \Vtiger_Record_Model $recordModel): array
+	public static function getRulesForServiceContracts(int $serviceContractId, \Vtiger_Record_Model $recordModel): array
 	{
 		$times = $businessHours = [];
-		foreach (self::getSlaPolicyForServiceContracts($id, $recordModel->getModule()->getId()) as $row) {
+		foreach (self::getSlaPolicyForServiceContracts($serviceContractId, $recordModel->getModule()->getId()) as $row) {
 			switch ($row['policy_type']) {
 				case 1:
 					$slaPolicy = self::getSlaPolicyById($row['sla_policy_id']);
@@ -248,7 +253,7 @@ class ServiceContracts
 							$times = [
 								'reaction_time' => $row['reaction_time'],
 								'idle_time' => $row['idle_time'],
-								'resolve_time' => $row['resolve_time']
+								'resolve_time' => $row['resolve_time'],
 							];
 						}
 					}
@@ -263,6 +268,59 @@ class ServiceContracts
 			return $result;
 		}
 		return [];
+	}
+
+	/**
+	 * Get rules for record model which will be updated.
+	 *
+	 * @param \Vtiger_Record_Model $recordModel Record the model that will be updated
+	 *
+	 * @return array
+	 */
+	public static function getSlaPolicyRulesForModule(\Vtiger_Record_Model $recordModel): array
+	{
+		$times = $businessHours = [];
+		foreach (self::getSlaPolicyForModule($recordModel->getModule()->getId()) as $row) {
+			$conditions = \App\Json::decode($row['conditions']);
+			if ($conditions && $row['business_hours'] && \App\Condition::checkConditions($conditions, $recordModel)) {
+				$businessHours = \array_merge($businessHours, explode(',', $row['business_hours']));
+				if ((isset($times['reaction_time']) && \App\Fields\TimePeriod::convertToMinutes($row['reaction_time']) < \App\Fields\TimePeriod::convertToMinutes($times['reaction_time']))
+						|| !isset($times['reaction_time'])) {
+					$times = [
+						'reaction_time' => $row['reaction_time'],
+						'idle_time' => $row['idle_time'],
+						'resolve_time' => $row['resolve_time'],
+					];
+				}
+				break;
+			}
+		}
+		if ($businessHours) {
+			$result = [];
+			foreach (self::optimizeBusinessHours(\array_unique($businessHours)) as $value) {
+				$result[] = array_merge($value, $times);
+			}
+			return $result;
+		}
+		return [];
+	}
+
+	/**
+	 * Get sla policy by crm id.
+	 *
+	 * @param int $moduleId
+	 *
+	 * @return array
+	 */
+	public static function getSlaPolicyForModule(int $moduleId): array
+	{
+		if (\App\Cache::has('UtilsServiceContracts::getSlaPolicyForModule', $moduleId)) {
+			$rows = \App\Cache::get('UtilsServiceContracts::getSlaPolicyForModule', $moduleId);
+		} else {
+			$rows = (new \App\Db\Query())->from('s_#__sla_policy')->where(['tabid' => $moduleId, 'available_for_record_time_count' => 1])->all(\App\Db::getInstance('admin'));
+			\App\Cache::save('UtilsServiceContracts::getSlaPolicyForModule', $moduleId, $rows);
+		}
+		return $rows;
 	}
 
 	/**
@@ -333,7 +391,7 @@ class ServiceContracts
 	 *
 	 * @param string               $start
 	 * @param string               $end
-	 * @param \Vtiger_Record_Model $recordModel
+	 * @param \Vtiger_Record_Model $recordModel Record the model that will be updated
 	 *
 	 * @return int
 	 */
@@ -346,6 +404,9 @@ class ServiceContracts
 		if ($fieldModel && ($value = $recordModel->get($fieldModel->getName()))) {
 			return self::getDiffFromServiceContracts($start, $end, $value, $recordModel);
 		}
+		if (\is_int($diff = self::getDiffFromSlaPolicy($start, $end, $recordModel))) {
+			return $diff;
+		}
 		if (!($diff = self::getDiffFromDefaultBusinessHours($start, $end))) {
 			$diff = \App\Fields\DateTime::getDiff($start, $end, 'minutes');
 		}
@@ -357,14 +418,14 @@ class ServiceContracts
 	 *
 	 * @param string               $start
 	 * @param string               $end
-	 * @param int                  $id          Service contracts id
-	 * @param \Vtiger_Record_Model $recordModel
+	 * @param int                  $serviceContractId Service contracts id
+	 * @param \Vtiger_Record_Model $recordModel       Record the model that will be updated
 	 *
 	 * @return int
 	 */
-	public static function getDiffFromServiceContracts(string $start, string $end, int $id, \Vtiger_Record_Model $recordModel): int
+	public static function getDiffFromServiceContracts(string $start, string $end, int $serviceContractId, \Vtiger_Record_Model $recordModel): int
 	{
-		if ($rules = self::getRulesForServiceContracts($id, $recordModel)) {
+		if ($rules = self::getRulesForServiceContracts($serviceContractId, $recordModel)) {
 			if (isset($rules['id'])) {
 				return round(\App\Fields\DateTime::getDiff($start, $end, 'minutes'));
 			}
@@ -378,6 +439,27 @@ class ServiceContracts
 			$diff = round(\App\Fields\DateTime::getDiff($start, $end, 'minutes'));
 		}
 		return $diff;
+	}
+
+	/**
+	 * Get the amount of business time between the two dates in minutes based on the global sla policy.
+	 *
+	 * @param string               $start
+	 * @param string               $end
+	 * @param \Vtiger_Record_Model $recordModel Record the model that will be updated
+	 *
+	 * @return int|null
+	 */
+	public static function getDiffFromSlaPolicy(string $start, string $end, \Vtiger_Record_Model $recordModel): ?int
+	{
+		if ($rules = self::getSlaPolicyRulesForModule($recordModel)) {
+			$time = 0;
+			foreach ($rules as $row) {
+				$time += self::businessTime($start, $end, $row['working_hours_from'], $row['working_hours_to'], explode(',', $row['working_days']), !empty($row['holidays']));
+			}
+			return $time;
+		}
+		return null;
 	}
 
 	/**
@@ -433,7 +515,7 @@ class ServiceContracts
 	{
 		$return = [];
 		$date = new \DateTime();
-		if ($id && ($rules = self::getRulesForServiceContracts($id, $recordModel))) {
+		if ($id && ($rules = self::getRulesForServiceContracts($id, $recordModel)) || ($rules = self::getSlaPolicyRulesForModule($recordModel))) {
 			if (isset($rules['id'])) {
 				foreach (self::$fieldsMap as $key => $fieldKey) {
 					if (\in_array($fieldKey, $type)) {

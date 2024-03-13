@@ -5,16 +5,14 @@
  *
  * @package Model
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Tomasz Kur <t.kur@yetiforce.com>
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class KnowledgeBase_Module_Model extends Vtiger_Module_Model
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getKnowledgeBaseViewName()
 	{
 		$defaultView = 'KnowledgeBase';
@@ -24,17 +22,13 @@ class KnowledgeBase_Module_Model extends Vtiger_Module_Model
 		return $defaultView;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getKnowledgeBaseViewUrl()
 	{
 		return 'index.php?module=' . $this->get('name') . '&view=' . $this->getKnowledgeBaseViewName();
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getSideBarLinks($linkParams)
 	{
 		$links = parent::getSideBarLinks($linkParams);

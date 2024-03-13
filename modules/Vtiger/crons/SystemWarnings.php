@@ -4,8 +4,8 @@
  *
  * @package   Cron
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -14,9 +14,7 @@
  */
 class Vtiger_SystemWarnings_Cron extends \App\CronHandler
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process()
 	{
 		$html = '';
@@ -24,9 +22,14 @@ class Vtiger_SystemWarnings_Cron extends \App\CronHandler
 			if ('YetiForce' === $warning->getFolder()) {
 				continue;
 			}
-			$html .= '<h2>' . App\Language::translate($warning->getTitle(), 'Settings:SystemWarnings') . '</h2>';
-			$html .= '<p>' . $warning->getDescription() . '</p>';
+			$html .= '<h2>' . \App\Language::translate($warning->getTitle(), 'Settings:SystemWarnings') . '</h2>';
+			$html .= '<div>' . $warning->getDescription() . '</div>';
 			$html .= '<hr>';
+			if ($link = $warning->getLink()) {
+				$html .= '<a href="' . $link . '">'
+				. \App\Language::translate('LBL_SYSTEM_SETTINGS')
+				. ' | ' . $warning->linkTitle . '</a>';
+			}
 		}
 		if (empty($html)) {
 			return;

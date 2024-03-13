@@ -5,8 +5,8 @@
  *
  * @package Widget
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class Vtiger_EmailList_Widget extends Vtiger_Basic_Widget
 {
@@ -17,11 +17,23 @@ class Vtiger_EmailList_Widget extends Vtiger_Basic_Widget
 	 */
 	public $dbParams = ['relatedmodule' => 'OSSMailView'];
 
+	/** {@inheritdoc} */
+	public function isPermitted(): bool
+	{
+		return parent::isPermitted() && \App\Relation::getRelationId($this->moduleModel->getName(), 'OSSMailView');
+	}
+
+	/**
+	 * Return url.
+	 *
+	 * @return string
+	 */
 	public function getUrl()
 	{
 		return 'module=OSSMailView&view=Widget&smodule=' . $this->Module . '&srecord=' . $this->Record . '&mode=showEmailsList&type=All&mailFilter=All&limit=' . $this->Data['limit'];
 	}
 
+	/** {@inheritdoc} */
 	public function getConfigTplName()
 	{
 		return 'EmailListConfig';

@@ -5,15 +5,13 @@
  *
  * @package   Settings
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Tomasz Poradzewski <t.poradzewski@yetiforce.com>
  */
 class Settings_Yetiforce_DownloadLanguageModal_View extends \App\Controller\ModalSettings
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $successBtn = '';
 
 	/**
@@ -23,9 +21,7 @@ class Settings_Yetiforce_DownloadLanguageModal_View extends \App\Controller\Moda
 	 */
 	public $qualifiedModuleName = 'Settings:YetiForce';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function preProcessAjax(App\Request $request)
 	{
 		$this->modalIcon = 'fas fa-download';

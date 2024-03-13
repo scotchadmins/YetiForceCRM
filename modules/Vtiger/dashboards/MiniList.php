@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
 class Vtiger_MiniList_Dashboard extends Vtiger_IndexAjax_View
@@ -28,7 +28,7 @@ class Vtiger_MiniList_Dashboard extends Vtiger_IndexAjax_View
 		if (!$request->has('owner')) {
 			$owner = Settings_WidgetsManagement_Module_Model::getDefaultUserId($widget);
 		} else {
-			$owner = $request->getByType('owner', 2);
+			$owner = $request->getByType('owner', \App\Purifier::TEXT);
 		}
 		$miniListWidgetModel = new Vtiger_MiniList_Model();
 		$miniListWidgetModel->setWidgetModel($widget);

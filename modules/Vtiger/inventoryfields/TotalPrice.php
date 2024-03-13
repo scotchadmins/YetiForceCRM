@@ -5,8 +5,8 @@
  *
  * @package   InventoryField
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -20,26 +20,34 @@ class Vtiger_TotalPrice_InventoryField extends Vtiger_Basic_InventoryField
 	protected $summationValue = true;
 	protected $maximumLength = '99999999999999999999';
 	protected $purifyType = \App\Purifier::NUMBER;
+	/** {@inheritdoc} */
+	protected $params = ['summary_enabled'];
 
 	/** {@inheritdoc} */
 	public function getDisplayValue($value, array $rowData = [], bool $rawText = false)
 	{
-		return \App\Fields\Double::formatToDisplay($value);
+		$value = \App\Fields\Double::formatToDisplay($value);
+		if (isset($rowData['currency']) && $currencySymbol = \App\Fields\Currency::getById($rowData['currency'])['currency_symbol'] ?? '') {
+			$value = \CurrencyField::appendCurrencySymbol($value, $currencySymbol);
+		}
+
+		return $value;
 	}
 
 	/** {@inheritdoc} */
-	public function getEditValue($value)
+	public function getEditValue(array $itemData, string $column = '')
 	{
+		$value = parent::getEditValue($itemData, $column);
 		return \App\Fields\Double::formatToDisplay($value, false);
 	}
 
 	/** {@inheritdoc} */
 	public function getDBValue($value, ?string $name = '')
 	{
-		if (!isset($this->dbValue[$value])) {
-			$this->dbValue[$value] = App\Fields\Double::formatToDb($value);
+		if (!isset($this->dbValue["{$value}"])) {
+			$this->dbValue["{$value}"] = App\Fields\Double::formatToDb($value);
 		}
-		return $this->dbValue[$value];
+		return $this->dbValue["{$value}"];
 	}
 
 	/** {@inheritdoc} */
@@ -66,12 +74,27 @@ class Vtiger_TotalPrice_InventoryField extends Vtiger_Basic_InventoryField
 	public function getValueForSave(array $item, bool $userFormat = false, string $column = null)
 	{
 		if ($column === $this->getColumnName() || null === $column) {
-			$quantity = static::getInstance($this->getModuleName(), 'Quantity')->getValueForSave($item, $userFormat);
-			$price = static::getInstance($this->getModuleName(), 'UnitPrice')->getValueForSave($item, $userFormat);
-			$value = (float) ($quantity * $price);
+			$quantity = 1;
+			$quantityModel = static::getInstance($this->getModuleName(), 'Quantity');
+			if (isset($item[$quantityModel->getColumnName()])) {
+				$quantity = $quantityModel->getValueForSave($item, $userFormat);
+			}
+			$unitPriceModel = static::getInstance($this->getModuleName(), 'UnitPrice');
+			if (isset($item[$unitPriceModel->getColumnName()])) {
+				$price = $unitPriceModel->getValueForSave($item, $userFormat);
+				$value = (float) ($quantity * $price);
+			} else {
+				$value = $userFormat ? $this->getDBValue($item[$this->getColumnName()]) : $item[$this->getColumnName()];
+			}
 		} else {
 			$value = $userFormat ? $this->getDBValue($item[$column]) : $item[$column];
 		}
 		return $value;
+	}
+
+	/** {@inheritdoc} */
+	public function compare($value, $prevValue, string $column): bool
+	{
+		return \App\Validator::floatIsEqual((float) $value, (float) $prevValue, 8);
 	}
 }

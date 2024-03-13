@@ -8,8 +8,8 @@
  *
  * @package Integration
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -22,6 +22,24 @@ use Sabre\VObject;
  */
 class Calendar
 {
+	/**
+	 * Max date.
+	 *
+	 * @var string
+	 */
+	const MAX_DATE = '2038-01-01';
+	/**
+	 * Custom values.
+	 *
+	 * @var string[]
+	 */
+	protected static $customValues = [
+		'X-GOOGLE-CONFERENCE' => 'meeting_url',
+		'X-MS-OLK-MWSURL' => 'meeting_url',
+		'X-MICROSOFT-SKYPETEAMSMEETINGURL' => 'meeting_url',
+		'X-MICROSOFT-ONLINEMEETINGCONFLINK' => 'meeting_url',
+		'X-MICROSOFT-ONLINEMEETINGEXTERNALLINK' => 'meeting_url',
+	];
 	/**
 	 * Record model instance.
 	 *
@@ -50,20 +68,6 @@ class Calendar
 	 * @var bool
 	 */
 	private $createdTimeZone = false;
-	/**
-	 * Custom values.
-	 *
-	 * @var string[]
-	 */
-	protected static $customValues = [
-		'X-MICROSOFT-SKYPETEAMSMEETINGURL' => 'meeting_url'
-	];
-	/**
-	 * Max date.
-	 *
-	 * @var string
-	 */
-	const MAX_DATE = '2038-01-01';
 
 	/**
 	 * Delete calendar event by crm id.
@@ -75,7 +79,7 @@ class Calendar
 	public static function deleteByCrmId(int $id)
 	{
 		$dbCommand = \App\Db::getInstance()->createCommand();
-		$dataReader = (new \App\Db\Query())->select(['id'])->from('dav_calendarobjects')->where(['crmid' => $id])->createCommand()->query();
+		$dataReader = (new \App\Db\Query())->select(['calendarid'])->from('dav_calendarobjects')->where(['crmid' => $id])->createCommand()->query();
 		$dbCommand->delete('dav_calendarobjects', ['crmid' => $id])->execute();
 		while ($calendarId = $dataReader->readColumn(0)) {
 			static::addChange($calendarId, $id . '.vcf', 3);
@@ -92,7 +96,7 @@ class Calendar
 	 */
 	public static function delete(array $calendar)
 	{
-		static::addChange($calendar['id'], $calendar['uri'], 3);
+		static::addChange($calendar['calendarid'], $calendar['uri'], 3);
 		\App\Db::getInstance()->createCommand()->delete('dav_calendarobjects', ['id' => $calendar['id']])->execute();
 	}
 
@@ -113,12 +117,11 @@ class Calendar
 			'uri' => $uri,
 			'synctoken' => (int) $calendar['synctoken'],
 			'calendarid' => $calendarId,
-			'operation' => $operation
+			'operation' => $operation,
 		])->execute();
 		$dbCommand->update('dav_calendars', [
-			'synctoken' => ((int) $calendar['synctoken']) + 1
-		], ['id' => $calendarId])
-			->execute();
+			'synctoken' => ((int) $calendar['synctoken']) + 1,
+		], ['id' => $calendarId])->execute();
 	}
 
 	/**
@@ -144,8 +147,18 @@ class Calendar
 	{
 		$instance = new self();
 		$instance->record = \Vtiger_Record_Model::getCleanInstance('Calendar');
-		$instance->vcalendar = VObject\Reader::read($calendar);
-		$instance->vcomponent = current($instance->vcalendar->getBaseComponents());
+		$instance->vcalendar = VObject\Reader::read($calendar, \Sabre\VObject\Reader::OPTION_FORGIVING);
+		foreach ($instance->vcalendar->children() as $child) {
+			if (!$child instanceof VObject\Component) {
+				continue;
+			}
+			if ('VTIMEZONE' === $child->name) {
+				continue;
+			}
+			if (empty($instance->vcomponent)) {
+				$instance->vcomponent = $child;
+			}
+		}
 		return $instance;
 	}
 
@@ -247,235 +260,6 @@ class Calendar
 	}
 
 	/**
-	 * Parse component.
-	 *
-	 * @return void
-	 */
-	private function parseComponent(): void
-	{
-		$uid = (string) $this->vcomponent->UID;
-		if (isset($this->records[$uid])) {
-			$this->record = $this->records[$uid];
-		} else {
-			$this->record = $this->records[$uid] = \Vtiger_Record_Model::getCleanInstance('Calendar');
-		}
-		$this->parseText('subject', 'SUMMARY');
-		$this->parseText('location', 'LOCATION');
-		$this->parseText('description', 'DESCRIPTION');
-		$this->parseStatus();
-		$this->parsePriority();
-		$this->parseVisibility();
-		$this->parseState();
-		$this->parseType();
-		$this->parseDateTime();
-		$this->parseCustomValues();
-	}
-
-	/**
-	 * Parse simple text.
-	 *
-	 * @param string               $fieldName
-	 * @param string               $davName
-	 * @param \Vtiger_Record_Model $recordModel
-	 *
-	 * @return void
-	 */
-	private function parseText(string $fieldName, string $davName): void
-	{
-		$value = \str_replace([
-			'-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~::~:~::-'
-		], '', \App\Purifier::purify((string) $this->vcomponent->{$davName}));
-		if ($length = $this->record->getField($fieldName)->get('maximumlength')) {
-			$value = \App\TextParser::textTruncate($value, $length, false);
-		}
-		$this->record->set($fieldName, \trim($value));
-	}
-
-	/**
-	 * Parse status.
-	 *
-	 * @return void
-	 */
-	private function parseStatus(): void
-	{
-		$davValue = null;
-		if (isset($this->vcomponent->STATUS)) {
-			$davValue = strtoupper($this->vcomponent->STATUS->getValue());
-		}
-		if ('VEVENT' === (string) $this->vcomponent->name) {
-			$values = [
-				'TENTATIVE' => 'PLL_PLANNED',
-				'CANCELLED' => 'PLL_CANCELLED',
-				'CONFIRMED' => 'PLL_PLANNED',
-			];
-		} else {
-			$values = [
-				'NEEDS-ACTION' => 'PLL_PLANNED',
-				'IN-PROCESS' => 'PLL_IN_REALIZATION',
-				'CANCELLED' => 'PLL_CANCELLED',
-				'COMPLETED' => 'PLL_COMPLETED',
-			];
-		}
-		$value = reset($values);
-		if ($davValue && isset($values[$davValue])) {
-			$value = $values[$davValue];
-		}
-		$this->record->set('activitystatus', $value);
-	}
-
-	/**
-	 * Parse visibility.
-	 *
-	 * @return void
-	 */
-	private function parseVisibility(): void
-	{
-		$davValue = null;
-		$value = 'Private';
-		if (isset($this->vcomponent->CLASS)) {
-			$davValue = strtoupper($this->vcomponent->CLASS->getValue());
-			$values = [
-				'PUBLIC' => 'Public',
-				'PRIVATE' => 'Private'
-			];
-			if ($davValue && isset($values[$davValue])) {
-				$value = $values[$davValue];
-			}
-		}
-		$this->record->set('visibility', $value);
-	}
-
-	/**
-	 * Parse state.
-	 *
-	 * @return void
-	 */
-	private function parseState(): void
-	{
-		$davValue = null;
-		$value = '';
-		if (isset($this->vcomponent->TRANSP)) {
-			$davValue = strtoupper($this->vcomponent->TRANSP->getValue());
-			$values = [
-				'OPAQUE' => 'PLL_OPAQUE',
-				'TRANSPARENT' => 'PLL_TRANSPARENT'
-			];
-			if ($davValue && isset($values[$davValue])) {
-				$value = $values[$davValue];
-			}
-		}
-		$this->record->set('state', $value);
-	}
-
-	/**
-	 * Parse priority.
-	 *
-	 * @return void
-	 */
-	private function parsePriority(): void
-	{
-		$davValue = null;
-		$value = 'Medium';
-		if (isset($this->vcomponent->PRIORITY)) {
-			$davValue = strtoupper($this->vcomponent->PRIORITY->getValue());
-			$values = [
-				1 => 'High',
-				5 => 'Medium',
-				9 => 'Low',
-			];
-			if ($davValue && isset($values[$davValue])) {
-				$value = $values[$davValue];
-			}
-		}
-		$this->record->set('taskpriority', $value);
-	}
-
-	/**
-	 * Parse type.
-	 *
-	 * @return void
-	 */
-	private function parseType(): void
-	{
-		if ($this->record->isEmpty('activitytype')) {
-			$this->record->set('activitytype', 'VTODO' === (string) $this->vcomponent->name ? 'Task' : 'Meeting');
-		}
-	}
-
-	/**
-	 * Parse date time.
-	 *
-	 * @return void
-	 */
-	private function parseDateTime(): void
-	{
-		$allDay = 0;
-		$endHasTime = $startHasTime = false;
-		$endField = 'VEVENT' === ((string) $this->vcomponent->name) ? 'DTEND' : 'DUE';
-		if (isset($this->vcomponent->DTSTART)) {
-			$timeStamp = $this->vcomponent->DTSTART->getDateTime()->getTimeStamp();
-			$dateStart = date('Y-m-d', $timeStamp);
-			$timeStart = date('H:i:s', $timeStamp);
-			$startHasTime = $this->vcomponent->DTSTART->hasTime();
-		} else {
-			$timeStamp = $this->vcomponent->DTSTAMP->getDateTime()->getTimeStamp();
-			$dateStart = date('Y-m-d', $timeStamp);
-			$timeStart = date('H:i:s', $timeStamp);
-		}
-		if (isset($this->vcomponent->{$endField})) {
-			$timeStamp = $this->vcomponent->{$endField}->getDateTime()->getTimeStamp();
-			$endHasTime = $this->vcomponent->{$endField}->hasTime();
-			$dueDate = date('Y-m-d', $timeStamp);
-			$timeEnd = date('H:i:s', $timeStamp);
-			if (!$endHasTime) {
-				$endTime = strtotime('-1 day', strtotime("$dueDate $timeEnd"));
-				$dueDate = date('Y-m-d', $endTime);
-				$timeEnd = date('H:i:s', $endTime);
-			}
-		} else {
-			$endTime = strtotime('+1 day', strtotime("$dateStart $timeStart"));
-			$dueDate = date('Y-m-d', $endTime);
-			$timeEnd = date('H:i:s', $endTime);
-		}
-		if (!$startHasTime && !$endHasTime && \App\User::getCurrentUserId()) {
-			$allDay = 1;
-			$currentUser = \App\User::getCurrentUserModel();
-			$userTimeZone = new \DateTimeZone($currentUser->getDetail('time_zone'));
-			$sysTimeZone = new \DateTimeZone(\App\Fields\DateTime::getTimeZone());
-			[$hour , $minute] = explode(':', $currentUser->getDetail('start_hour'));
-			$date = new \DateTime('now', $userTimeZone);
-			$date->setTime($hour, $minute);
-			$date->setTimezone($sysTimeZone);
-			$timeStart = $date->format('H:i:s');
-
-			$date->setTimezone($userTimeZone);
-			[$hour , $minute] = explode(':', $currentUser->getDetail('end_hour'));
-			$date->setTime($hour, $minute);
-			$date->setTimezone($sysTimeZone);
-			$timeEnd = $date->format('H:i:s');
-		}
-		$this->record->set('allday', $allDay);
-		$this->record->set('date_start', $dateStart);
-		$this->record->set('due_date', $dueDate);
-		$this->record->set('time_start', $timeStart);
-		$this->record->set('time_end', $timeEnd);
-	}
-
-	/**
-	 * Parse parse custom values.
-	 *
-	 * @return void
-	 */
-	private function parseCustomValues(): void
-	{
-		foreach (self::$customValues as $key => $fieldName) {
-			if (isset($this->vcomponent->{$key})) {
-				$this->record->set($fieldName, (string) $this->vcomponent->{$key});
-			}
-		}
-	}
-
-	/**
 	 * Create calendar entry component.
 	 *
 	 * @return \Sabre\VObject\Component
@@ -484,7 +268,7 @@ class Calendar
 	{
 		$componentType = 'Task' === $this->record->get('activitytype') ? 'VTODO' : 'VEVENT';
 		$this->vcomponent = $this->vcalendar->createComponent($componentType);
-		$this->vcomponent->UID = \str_replace('sabre-vobject', 'YetiForceCRM', (string) $this->vcomponent->UID);
+		$this->vcomponent->UID = str_replace('sabre-vobject', 'YetiForceCRM', (string) $this->vcomponent->UID);
 		$this->updateComponent();
 		$this->vcalendar->add($this->vcomponent);
 		return $this->vcomponent;
@@ -515,160 +299,6 @@ class Calendar
 		} else {
 			$this->vcomponent->SEQUENCE = $this->vcomponent->SEQUENCE->getValue() + 1;
 		}
-	}
-
-	/**
-	 * Create a text value for dav.
-	 *
-	 * @param string $fieldName
-	 * @param string $davName
-	 *
-	 * @throws \Sabre\VObject\InvalidDataException
-	 */
-	private function createText(string $fieldName, string $davName)
-	{
-		$empty = $this->record->isEmpty($fieldName);
-		if (isset($this->vcomponent->{$davName})) {
-			if ($empty) {
-				$this->vcomponent->remove($davName);
-			} else {
-				$this->vcomponent->{$davName} = $this->record->get($fieldName);
-			}
-		} elseif (!$empty) {
-			$this->vcomponent->add($this->vcalendar->createProperty($davName, $this->record->get($fieldName)));
-		}
-	}
-
-	/**
-	 * Create status value for dav.
-	 */
-	private function createStatus()
-	{
-		$status = $this->record->get('activitystatus');
-		if ('VEVENT' === (string) $this->vcomponent->name) {
-			$values = [
-				'PLL_PLANNED' => 'TENTATIVE',
-				'PLL_OVERDUE' => 'CANCELLED',
-				'PLL_POSTPONED' => 'CANCELLED',
-				'PLL_CANCELLED' => 'CANCELLED',
-				'PLL_COMPLETED' => 'CONFIRMED',
-			];
-		} else {
-			$values = [
-				'PLL_PLANNED' => 'NEEDS-ACTION',
-				'PLL_IN_REALIZATION' => 'IN-PROCESS',
-				'PLL_OVERDUE' => 'CANCELLED',
-				'PLL_POSTPONED' => 'CANCELLED',
-				'PLL_CANCELLED' => 'CANCELLED',
-				'PLL_COMPLETED' => 'COMPLETED',
-			];
-		}
-		if ($status && isset($values[$status])) {
-			$value = $values[$status];
-		} else {
-			$value = reset($values);
-		}
-		if (isset($this->vcomponent->STATUS)) {
-			$this->vcomponent->STATUS = $value;
-		} else {
-			$this->vcomponent->add($this->vcalendar->createProperty('STATUS', $value));
-		}
-	}
-
-	/**
-	 * Create visibility value for dav.
-	 */
-	private function createVisibility()
-	{
-		$visibility = $this->record->get('visibility');
-		$values = [
-			'Public' => 'PUBLIC',
-			'Private' => 'PRIVATE'
-		];
-		$value = 'Private';
-		if ($visibility && isset($values[$visibility])) {
-			$value = $values[$visibility];
-		}
-		if (false !== \App\Config::component('Dav', 'CALDAV_DEFAULT_VISIBILITY_FROM_DAV')) {
-			$value = \App\Config::component('Dav', 'CALDAV_DEFAULT_VISIBILITY_FROM_DAV');
-		}
-		if (isset($this->vcomponent->CLASS)) {
-			$this->vcomponent->CLASS = $value;
-		} else {
-			$this->vcomponent->add($this->vcalendar->createProperty('CLASS', $value));
-		}
-	}
-
-	/**
-	 * Create visibility value for dav.
-	 */
-	private function createState()
-	{
-		$state = $this->record->get('state');
-		$values = [
-			'PLL_OPAQUE' => 'OPAQUE',
-			'PLL_TRANSPARENT' => 'TRANSPARENT'
-		];
-		if ($state && isset($values[$state])) {
-			$value = $values[$state];
-			if (isset($this->vcomponent->TRANSP)) {
-				$this->vcomponent->TRANSP = $value;
-			} else {
-				$this->vcomponent->add($this->vcalendar->createProperty('TRANSP', $value));
-			}
-		} elseif (isset($this->vcomponent->TRANSP)) {
-			$this->vcomponent->remove('TRANSP');
-		}
-	}
-
-	/**
-	 * Create priority value for dav.
-	 */
-	private function createPriority()
-	{
-		$priority = $this->record->get('taskpriority');
-		$values = [
-			'High' => 1,
-			'Medium' => 5,
-			'Low' => 9
-		];
-		$value = 5;
-		if ($priority && isset($values[$priority])) {
-			$value = $values[$priority];
-		}
-		if (isset($this->vcomponent->PRIORITY)) {
-			$this->vcomponent->PRIORITY = $value;
-		} else {
-			$this->vcomponent->add($this->vcalendar->createProperty('PRIORITY', $value));
-		}
-	}
-
-	/**
-	 * Create date and time values for dav.
-	 */
-	private function createDateTime()
-	{
-		$end = $this->record->get('due_date') . ' ' . $this->record->get('time_end');
-		$endField = 'VEVENT' == (string) $this->vcomponent->name ? 'DTEND' : 'DUE';
-		$start = new \DateTime($this->record->get('date_start') . ' ' . $this->record->get('time_start'));
-		$startProperty = $this->vcalendar->createProperty('DTSTART', $start);
-		if ($this->record->get('allday')) {
-			$end = new \DateTime($end);
-			$end->modify('+1 day');
-			$endProperty = $this->vcalendar->createProperty($endField, $end);
-			$endProperty['VALUE'] = 'DATE';
-			$startProperty['VALUE'] = 'DATE';
-		} else {
-			$end = new \DateTime($end);
-			$endProperty = $this->vcalendar->createProperty($endField, $end);
-			if (!$this->createdTimeZone) {
-				unset($this->vcalendar->VTIMEZONE);
-				$this->vcalendar->add($this->createTimeZone(date_default_timezone_get(), $start->getTimestamp(), $end->getTimestamp()));
-				$this->createdTimeZone = true;
-			}
-		}
-		$this->vcomponent->DTSTART = $startProperty;
-		$this->vcomponent->{$endField} = $endProperty;
 	}
 
 	/**
@@ -786,7 +416,7 @@ class Calendar
 				if (0 === stripos($value, 'mailto:')) {
 					$value = substr($value, 7, \strlen($value) - 7);
 				}
-				if ($value && \App\TextParser::getTextLength($value) > 100 || !\App\Validator::email($value)) {
+				if ($value && \App\TextUtils::getTextLength($value) > 100 || !\App\Validator::email($value)) {
 					throw new \Sabre\DAV\Exception\BadRequest('Invalid email: ' . $value);
 				}
 				if (isset($attendee['ROLE']) && 'CHAIR' === $attendee['ROLE']->getValue()) {
@@ -805,12 +435,15 @@ class Calendar
 				if (isset($invities[$value])) {
 					$row = $invities[$value];
 					if ($row['status'] !== $status || $row['name'] !== $nameAttendee) {
-						$dbCommand->update('u_#__activity_invitation', [
-							'status' => $status,
-							'time' => $timeFormated,
-							'name' => \App\TextParser::textTruncate($nameAttendee, 500, false),
-						], ['activityid' => $record->getId(), 'email' => $value]
-					)->execute();
+						$dbCommand->update(
+							'u_#__activity_invitation',
+							[
+								'status' => $status,
+								'time' => $timeFormated,
+								'name' => \App\TextUtils::textTruncate($nameAttendee, 500, false),
+							],
+							['activityid' => $record->getId(), 'email' => $value]
+						)->execute();
 					}
 					unset($invities[$value]);
 				} else {
@@ -818,7 +451,7 @@ class Calendar
 						'email' => $value,
 						'crmid' => $crmid,
 						'status' => $status,
-						'name' => \App\TextParser::textTruncate($nameAttendee, 500, false),
+						'name' => \App\TextUtils::textTruncate($nameAttendee, 500, false),
 						'activityid' => $record->getId(),
 					];
 					if ($status) {
@@ -860,7 +493,11 @@ class Calendar
 				$value = ltrim($attendee->getValue(), 'mailto:');
 				if (isset($invities[$value])) {
 					$row = $invities[$value];
-					$attendee['PARTSTAT']->setValue($this->getAttendeeStatus($row['status'], false));
+					if (isset($attendee['PARTSTAT'])) {
+						$attendee['PARTSTAT']->setValue($this->getAttendeeStatus($row['status'], false));
+					} else {
+						$attendee->add('PARTSTAT', $this->getAttendeeStatus($row['status']));
+					}
 					unset($invities[$value]);
 				} else {
 					$this->vcomponent->remove($attendee);
@@ -915,6 +552,8 @@ class Calendar
 	 * @param string $calendarData
 	 *
 	 * @return array
+	 *
+	 * @see Sabre\CalDAV\Backend\PDO::getDenormalizedData
 	 */
 	public function getDenormalizedData($calendarData)
 	{
@@ -1034,5 +673,394 @@ class Calendar
 			$row['label'] = $labels[$row['crmid']];
 		}
 		return $rows;
+	}
+
+	/**
+	 * Parse component.
+	 *
+	 * @return void
+	 */
+	private function parseComponent(): void
+	{
+		$uid = (string) $this->vcomponent->UID;
+		if (isset($this->records[$uid])) {
+			$this->record = $this->records[$uid];
+		} else {
+			$this->record = $this->records[$uid] = \Vtiger_Record_Model::getCleanInstance('Calendar');
+		}
+		$this->parseText('subject', 'SUMMARY');
+		$this->parseText('location', 'LOCATION');
+		$this->parseText('description', 'DESCRIPTION');
+		$this->parseStatus();
+		$this->parsePriority();
+		$this->parseVisibility();
+		$this->parseState();
+		$this->parseType();
+		$this->parseDateTime();
+		$this->parseCustomValues();
+	}
+
+	/**
+	 * Parse simple text.
+	 *
+	 * @param string               $fieldName
+	 * @param string               $davName
+	 * @param \Vtiger_Record_Model $recordModel
+	 *
+	 * @return void
+	 */
+	private function parseText(string $fieldName, string $davName): void
+	{
+		$separator = '-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~::~:~::-';
+		$value = (string) $this->vcomponent->{$davName};
+		if (false !== strpos($value, $separator)) {
+			[$html,$text] = explode($separator, $value, 2);
+			$value = trim(strip_tags($html)) . "\n" . trim(str_replace($separator, '', $text));
+		} else {
+			$value = trim(str_replace('\n', PHP_EOL, $value));
+		}
+		$value = \App\Purifier::decodeHtml(\App\Purifier::purify($value));
+		if ($length = $this->record->getField($fieldName)->getMaxValue()) {
+			$value = \App\TextUtils::textTruncate($value, $length, false);
+		}
+		$this->record->set($fieldName, trim($value));
+	}
+
+	/**
+	 * Parse status.
+	 *
+	 * @return void
+	 */
+	private function parseStatus(): void
+	{
+		$davValue = null;
+		if (isset($this->vcomponent->STATUS)) {
+			$davValue = strtoupper($this->vcomponent->STATUS->getValue());
+		}
+		if ('VEVENT' === (string) $this->vcomponent->name) {
+			$values = [
+				'TENTATIVE' => 'PLL_PLANNED',
+				'CANCELLED' => 'PLL_CANCELLED',
+				'CONFIRMED' => 'PLL_PLANNED',
+			];
+		} else {
+			$values = [
+				'NEEDS-ACTION' => 'PLL_PLANNED',
+				'IN-PROCESS' => 'PLL_IN_REALIZATION',
+				'CANCELLED' => 'PLL_CANCELLED',
+				'COMPLETED' => 'PLL_COMPLETED',
+			];
+		}
+		$value = reset($values);
+		if ($davValue && isset($values[$davValue])) {
+			$value = $values[$davValue];
+		}
+		$this->record->set('activitystatus', $value);
+	}
+
+	/**
+	 * Parse visibility.
+	 *
+	 * @return void
+	 */
+	private function parseVisibility(): void
+	{
+		$davValue = null;
+		$value = 'Private';
+		if (isset($this->vcomponent->CLASS)) {
+			$davValue = strtoupper($this->vcomponent->CLASS->getValue());
+			$values = [
+				'PUBLIC' => 'Public',
+				'PRIVATE' => 'Private',
+			];
+			if ($davValue && isset($values[$davValue])) {
+				$value = $values[$davValue];
+			}
+		}
+		$this->record->set('visibility', $value);
+	}
+
+	/**
+	 * Parse state.
+	 *
+	 * @return void
+	 */
+	private function parseState(): void
+	{
+		$davValue = null;
+		$value = '';
+		if (isset($this->vcomponent->TRANSP)) {
+			$davValue = strtoupper($this->vcomponent->TRANSP->getValue());
+			$values = [
+				'OPAQUE' => 'PLL_OPAQUE',
+				'TRANSPARENT' => 'PLL_TRANSPARENT',
+			];
+			if ($davValue && isset($values[$davValue])) {
+				$value = $values[$davValue];
+			}
+		}
+		$this->record->set('state', $value);
+	}
+
+	/**
+	 * Parse priority.
+	 *
+	 * @return void
+	 */
+	private function parsePriority(): void
+	{
+		$davValue = null;
+		$value = 'Medium';
+		if (isset($this->vcomponent->PRIORITY)) {
+			$davValue = strtoupper($this->vcomponent->PRIORITY->getValue());
+			$values = [
+				1 => 'High',
+				5 => 'Medium',
+				9 => 'Low',
+			];
+			if ($davValue && isset($values[$davValue])) {
+				$value = $values[$davValue];
+			}
+		}
+		$this->record->set('taskpriority', $value);
+	}
+
+	/**
+	 * Parse type.
+	 *
+	 * @return void
+	 */
+	private function parseType(): void
+	{
+		if ($this->record->isEmpty('activitytype')) {
+			$this->record->set('activitytype', 'VTODO' === (string) $this->vcomponent->name ? 'Task' : 'Meeting');
+		}
+	}
+
+	/**
+	 * Parse date time.
+	 *
+	 * @return void
+	 */
+	private function parseDateTime(): void
+	{
+		$allDay = 0;
+		$endHasTime = $startHasTime = false;
+		$endField = 'VEVENT' === ((string) $this->vcomponent->name) ? 'DTEND' : 'DUE';
+		if (isset($this->vcomponent->DTSTART)) {
+			$timeStamp = $this->vcomponent->DTSTART->getDateTime()->getTimeStamp();
+			$dateStart = date('Y-m-d', $timeStamp);
+			$timeStart = date('H:i:s', $timeStamp);
+			$startHasTime = $this->vcomponent->DTSTART->hasTime();
+		} else {
+			$timeStamp = $this->vcomponent->DTSTAMP->getDateTime()->getTimeStamp();
+			$dateStart = date('Y-m-d', $timeStamp);
+			$timeStart = date('H:i:s', $timeStamp);
+		}
+		if (isset($this->vcomponent->{$endField})) {
+			$timeStamp = $this->vcomponent->{$endField}->getDateTime()->getTimeStamp();
+			$endHasTime = $this->vcomponent->{$endField}->hasTime();
+			$dueDate = date('Y-m-d', $timeStamp);
+			$timeEnd = date('H:i:s', $timeStamp);
+			if (!$endHasTime) {
+				$endTime = strtotime('-1 day', strtotime("$dueDate $timeEnd"));
+				$dueDate = date('Y-m-d', $endTime);
+				$timeEnd = date('H:i:s', $endTime);
+			}
+		} else {
+			$endTime = strtotime('+1 day', strtotime("$dateStart $timeStart"));
+			$dueDate = date('Y-m-d', $endTime);
+			$timeEnd = date('H:i:s', $endTime);
+		}
+		if (!$startHasTime && !$endHasTime && \App\User::getCurrentUserId()) {
+			$allDay = 1;
+			$currentUser = \App\User::getCurrentUserModel();
+			$userTimeZone = new \DateTimeZone($currentUser->getDetail('time_zone'));
+			$sysTimeZone = new \DateTimeZone(\App\Fields\DateTime::getTimeZone());
+			[$hour , $minute] = explode(':', $currentUser->getDetail('start_hour'));
+			$date = new \DateTime('now', $userTimeZone);
+			$date->setTime($hour, $minute);
+			$date->setTimezone($sysTimeZone);
+			$timeStart = $date->format('H:i:s');
+
+			$date->setTimezone($userTimeZone);
+			[$hour , $minute] = explode(':', $currentUser->getDetail('end_hour'));
+			$date->setTime($hour, $minute);
+			$date->setTimezone($sysTimeZone);
+			$timeEnd = $date->format('H:i:s');
+		}
+		$this->record->set('allday', $allDay);
+		$this->record->set('date_start', $dateStart);
+		$this->record->set('due_date', $dueDate);
+		$this->record->set('time_start', $timeStart);
+		$this->record->set('time_end', $timeEnd);
+	}
+
+	/**
+	 * Parse parse custom values.
+	 *
+	 * @return void
+	 */
+	private function parseCustomValues(): void
+	{
+		foreach (self::$customValues as $key => $fieldName) {
+			if (isset($this->vcomponent->{$key})) {
+				$this->record->set($fieldName, (string) $this->vcomponent->{$key});
+			}
+		}
+	}
+
+	/**
+	 * Create a text value for dav.
+	 *
+	 * @param string $fieldName
+	 * @param string $davName
+	 *
+	 * @throws \Sabre\VObject\InvalidDataException
+	 */
+	private function createText(string $fieldName, string $davName)
+	{
+		$empty = $this->record->isEmpty($fieldName);
+		if (isset($this->vcomponent->{$davName})) {
+			if ($empty) {
+				$this->vcomponent->remove($davName);
+			} else {
+				$this->vcomponent->{$davName} = $this->record->get($fieldName);
+			}
+		} elseif (!$empty) {
+			$this->vcomponent->add($this->vcalendar->createProperty($davName, $this->record->get($fieldName)));
+		}
+	}
+
+	/**
+	 * Create status value for dav.
+	 */
+	private function createStatus()
+	{
+		$status = $this->record->get('activitystatus');
+		if ('VEVENT' === (string) $this->vcomponent->name) {
+			$values = [
+				'PLL_PLANNED' => 'TENTATIVE',
+				'PLL_OVERDUE' => 'TENTATIVE',
+				'PLL_POSTPONED' => 'CANCELLED',
+				'PLL_CANCELLED' => 'CANCELLED',
+				'PLL_COMPLETED' => 'CONFIRMED',
+			];
+		} else {
+			$values = [
+				'PLL_PLANNED' => 'NEEDS-ACTION',
+				'PLL_IN_REALIZATION' => 'IN-PROCESS',
+				'PLL_OVERDUE' => 'NEEDS-ACTION',
+				'PLL_POSTPONED' => 'CANCELLED',
+				'PLL_CANCELLED' => 'CANCELLED',
+				'PLL_COMPLETED' => 'COMPLETED',
+			];
+		}
+		if ($status && isset($values[$status])) {
+			$value = $values[$status];
+		} else {
+			$value = reset($values);
+		}
+		if (isset($this->vcomponent->STATUS)) {
+			$this->vcomponent->STATUS = $value;
+		} else {
+			$this->vcomponent->add($this->vcalendar->createProperty('STATUS', $value));
+		}
+	}
+
+	/**
+	 * Create visibility value for dav.
+	 */
+	private function createVisibility()
+	{
+		$visibility = $this->record->get('visibility');
+		$values = [
+			'Public' => 'PUBLIC',
+			'Private' => 'PRIVATE',
+		];
+		$value = 'Private';
+		if ($visibility && isset($values[$visibility])) {
+			$value = $values[$visibility];
+		}
+		if (false !== \App\Config::component('Dav', 'CALDAV_DEFAULT_VISIBILITY_FROM_DAV')) {
+			$value = \App\Config::component('Dav', 'CALDAV_DEFAULT_VISIBILITY_FROM_DAV');
+		}
+		if (isset($this->vcomponent->CLASS)) {
+			$this->vcomponent->CLASS = $value;
+		} else {
+			$this->vcomponent->add($this->vcalendar->createProperty('CLASS', $value));
+		}
+	}
+
+	/**
+	 * Create visibility value for dav.
+	 */
+	private function createState()
+	{
+		$state = $this->record->get('state');
+		$values = [
+			'PLL_OPAQUE' => 'OPAQUE',
+			'PLL_TRANSPARENT' => 'TRANSPARENT',
+		];
+		if ($state && isset($values[$state])) {
+			$value = $values[$state];
+			if (isset($this->vcomponent->TRANSP)) {
+				$this->vcomponent->TRANSP = $value;
+			} else {
+				$this->vcomponent->add($this->vcalendar->createProperty('TRANSP', $value));
+			}
+		} elseif (isset($this->vcomponent->TRANSP)) {
+			$this->vcomponent->remove('TRANSP');
+		}
+	}
+
+	/**
+	 * Create priority value for dav.
+	 */
+	private function createPriority()
+	{
+		$priority = $this->record->get('taskpriority');
+		$values = [
+			'High' => 1,
+			'Medium' => 5,
+			'Low' => 9,
+		];
+		$value = 5;
+		if ($priority && isset($values[$priority])) {
+			$value = $values[$priority];
+		}
+		if (isset($this->vcomponent->PRIORITY)) {
+			$this->vcomponent->PRIORITY = $value;
+		} else {
+			$this->vcomponent->add($this->vcalendar->createProperty('PRIORITY', $value));
+		}
+	}
+
+	/**
+	 * Create date and time values for dav.
+	 */
+	private function createDateTime()
+	{
+		$end = $this->record->get('due_date') . ' ' . $this->record->get('time_end');
+		$endField = 'VEVENT' == (string) $this->vcomponent->name ? 'DTEND' : 'DUE';
+		$start = new \DateTime($this->record->get('date_start') . ' ' . $this->record->get('time_start'));
+		$startProperty = $this->vcalendar->createProperty('DTSTART', $start);
+		if ($this->record->get('allday')) {
+			$end = new \DateTime($end);
+			$end->modify('+1 day');
+			$endProperty = $this->vcalendar->createProperty($endField, $end);
+			$endProperty['VALUE'] = 'DATE';
+			$startProperty['VALUE'] = 'DATE';
+		} else {
+			$end = new \DateTime($end);
+			$endProperty = $this->vcalendar->createProperty($endField, $end);
+			if (!$this->createdTimeZone) {
+				unset($this->vcalendar->VTIMEZONE);
+				$this->vcalendar->add($this->createTimeZone(date_default_timezone_get(), $start->getTimestamp(), $end->getTimestamp()));
+				$this->createdTimeZone = true;
+			}
+		}
+		$this->vcomponent->DTSTART = $startProperty;
+		$this->vcomponent->{$endField} = $endProperty;
 	}
 }

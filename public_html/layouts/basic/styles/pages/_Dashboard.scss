@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 
 .dashboardContainer {
 	padding: 0;
@@ -68,17 +68,17 @@
 		.js-tree-container {
 			.input-group {
 				@extend .input-group-sm;
-				 .input-group-prepend {
+				.input-group-prepend {
 					border-top-right-radius: 0 !important;
 					border-bottom-right-radius: 0 !important;
-				 }
-				 .input-group-append {
+				}
+				.input-group-append {
 					border-top-left-radius: 0 !important;
 					border-bottom-left-radius: 0 !important;
-				 }
-				 input {
+				}
+				input {
 					border-radius: 0 !important;
-				 }
+				}
 			}
 		}
 	}
@@ -142,7 +142,6 @@
 		.fc-bg {
 			pointer-events: none;
 		}
-
 	}
 
 	.widgeticons {
@@ -210,6 +209,28 @@
 	&__icons {
 		top: 50%;
 		transform: translateY(-50%);
-		position: relative;
+	}
+}
+//--- Widgets Working time counter---
+.o-time-counter {
+	&__navigator-icon {
+		font-size: 140px;
+		color: #f8f9fa;
+	}
+	&__timer {
+		font-size: 40px;
+	}
+	&__navigator-buttons {
+		border: 13px solid #fafafa;
+		border-radius: 50%;
+		a {
+			font-size: calculate-rem(85px);
+		}
+	}
+
+	&__navigator-buttons.active {
+		a {
+			font-size: calculate-rem(55px);
+		}
 	}
 }

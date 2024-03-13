@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com.
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
 namespace vtlib;
@@ -27,15 +27,12 @@ class Field extends FieldBasic
 	/**
 	 * Set values for picklist field (for all the roles).
 	 *
-	 * @param array List of values to add
-	 * @param mixed $values
-	 *
-	 * @internal Creates picklist base if it does not exists
+	 * @param array $values List of values to add
 	 */
 	public function setPicklistValues($values)
 	{
 		// Non-Role based picklist values
-		if (16 === $this->uitype) {
+		if (\in_array($this->uitype, [16, 18])) {
 			$this->setNoRolePicklistValues($values);
 			return true;
 		}
@@ -53,6 +50,7 @@ class Field extends FieldBasic
 			]);
 			$db->createCommand()->insert('vtiger_picklist', ['name' => $this->name])->execute();
 			$newPicklistId = $db->getLastInsertID('vtiger_picklist_picklistid_seq');
+			$db->createCommand()->createIndex("{$this->name}_valueid_idx", $picklistTable, 'picklist_valueid', true)->execute();
 			\App\Log::trace("Creating table $picklistTable ... DONE", __METHOD__);
 		} else {
 			$newPicklistId = (new \App\Db\Query())->select(['picklistid'])->from('vtiger_picklist')->where(['name' => $this->name])->scalar();
@@ -82,6 +80,9 @@ class Field extends FieldBasic
 			$db->createCommand()
 				->batchInsert('vtiger_role2picklist', ['roleid', 'picklistvalueid', 'picklistid', 'sortid'], $insertedData)
 				->execute();
+			if (isset($this->picklistValues)) {
+				$this->picklistValues[$value] = $value;
+			}
 		}
 		\App\Fields\Picklist::clearCache($this->name, $this->getModuleName());
 	}
@@ -91,8 +92,6 @@ class Field extends FieldBasic
 	 *
 	 * @param array List of values to add
 	 * @param mixed $values
-	 *
-	 * @internal Creates picklist base if it does not exists
 	 */
 	public function setNoRolePicklistValues($values)
 	{
@@ -127,6 +126,9 @@ class Field extends FieldBasic
 			];
 			$dbCommand->insert($picklistTable, $data)->execute();
 			++$sortId;
+			if (isset($this->picklistValues)) {
+				$this->picklistValues[$value] = $value;
+			}
 		}
 		\App\Fields\Picklist::clearCache($this->name, $this->getModuleName());
 	}
@@ -210,7 +212,7 @@ class Field extends FieldBasic
 	public static function getAllForBlock($blockInstance, $moduleInstance = false)
 	{
 		$cache = \Vtiger_Cache::getInstance();
-		if ($cache->getBlockFields($blockInstance->id, $moduleInstance->id)) {
+		if ($moduleInstance && $cache->getBlockFields($blockInstance->id, $moduleInstance->id)) {
 			return $cache->getBlockFields($blockInstance->id, $moduleInstance->id);
 		}
 		$instances = false;
@@ -256,7 +258,7 @@ class Field extends FieldBasic
 				->all();
 			\App\Cache::save('AllFieldForModule', $moduleId, $rows);
 		}
-		$instances = false;
+		$instances = [];
 		foreach ($rows as $row) {
 			$instance = new self();
 			$instance->initialize($row, $moduleId);
@@ -277,13 +279,14 @@ class Field extends FieldBasic
 		$db = \App\Db::getInstance();
 		$db->createCommand()->delete('vtiger_field', ['tabid' => $moduleInstance->id])->execute();
 		$db->createCommand()->delete('vtiger_fieldmodulerel', ['or', "module = '$moduleInstance->name'", "relmodule = '$moduleInstance->name'"])->execute();
+		$db->createCommand()->delete('a_#__encryption', ['target' => $moduleInstance->id])->execute();
 		\App\Log::trace('Deleting fields of the module ... DONE', __METHOD__);
 	}
 
 	public function setTreeTemplate($tree, $moduleInstance)
 	{
 		$db = \App\Db::getInstance();
-		$db->createCommand()->insert('vtiger_trees_templates', ['name' => (string) $tree->name, 'module' => $moduleInstance->id, 'access' => $tree->access])->execute();
+		$db->createCommand()->insert('vtiger_trees_templates', ['name' => (string) $tree->name, 'tabid' => $moduleInstance->id, 'access' => $tree->access])->execute();
 		$templateId = $db->getLastInsertID('vtiger_trees_templates_templateid_seq');
 
 		foreach ($tree->tree_values->tree_value as $treeValue) {

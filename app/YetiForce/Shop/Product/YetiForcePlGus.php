@@ -2,10 +2,12 @@
 /**
  * YetiForce shop YetiForcePlGus file.
  *
+ * @see App\RecordCollectors\Gus
+ *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -20,7 +22,7 @@ class YetiForcePlGus extends \App\YetiForce\Shop\AbstractBaseProduct
 	public $label = 'YetiForce GUS';
 
 	/** {@inheritdoc} */
-	public $category = 'Integrations';
+	public $category = 'RecordCollectors';
 
 	/** {@inheritdoc} */
 	public $website = 'https://yetiforce.com/en/yetiforce-gus-en';
@@ -44,9 +46,10 @@ class YetiForcePlGus extends \App\YetiForce\Shop\AbstractBaseProduct
 		if (\App\YetiForce\Register::getProducts('YetiForcePlGus')) {
 			[$status, $message] = \App\YetiForce\Shop::checkWithMessage('YetiForcePlGus');
 		} else {
-			$instance = new \App\RecordCollectors\Gus();
-			$instance->moduleName = reset(\App\RecordCollectors\Gus::$allowedModules);
-			if ($instance->isActive()) {
+			if (
+				(new \App\Db\Query())->from('vtiger_links')->where(['linktype' => 'EDIT_VIEW_RECORD_COLLECTOR', 'linklabel' => 'Gus'])->exists()
+				 || (new \App\Db\Query())->from('com_vtiger_workflowtasks')->where(['like', 'task', '%\Gus";%', false])->exists()
+			) {
 				$message = 'LBL_PAID_FUNCTIONALITY_ACTIVATED';
 				$status = false;
 			}
@@ -57,11 +60,23 @@ class YetiForcePlGus extends \App\YetiForce\Shop\AbstractBaseProduct
 	/** {@inheritdoc} */
 	public function getAdditionalButtons(): array
 	{
-		return [
+		$return = [];
+		if (\App\Security\AdminAccess::isPermitted('RecordCollector')) {
+			$return[] = \Vtiger_Link_Model::getInstanceFromValues([
+				'linklabel' => 'RecordCollector',
+				'relatedModuleName' => 'Settings:RecordCollector',
+				'linkicon' => 'yfi-record-collectors mr-2',
+				'linkhref' => true,
+				'linkurl' => 'index.php?parent=Settings&module=RecordCollector&view=List',
+				'linkclass' => 'btn-primary',
+				'showLabel' => 1,
+			]);
+		}
+		return array_merge([
 			\Vtiger_Link_Model::getInstanceFromValues([
 				'linklabel' => 'Website',
 				'relatedModuleName' => '_Base',
-				'linkicon' => 'fas fa-globe',
+				'linkicon' => 'fas fa-globe mr-2',
 				'linkhref' => true,
 				'linkExternal' => true,
 				'linktarget' => '_blank',
@@ -72,14 +87,14 @@ class YetiForcePlGus extends \App\YetiForce\Shop\AbstractBaseProduct
 			\Vtiger_Link_Model::getInstanceFromValues([
 				'linklabel' => 'api.stat.gov.pl',
 				'relatedModuleName' => 'Settings:_Base',
-				'linkicon' => 'adminIcon-passwords-configuration',
+				'linkicon' => 'fa-solid fa-link',
 				'linkhref' => true,
 				'linkExternal' => true,
 				'linktarget' => '_blank',
 				'linkurl' => 'https://api.stat.gov.pl/Home/RegonApi',
-				'linkclass' => 'btn-primary',
+				'linkclass' => 'btn-secondary',
 				'showLabel' => 1,
 			]),
-		];
+		], $return);
 	}
 }

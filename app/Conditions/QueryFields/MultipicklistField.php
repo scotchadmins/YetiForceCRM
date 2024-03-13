@@ -7,18 +7,15 @@ namespace App\Conditions\QueryFields;
  *
  * @package UIType
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Tomasz Kur <t.kur@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class MultipicklistField extends BaseField
 {
-	/**
-	 * Separator.
-	 *
-	 * @var string
-	 */
+	/** @var string Separator. */
 	protected $separator = ' |##| ';
 
 	/**
@@ -70,7 +67,7 @@ class MultipicklistField extends BaseField
 	 *
 	 * @return array
 	 */
-	public function operatorN()
+	public function operatorN(): array
 	{
 		return ['not', [$this->getColumnName() => $this->getValue()]];
 	}
@@ -80,7 +77,7 @@ class MultipicklistField extends BaseField
 	 *
 	 * @return array
 	 */
-	public function operatorC()
+	public function operatorC(): array
 	{
 		$condition = ['or'];
 		foreach ($this->getValue() as $value) {
@@ -88,8 +85,8 @@ class MultipicklistField extends BaseField
 				[
 					"%{$this->separator}{$value}{$this->separator}%",
 					"{$value}{$this->separator}%",
-					"%{$this->separator}{$value}"
-				], false
+					"%{$this->separator}{$value}",
+				], false,
 			]);
 		}
 		return $condition;
@@ -100,7 +97,7 @@ class MultipicklistField extends BaseField
 	 *
 	 * @return array
 	 */
-	public function operatorK()
+	public function operatorK(): array
 	{
 		$condition = ['and'];
 		foreach ($this->getValue() as $value) {
@@ -108,8 +105,8 @@ class MultipicklistField extends BaseField
 				[
 					"%{$this->separator}{$value}{$this->separator}%",
 					"{$value}{$this->separator}%",
-					"%{$this->separator}{$value}"
-				], false
+					"%{$this->separator}{$value}",
+				], false,
 			]]);
 		}
 		return $condition;

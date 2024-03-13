@@ -4,8 +4,8 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -39,7 +39,7 @@ class ErrorHandler
 	/**
 	 * Error init.
 	 *
-	 * @return void.
+	 * @return void
 	 */
 	public static function init(): void
 	{
@@ -53,7 +53,7 @@ class ErrorHandler
 	/**
 	 * PHP fatal handler function.
 	 *
-	 * @return void.
+	 * @return void
 	 */
 	public static function fatalHandler(): void
 	{
@@ -68,21 +68,21 @@ class ErrorHandler
 	 *
 	 * @see https://secure.php.net/manual/en/function.set-error-handler.php
 	 *
-	 * @param int    $errno
-	 * @param string $errstr
-	 * @param string $errfile
-	 * @param int    $errline
+	 * @param int    $no
+	 * @param string $str
+	 * @param string $file
+	 * @param int    $line
 	 *
 	 * @return void
 	 */
-	public static function errorHandler(int $errno, string $errstr, string $errfile, int $errline): void
+	public static function errorHandler(int $no, string $str, string $file, int $line): void
 	{
-		$errorString = static::error2string($errno);
-		$msg = reset($errorString) . ": $errstr in $errfile, line $errline";
+		$errorString = static::error2string($no);
+		$msg = reset($errorString) . ": $str in $file, line $line";
 		if (\App\Config::debug('EXCEPTION_ERROR_TO_FILE')) {
-			$file = ROOT_DIRECTORY . '/cache/logs/errors.log';
+			$logFile = ROOT_DIRECTORY . '/cache/logs/errors.log';
 			$content = print_r($msg, true) . PHP_EOL . \App\Debuger::getBacktrace(2) . PHP_EOL;
-			file_put_contents($file, $content, FILE_APPEND);
+			file_put_contents($logFile, $content, FILE_APPEND);
 		}
 		if (\App\Config::debug('EXCEPTION_ERROR_TO_SHOW')) {
 			\vtlib\Functions::throwNewException($msg, false);

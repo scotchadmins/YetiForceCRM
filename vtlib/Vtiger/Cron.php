@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
 namespace vtlib;
@@ -25,11 +25,7 @@ class Cron
 	public static $STATUS_RUNNING = 2;
 	public static $STATUS_COMPLETED = 3;
 	protected $data;
-	/**
-	 * Cron instance.
-	 *
-	 * @var \App\Cron
-	 */
+	/** @var \App\Cron Cron instance. */
 	protected $cronInstance;
 
 	/**
@@ -48,8 +44,10 @@ class Cron
 	 *
 	 * @param type  $value ,$key
 	 * @param mixed $key
+	 *
+	 * @return self
 	 */
-	public function set($key, $value)
+	public function set($key, $value): self
 	{
 		$this->data[$key] = $value;
 		return $this;
@@ -69,48 +67,70 @@ class Cron
 
 	/**
 	 * Get id reference of this instance.
+	 *
+	 * @return int
 	 */
-	public function getId()
+	public function getId(): int
 	{
-		return $this->data['id'];
+		return (int) $this->data['id'];
 	}
 
 	/**
 	 * Get name of this task instance.
+	 *
+	 *  @return string
 	 */
-	public function getName()
+	public function getName(): string
 	{
 		return \App\Purifier::decodeHtml($this->data['name']);
 	}
 
 	/**
 	 * Get the frequency set.
+	 *
+	 * @return int
 	 */
-	public function getFrequency()
+	public function getFrequency(): int
 	{
 		return (int) ($this->data['frequency']);
 	}
 
 	/**
 	 * Get the status.
+	 *
+	 * @return int
 	 */
-	public function getStatus()
+	public function getStatus(): int
 	{
 		return (int) ($this->data['status']);
 	}
 
 	/**
 	 * Get the timestamp lastrun started.
+	 *
+	 * @return int
 	 */
-	public function getLastStart()
+	public function getLastStart(): int
 	{
 		return (int) ($this->data['laststart']);
 	}
 
 	/**
-	 * Get the timestamp lastrun ended.
+	 * Get the timestamp last task update.
+	 *
+	 * @return int
 	 */
-	public function getLastEnd()
+	public function getLastUpdate(): int
+	{
+		return (int) ($this->data['last_update']);
+	}
+
+	/**
+	 * Get the timestamp lastrun ended.
+	 *
+	 * @return int
+	 */
+	public function getLastEnd(): int
 	{
 		return (int) ($this->data['lastend']);
 	}
@@ -124,29 +144,42 @@ class Cron
 	}
 
 	/**
-	 * Get the user datetimefeild.
+	 * Get the last start date time.
+	 *
+	 * @return string
 	 */
-	public function getLastEndDateTime()
+	public function getLastStartDateTime(): string
 	{
-		if (null !== $this->data['lastend']) {
-			$lastEndDateTime = new \DateTimeField(date('Y-m-d H:i:s', $this->data['lastend']));
-
-			return $lastEndDateTime->getDisplayDateTimeValue();
+		if (empty($this->data['laststart'])) {
+			return '';
 		}
-		return '';
+		return (new \DateTimeField(date('Y-m-d H:i:s', $this->data['laststart'])))->getDisplayDateTimeValue();
 	}
 
 	/**
-	 * get the last start datetime field.
+	 * Get the last task update date time.
+	 *
+	 * @return string
 	 */
-	public function getLastStartDateTime()
+	public function getLastUpdateDateTime(): string
 	{
-		if (null !== $this->data['laststart']) {
-			$lastStartDateTime = new \DateTimeField(date('Y-m-d H:i:s', $this->data['laststart']));
-
-			return $lastStartDateTime->getDisplayDateTimeValue();
+		if (empty($this->data['last_update'])) {
+			return '';
 		}
-		return '';
+		return (new \DateTimeField(date('Y-m-d H:i:s', $this->data['last_update'])))->getDisplayDateTimeValue();
+	}
+
+	/**
+	 * Get the last end date time.
+	 *
+	 * @return string
+	 */
+	public function getLastEndDateTime(): string
+	{
+		if (empty($this->data['lastend'])) {
+			return '';
+		}
+		return (new \DateTimeField(date('Y-m-d H:i:s', $this->data['lastend'])))->getDisplayDateTimeValue();
 	}
 
 	/**
@@ -191,7 +224,7 @@ class Cron
 
 	public function getLockStatus()
 	{
-		return isset($this->data['lockStatus']) ? $this->data['lockStatus'] : false;
+		return $this->data['lockStatus'] ?? false;
 	}
 
 	/**
@@ -275,51 +308,69 @@ class Cron
 
 	/**
 	 * Mark this instance as running.
+	 *
+	 * @return self
 	 */
-	public function markRunning()
+	public function markRunning(): self
 	{
 		$time = time();
-		\App\Db::getInstance()->createCommand()->update(self::$baseTable, ['status' => self::$STATUS_RUNNING, 'laststart' => $time], ['id' => $this->getId()])->execute();
-
+		\App\Db::getInstance()->createCommand()->update(
+			self::$baseTable,
+			['status' => self::$STATUS_RUNNING, 'laststart' => $time, 'last_update' => $time],
+			['id' => $this->getId()]
+		)->execute();
 		return $this->set('laststart', $time);
 	}
 
 	/**
 	 * Mark this instance as finished.
 	 *
-	 * @return int
+	 * @return self
 	 */
-	public function markFinished()
+	public function markFinished(): self
 	{
 		$lock = $this->getLockStatus();
 		$time = time();
-		$contitions = ['lastend' => $time, 'lase_error' => ''];
+		$conditions = ['lastend' => $time, 'last_update' => $time, 'lase_error' => ''];
 		if (!$lock) {
-			$contitions['status'] = self::$STATUS_ENABLED;
+			$conditions['status'] = self::$STATUS_ENABLED;
 		}
-		\App\Db::getInstance()->createCommand()->update(self::$baseTable, $contitions, ['id' => $this->getId()])->execute();
+		\App\Db::getInstance()->createCommand()->update(self::$baseTable, $conditions, ['id' => $this->getId()])->execute();
+		$this->set('last_update', $time);
 		return $this->set('lastend', $time);
 	}
 
 	/**
-	 * Detect if the task was started by never finished.
+	 * Update cron task last action time.
+	 *
+	 * @return self
 	 */
-	public function hadTimeout()
+	public function updateLastActionTime(): self
+	{
+		$time = time();
+		\App\Db::getInstance()->createCommand()->update(self::$baseTable, ['last_update' => $time], ['id' => $this->getId()])->execute();
+		return $this->set('last_update', $time);
+	}
+
+	/**
+	 * Detect if the task was started by never finished.
+	 *
+	 * @return bool
+	 */
+	public function hadTimeout(): bool
 	{
 		if (!$this->isRunning()) {
 			return false;
 		}
-		$time = $this->getLastEnd();
+		$time = $this->getLastUpdate();
+		if (0 == $time) {
+			$time = $this->getLastEnd();
+		}
 		if (0 == $time) {
 			$time = $this->getLastStart();
 		}
-		if (time() > ($time + \App\Cron::getMaxExecutionTime())) {
-			return true;
-		}
-		if (!empty($this->data['max_exe_time']) && time() >= (($this->data['max_exe_time'] * 60) + $time)) {
-			return true;
-		}
-		return false;
+		return (time() > ($time + \App\Cron::getMaxExecutionTime()))
+			|| (!empty($this->data['max_exe_time']) && time() >= (($this->data['max_exe_time'] * 60) + $time));
 	}
 
 	/**
@@ -329,8 +380,8 @@ class Cron
 	 */
 	public function checkTimeout(): bool
 	{
-		return $this->cronInstance->checkCronTimeout() ||
-		(!empty($this->data['max_exe_time']) && $this->getLastStart() && time() >= (($this->data['max_exe_time'] * 60) + $this->getLastStart()));
+		return $this->cronInstance->checkCronTimeout()
+		|| (!empty($this->data['max_exe_time']) && $this->getLastStart() && time() >= (($this->data['max_exe_time'] * 60) + $this->getLastStart()));
 	}
 
 	/**
@@ -403,7 +454,6 @@ class Cron
 		if (isset(self::$instanceCache["$name"])) {
 			$instance = self::$instanceCache["$name"];
 		}
-
 		if (false === $instance) {
 			$data = (new \App\Db\Query())->from(self::$baseTable)->where(['name' => $name])->one();
 			if ($data) {
@@ -489,8 +539,8 @@ class Cron
 	public static function deleteForModule(ModuleBasic $moduleInstance)
 	{
 		\App\Db::getInstance()->createCommand()->delete(self::$baseTable, ['module' => $moduleInstance->name])->execute();
-		if (is_dir("cron/modules/{$moduleInstance->name}")) {
-			Functions::recurseDelete("cron/modules/{$moduleInstance->name}");
+		if (is_dir("modules/{$moduleInstance->name}/crons")) {
+			Functions::recurseDelete("modules/{$moduleInstance->name}/crons");
 		}
 	}
 
@@ -512,5 +562,17 @@ class Cron
 	public static function isCronAction()
 	{
 		return self::$cronAction;
+	}
+
+	/**
+	 * Add log message.
+	 *
+	 * @param string $message log information
+	 * @param string $level   information type [info, warning, error]
+	 * @param bool   $indent  add three spaces at message begin
+	 */
+	public function log(string $message, string $level = 'info', bool $indent = true)
+	{
+		$this->cronInstance->log($message, $level, $indent);
 	}
 }

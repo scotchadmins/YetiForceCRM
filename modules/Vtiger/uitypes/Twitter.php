@@ -1,13 +1,17 @@
 <?php
 
 /**
- * UIType Twitter Field Class.
+ * UIType Twitter field file.
  *
  * @package   UIType
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Adach <a.adach@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ */
+/**
+ * UIType Twitter field class.
  */
 class Vtiger_Twitter_UIType extends Vtiger_Base_UIType
 {
@@ -38,7 +42,7 @@ class Vtiger_Twitter_UIType extends Vtiger_Base_UIType
 		if ($rawText) {
 			return $twitter;
 		}
-		return "<a href=\"https://twitter.com/{$twitter}\" target='_blank'>@{$twitter}</a>";
+		return "<a href=\"https://twitter.com/{$twitter}\" target='_blank' rel=\"noreferrer noopener\" >@{$twitter}</a>";
 	}
 
 	/** {@inheritdoc} */
@@ -50,6 +54,6 @@ class Vtiger_Twitter_UIType extends Vtiger_Base_UIType
 	/** {@inheritdoc} */
 	public function getQueryOperators()
 	{
-		return ['e', 'n', 'c', 'k', 'y', 'ny'];
+		return ['e', 'n', 'c', 'k', 'y', 'ny', 'ef', 'nf'];
 	}
 }

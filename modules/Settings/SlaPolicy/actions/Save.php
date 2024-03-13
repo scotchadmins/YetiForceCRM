@@ -4,8 +4,8 @@
  *
  * @package   Action
  *
- * @copyright YetiForce Sp. z o.o.
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Rafal Pospiech <r.pospiech@yetiforce.com>
  */
 class Settings_SlaPolicy_Save_Action extends Settings_Vtiger_Basic_Action
@@ -33,10 +33,11 @@ class Settings_SlaPolicy_Save_Action extends Settings_Vtiger_Basic_Action
 		$recordModel->set('tabid', \App\Module::getModuleId($request->getByType('source_module', 2)));
 		$conditions = \App\Condition::getConditionsFromRequest($request->getArray('conditions', 'Text'));
 		$recordModel->set('conditions', \App\Json::encode($conditions));
-		$recordModel->set('reaction_time', $request->getByType('reaction_time', 'TimePeriod'));
-		$recordModel->set('idle_time', $request->getByType('idle_time', 'TimePeriod'));
-		$recordModel->set('resolve_time', $request->getByType('resolve_time', 'TimePeriod'));
+		$recordModel->set('reaction_time', $request->getByType('reaction_time', 'timePeriod'));
+		$recordModel->set('idle_time', $request->getByType('idle_time', 'timePeriod'));
+		$recordModel->set('resolve_time', $request->getByType('resolve_time', 'timePeriod'));
 		$recordModel->set('business_hours', $request->getByType('business_hours', 'Text'));
+		$recordModel->set('available_for_record_time_count', $request->getByType('available_for_record_time_count', 'Bool'));
 		$recordModel->save();
 		header('location: ' . $moduleModel->getDefaultUrl());
 	}

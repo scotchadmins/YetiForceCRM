@@ -3,8 +3,8 @@
 /**
  * Settings QuickCreateEditor index view class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  * @author    Adrian Kon <a.kon@yetiforce.com>
  */
@@ -41,7 +41,7 @@ class Settings_QuickCreateEditor_Index_View extends Settings_Vtiger_Index_View
 	public function showFieldLayout(App\Request $request)
 	{
 		$sourceModule = $request->getByType('sourceModule', 2);
-		$menuModelsList = Vtiger_Module_Model::getQuickCreateModules();
+		$menuModelsList = \App\Module::getQuickCreateModules();
 
 		if (empty($sourceModule)) {
 			$firstElement = reset($menuModelsList);
@@ -50,10 +50,9 @@ class Settings_QuickCreateEditor_Index_View extends Settings_Vtiger_Index_View
 		$recordModel = Vtiger_Record_Model::getCleanInstance($sourceModule);
 		$quickCreateFields = Vtiger_RecordStructure_Model::getInstanceFromRecordModel($recordModel, Vtiger_RecordStructure_Model::RECORD_STRUCTURE_MODE_QUICKCREATE)->getStructure();
 		$viewer = $this->getViewer($request);
-		$viewer->assign('RECORD_STRUCTURE', $quickCreateFields);
 		$layout = $recordModel->getModule()->getLayoutTypeForQuickCreate();
 		if ('blocks' === $layout) {
-			$selectedModuleModel = Settings_LayoutEditor_Module_Model::getInstanceByName($sourceModule);
+			$selectedModuleModel = Settings_LayoutEditor_Module_Model::getInstance('Settings:LayoutEditor')->setSourceModule($sourceModule);
 			$blockModels = $selectedModuleModel->getBlocks();
 			$blockIdFieldMap = [];
 			foreach ($quickCreateFields as $fieldModel) {
@@ -70,6 +69,7 @@ class Settings_QuickCreateEditor_Index_View extends Settings_Vtiger_Index_View
 			$viewer->assign('BLOCKS', $blockModels);
 			$viewer->assign('SELECTED_MODULE_MODEL', $selectedModuleModel);
 		}
+		$viewer->assign('RECORD_STRUCTURE', $quickCreateFields);
 		$viewer->assign('LAYOUT', $layout);
 		$viewer->assign('SELECTED_MODULE_NAME', $sourceModule);
 		$viewer->assign('SUPPORTED_MODULES', $menuModelsList);

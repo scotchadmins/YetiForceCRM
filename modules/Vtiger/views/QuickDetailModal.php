@@ -5,8 +5,8 @@
  *
  * @package View
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -93,6 +93,15 @@ class Vtiger_QuickDetailModal_View extends \App\Controller\Modal
 		$viewer->assign('RECORD', $recordModel);
 		$viewer->assign('MODULE_NAME', $moduleName);
 		$viewer->assign('WIDGETS', $widgets);
+		if (empty($widgets)) {
+			$recordStructure = Vtiger_RecordStructure_Model::getInstanceFromRecordModel($recordModel, Vtiger_RecordStructure_Model::RECORD_STRUCTURE_MODE_DETAIL);
+			$viewer->assign('RECORD_STRUCTURE_INSTANCE', $recordStructure);
+			$viewer->assign('RECORD_STRUCTURE', $recordStructure->getStructure());
+			$viewer->assign('BLOCK_LIST', $recordModel->getModule()->getBlocks());
+			$viewer->assign('MODULE_MODEL', $recordModel->getModule());
+			$viewer->assign('IS_AJAX_ENABLED', false);
+			$viewer->assign('IS_READ_ONLY', true);
+		}
 		$viewer->assign('LINKS', $this->getModalLinks($recordModel));
 		$viewer->view('Modals/QuickDetailModal.tpl', $moduleName);
 	}

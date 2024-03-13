@@ -3,8 +3,8 @@
 /**
  * Settings search SaveAjax action class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class Settings_Search_SaveAjax_Action extends Settings_Vtiger_Basic_Action
 {
@@ -19,11 +19,18 @@ class Settings_Search_SaveAjax_Action extends Settings_Vtiger_Basic_Action
 	public function save(App\Request $request)
 	{
 		$params = $request->getArray('params', 'Alnum');
-		$success = Settings_Search_Module_Model::save($params);
-		$message = 'LBL_SAVE_CHANGES_LABLE';
-		if ('turn_off' === $params['name']) {
-			$message = 'LBL_SAVE_CHANGES_SEARCHING';
+		$searchModel = Settings_Search_Module_Model::getInstance('Settings:Search');
+		try {
+			$success = $searchModel->save($params);
+			$message = 'LBL_SAVE_CHANGES_LABLE';
+			if ('turn_off' === $params['name']) {
+				$message = 'LBL_SAVE_CHANGES_SEARCHING';
+			}
+		} catch (\Throwable $th) {
+			$success = false;
+			$message = 'ERR_OCCURRED_ERROR';
 		}
+
 		$response = new Vtiger_Response();
 		$response->setResult([
 			'success' => $success,

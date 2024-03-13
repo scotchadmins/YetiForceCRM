@@ -5,9 +5,10 @@
  *
  * @package   UIType
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Vtiger_RecordNumber_UIType extends Vtiger_Base_UIType
 {
@@ -17,9 +18,9 @@ class Vtiger_RecordNumber_UIType extends Vtiger_Base_UIType
 		if (empty($value) || isset($this->validate[$value])) {
 			return;
 		}
-		$maximumLength = $this->getFieldModel()->get('maximumlength');
-		if ($maximumLength && App\TextParser::getTextLength($value) > $maximumLength) {
-			throw new \App\Exceptions\Security('ERR_VALUE_IS_TOO_LONG||' . $this->getFieldModel()->getFieldName() . '||' . $value, 406);
+		$maximumLength = $this->getFieldModel()->getMaxValue();
+		if ($maximumLength && App\TextUtils::getTextLength($value) > $maximumLength) {
+			throw new \App\Exceptions\Security('ERR_VALUE_IS_TOO_LONG||' . $this->getFieldModel()->getName() . '||' . $value, 406);
 		}
 		$this->validate[$value] = true;
 	}
@@ -31,7 +32,7 @@ class Vtiger_RecordNumber_UIType extends Vtiger_Base_UIType
 		$recordNumberInstance->setRecord($recordModel);
 		if ($recordNumberInstance->isNewSequence()) {
 			$value = $recordNumberInstance->getIncrementNumber();
-			$recordModel->set($this->getFieldModel()->getFieldName(), $value);
+			$recordModel->set($this->getFieldModel()->getName(), $value);
 		}
 		return $value;
 	}

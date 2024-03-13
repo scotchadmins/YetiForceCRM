@@ -4,28 +4,27 @@
  *
  * @package   Relation
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
-use App\Relation\RelationInterface;
 
 /**
  * Vtiger_GetRelatedList_Relation class.
  */
-class Vtiger_GetRelatedList_Relation implements RelationInterface
+class Vtiger_GetRelatedList_Relation extends \App\Relation\RelationAbstraction
 {
+	/**
+	 * @var string Name of the table that stores relations.
+	 */
+	public const TABLE_NAME = 'vtiger_crmentityrel';
+
 	/** {@inheritdoc} */
 	public function getRelationType(): int
 	{
 		return Vtiger_Relation_Model::RELATION_M2M;
 	}
-
-	/**
-	 * Name of the table that stores relations.
-	 */
-	public const TABLE_NAME = 'vtiger_crmentityrel';
 
 	/** {@inheritdoc} */
 	public function getQuery()
@@ -36,6 +35,43 @@ class Vtiger_GetRelatedList_Relation implements RelationInterface
 			->addJoin(['INNER JOIN', $tableName, "({$tableName}.relcrmid = vtiger_crmentity.crmid OR {$tableName}.crmid = vtiger_crmentity.crmid)"])
 			->addNativeCondition(['or', ["{$tableName}.crmid" => $record], ["{$tableName}.relcrmid" => $record]])
 			->setDistinct('id');
+	}
+
+	/**
+	 * Load advanced conditions for filtering related records.
+	 *
+	 * @param App\QueryGenerator $queryGenerator QueryGenerator for the list of records to be tapered based on the relationship
+	 *
+	 * @return void
+	 */
+	public function loadAdvancedConditionsByRelationId(App\QueryGenerator $queryGenerator): void
+	{
+		$tableName = static::TABLE_NAME;
+		$advancedConditions = $queryGenerator->getAdvancedConditions();
+		$relationQueryGenerator = $this->relationModel->getQueryGenerator();
+		$relationQueryGenerator->setStateCondition($queryGenerator->getState());
+		$relationQueryGenerator->setFields(['id']);
+		if (!empty($advancedConditions['relationConditions'])) {
+			$relationQueryGenerator->setConditions(\App\Condition::getConditionsFromRequest($advancedConditions['relationConditions']));
+		}
+		$query = $relationQueryGenerator->createQuery();
+		$queryGenerator->addJoin(['INNER JOIN', $tableName, "({$tableName}.relcrmid = vtiger_crmentity.crmid OR {$tableName}.crmid = vtiger_crmentity.crmid)"])
+			->addNativeCondition(['or', ["{$tableName}.crmid" => $query], ["{$tableName}.relcrmid" => $query]]);
+	}
+
+	/**
+	 * Load advanced conditions relationship by custom column.
+	 *
+	 * @param App\QueryGenerator $queryGenerator QueryGenerator for the list of records to be tapered based on the relationship
+	 * @param array              $searchParam    Related record for which we are filtering the list of records
+	 *
+	 * @return void
+	 */
+	public function loadAdvancedConditionsByColumns(App\QueryGenerator $queryGenerator, array $searchParam): void
+	{
+		$tableName = static::TABLE_NAME;
+		$queryGenerator->addJoin(['INNER JOIN', $tableName, "({$tableName}.relcrmid = vtiger_crmentity.crmid OR {$tableName}.crmid = vtiger_crmentity.crmid)"])
+			->addNativeCondition(['or', ["{$tableName}.crmid" => $searchParam['value']], ["{$tableName}.relcrmid" => $searchParam['value']]]);
 	}
 
 	/** {@inheritdoc} */

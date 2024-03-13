@@ -7,17 +7,69 @@ namespace App;
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Field
 {
-	/**
-	 * Help info views.
-	 */
-	const HELP_INFO_VIEWS = ['LBL_EDIT_VIEW' => 'Edit', 'LBL_DETAIL_VIEW' => 'Detail', 'LBL_QUICK_CREATE_VIEW' => 'QuickCreateAjax'];
+	/** @var string[] Help info views. */
+	const HELP_INFO_VIEWS = ['LBL_EDIT_VIEW' => 'Edit', 'LBL_DETAIL_VIEW' => 'Detail', 'LBL_QUICK_CREATE_VIEW' => 'QuickCreateAjax', 'LBL_QUICK_EDIT_VIEW' => 'QuickEditModal'];
+
+	/** @var array System fields */
+	const SYSTEM_FIELDS = [
+		'assigned_user_id' => [
+			'validationConditions' => ['name'],
+			'name' => 'assigned_user_id', 'column' => 'smownerid',	'label' => 'Assigned To',	'table' => 'vtiger_crmentity',
+			'uitype' => 53,	'typeofdata' => 'V~M',	'maximumlength' => 65535,
+		],
+		'createdtime' => [
+			'validationConditions' => ['name'],
+			'name' => 'createdtime', 'column' => 'createdtime',	'label' => 'Created Time',	'table' => 'vtiger_crmentity',
+			'uitype' => 70,	'typeofdata' => 'DT~O',	'displaytype' => 2,	'maximumlength' => 65535,
+		],
+		'modifiedtime' => [
+			'validationConditions' => ['name'],
+			'name' => 'modifiedtime', 'column' => 'modifiedtime',	'label' => 'Modified Time',	'table' => 'vtiger_crmentity',
+			'uitype' => 70,	'typeofdata' => 'DT~O',	'displaytype' => 2,	'maximumlength' => 65535,
+		],
+		'created_user_id' => [
+			'validationConditions' => ['column'],
+			'name' => 'created_user_id', 'column' => 'smcreatorid',	'label' => 'Created By',	'table' => 'vtiger_crmentity',
+			'uitype' => 52,	'typeofdata' => 'V~O',	'displaytype' => 2,	'quickcreate' => 3, 'masseditable' => 0, 'maximumlength' => 65535,
+		],
+		'modifiedby' => [
+			'validationConditions' => ['name'],
+			'name' => 'modifiedby',	'column' => 'modifiedby',	'label' => 'Last Modified By',	'table' => 'vtiger_crmentity',
+			'uitype' => 52,	'typeofdata' => 'V~O',	'displaytype' => 2,	'quickcreate' => 3, 'masseditable' => 0, 'maximumlength' => 65535,
+		],
+		'shownerid' => [
+			'validationConditions' => ['name'],
+			'name' => 'shownerid', 'column' => 'shownerid',	'label' => 'Share with users',	'table' => 'vtiger_crmentity',
+			'uitype' => 120,	'typeofdata' => 'V~O',	'columntype' => 'int(11)', 'maximumlength' => 65535,
+		],
+		'private' => [
+			'validationConditions' => ['name'],
+			'name' => 'private', 'column' => 'private',	'label' => 'FL_IS_PRIVATE',	'table' => 'vtiger_crmentity',
+			'uitype' => 56,	'typeofdata' => 'C~O',	'columntype' => 'int(11)', 'maximumlength' => '-128,127', 'presence' => 2, 'generatedtype' => 2,
+		],
+		'share_externally' => [
+			'validationConditions' => ['uitype', 'fieldparams'],
+			'name' => 'share_externally', 'column' => 'share_externally',	'label' => 'FL_SHARE_EXTERNALLY',	'defaultvalue' => 0,	'fieldparams' => 1,
+			'uitype' => 318, 'typeofdata' => 'C~O',	'columntype' => 'tinyint(1)', 'maximumlength' => '-128,127',
+		],
+		'description' => [
+			'validationConditions' => ['name', 'table'],
+			'name' => 'description', 'column' => 'description',	'label' => 'Description',	'table' => 'vtiger_crmentity',
+			'uitype' => 300, 'typeofdata' => 'V~O',	'columntype' => 'text', 'maximumlength' => '65535', 'presence' => 2,
+		],
+		'attention' => [
+			'validationConditions' => ['name', 'table'],
+			'name' => 'attention', 'column' => 'attention',	'label' => 'Attention',	'table' => 'vtiger_crmentity',
+			'uitype' => 300, 'typeofdata' => 'V~O',	'columntype' => 'text', 'maximumlength' => '65535', 'presence' => 2,
+		],
+	];
 
 	/**
 	 * Function gets the list of fields that the user has permissions to.
@@ -39,7 +91,7 @@ class Field
 					'vtiger_field.fieldname',
 					'vtiger_field.columnname',
 					'vtiger_profile2field.readonly',
-					'vtiger_profile2field.visible'
+					'vtiger_profile2field.visible',
 				])
 				->from('vtiger_field')
 				->innerJoin('vtiger_profile2field', 'vtiger_profile2field.fieldid = vtiger_field.fieldid')
@@ -47,7 +99,7 @@ class Field
 					'vtiger_field.tabid' => (int) $tabId,
 					'vtiger_profile2field.visible' => 0,
 					'vtiger_field.visible' => 0,
-					'vtiger_field.presence' => [0, 2]
+					'vtiger_field.presence' => [0, 2],
 				]);
 			$profileList = \App\User::getCurrentUserModel()->getProfiles();
 			if ($profileList) {
@@ -290,13 +342,67 @@ class Field
 				->where(['vtiger_field.fieldid' => $mixed])->one();
 			Cache::save('FieldInfoById', $mixed, $fieldInfo, Cache::LONG);
 		} else {
-			$fieldsInfo = \vtlib\Functions::getModuleFieldInfos($module);
+			$fieldsInfo = self::getModuleFieldInfos($module);
 			if ($fieldsInfo && isset($fieldsInfo[$mixed])) {
 				$fieldInfo = $fieldsInfo[$mixed];
 				Cache::save('FieldInfoById', $fieldInfo['fieldid'], $fieldInfo, Cache::LONG);
 			}
 		}
 		return $fieldInfo;
+	}
+
+	/**
+	 * Function get module field infos.
+	 *
+	 * @param int|string $module
+	 * @param bool       $returnByColumn
+	 *
+	 * @return array
+	 */
+	public static function getModuleFieldInfos($module, bool $returnByColumn = false): array
+	{
+		if (is_numeric($module)) {
+			$module = Module::getModuleName($module);
+		}
+		$cacheName = 'ModuleFieldInfosByName';
+		if (!Cache::has($cacheName, $module)) {
+			$dataReader = (new Db\Query())
+				->from('vtiger_field')
+				->leftJoin('s_#__fields_anonymization', 'vtiger_field.fieldid = s_#__fields_anonymization.field_id')
+				->where(['tabid' => Module::getModuleId($module)])
+				->createCommand()->query();
+			$fieldInfoByName = $fieldInfoByColumn = [];
+			while ($row = $dataReader->read()) {
+				$fieldInfoByName[$row['fieldname']] = $row;
+				$fieldInfoByColumn[$row['columnname']] = $row;
+			}
+			Cache::save($cacheName, $module, $fieldInfoByName);
+			Cache::save('ModuleFieldInfosByColumn', $module, $fieldInfoByColumn);
+		}
+		if ($returnByColumn) {
+			return Cache::get('ModuleFieldInfosByColumn', $module);
+		}
+		return Cache::get($cacheName, $module);
+	}
+
+	/**
+	 * Function get module field infos by presence.
+	 *
+	 * @param int|string $module
+	 * @param array      $presence
+	 *
+	 * @return array
+	 */
+	public static function getModuleFieldInfosByPresence($module, array $presence = ['0', '2']): array
+	{
+		$moduleFields = [];
+		$fieldsInfo = self::getModuleFieldInfos($module);
+		foreach ($fieldsInfo as $fieldInfo) {
+			if (\in_array($fieldInfo['presence'], $presence)) {
+				$moduleFields[$fieldInfo['fieldname']] = $fieldInfo;
+			}
+		}
+		return $moduleFields;
 	}
 
 	/**
@@ -363,5 +469,35 @@ class Field
 			}
 		}
 		return $return;
+	}
+
+	/**
+	 * Get a list of custom default values for a given field type in the WebservicePremium API.
+	 *
+	 * @param \Vtiger_Field_Model $fieldModel
+	 * @param bool                $group
+	 *
+	 * @return array
+	 */
+	public static function getCustomListForDefaultValue(\Vtiger_Field_Model $fieldModel, bool $group = false): array
+	{
+		if ($fieldModel->isReferenceField()) {
+			$return = [
+				'loggedContact' => \App\Language::translate('LBL_LOGGED_CONTACT', 'Settings:LayoutEditor'),
+				'accountOnContact' => \App\Language::translate('LBL_ACCOUNT_ON_CONTACT', 'Settings:LayoutEditor'),
+				'accountLoggedContact' => \App\Language::translate('LBL_ACCOUNT_LOGGED_CONTACT', 'Settings:LayoutEditor'),
+			];
+			return $group ? ['LBL_SPECIAL_FUNCTION' => $return] : $return;
+		}
+		if ($fieldModel->isOwnerField()) {
+			$return = [
+				'ownerFromAccountOnContact' => \App\Language::translate('LBL_OWNER_FROM_ACCOUNT_CONTACT', 'Settings:LayoutEditor'),
+			];
+			$ownerField = \App\Fields\Owner::getInstance($fieldModel->getModuleName());
+			$users = $ownerField->getAccessibleUsers('', $fieldModel->getFieldDataType());
+			$groups = $ownerField->getAccessibleGroups('', $fieldModel->getFieldDataType(), true);
+			return $group ? ['LBL_SPECIAL_FUNCTION' => $return, 'LBL_USERS' => $users, 'LBL_GROUPS' => $groups] : array_merge($return, $users, $groups);
+		}
+		return [];
 	}
 }

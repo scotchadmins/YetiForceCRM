@@ -3,9 +3,10 @@
 /**
  * Email PDF Template Task Class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author Radoslaw Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class VTSendPdf extends VTTask
 {
@@ -29,9 +30,14 @@ class VTSendPdf extends VTTask
 	 */
 	public function doTask($recordModel)
 	{
-		if (!empty($this->mailTemplate) && !empty($this->pdfTemplate)) {
-			$mailerContent = [];
-			if (!empty($this->smtp)) {
+		if (!empty($this->mailTemplate) && !empty($this->pdfTemplate) && \App\Record::isExists($this->mailTemplate, 'EmailTemplates') && \Vtiger_PDF_Model::getInstanceById($this->pdfTemplate)) {
+			$mailerContent['template'] = $this->mailTemplate;
+			if (empty($this->smtp)) {
+				$mailerContent['smtp_id'] = \App\Mail::getDefaultSmtp();
+			} elseif (-1 === (int) $this->smtp) {
+				$templateMail = \App\Mail::getTemplate($this->mailTemplate);
+				$mailerContent['smtp_id'] = $templateMail['smtp_id'];
+			} else {
 				$mailerContent['smtp_id'] = $this->smtp;
 			}
 			$emailParser = \App\EmailParser::getInstanceByModel($recordModel);
@@ -53,20 +59,14 @@ class VTSendPdf extends VTTask
 				$mailerContent['bcc'] = $this->copy_email;
 			}
 
-			$filePath = 'cache' . DIRECTORY_SEPARATOR . 'pdf' . DIRECTORY_SEPARATOR;
-			$tmpFileName = tempnam($filePath, 'PDF' . time());
-			$filePath .= basename($tmpFileName);
-			Vtiger_PDF_Model::exportToPdf($recordModel->getId(), $this->pdfTemplate, $filePath, 'F');
-			$templateRecord = Vtiger_PDF_Model::getInstanceById($this->pdfTemplate);
-			if (!file_exists($filePath)) {
-				App\Log::error('An error occurred while generating PFD file, the file doesn\'t exist. Sending email with PDF has been blocked.');
-				return false;
-			}
-			if (!$templateRecord->isEmpty('filename')) {
-				$fileName = \App\Fields\File::sanitizeUploadFileName($templateRecord->parseVariables($templateRecord->get('filename'))) . '.pdf';
-			} else {
-				$fileName = time() . '.pdf';
-			}
+			$pdf = \App\Pdf\Pdf::getInstanceByTemplateId($this->pdfTemplate);
+			$template = $pdf->getTemplate();
+			$template->setVariable('recordId', $recordModel->getId());
+			$pdf->loadTemplateData();
+			$filePath = $template->getPath();
+			$pdf->output($filePath, 'F');
+			$fileName = ($pdf->getFileName() ?: time()) . '.pdf';
+
 			$mailerContent['attachments'] = [$filePath => $fileName];
 			\App\Mailer::sendFromTemplate($mailerContent);
 		}

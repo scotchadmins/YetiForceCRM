@@ -6,28 +6,16 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class HelpDesk_DetailView_Model extends Vtiger_DetailView_Model
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getDetailViewRelatedLinks()
 	{
 		$recordModel = $this->getRecord();
 		$relatedLinks = parent::getDetailViewRelatedLinks();
-		if (Vtiger_Module_Model::getInstance('OSSTimeControl')->isActive()) {
-			$relatedLinks[] = [
-				'linktype' => 'DETAILVIEWTAB',
-				'linklabel' => 'LBL_CHARTS',
-				'linkurl' => $recordModel->getDetailViewUrl() . '&mode=showCharts&requestMode=charts',
-				'linkicon' => '',
-				'linkKey' => 'LBL_RECORD_SUMMARY',
-				'related' => 'Charts',
-			];
-		}
 		if (App\Config::module($recordModel->getModuleName(), 'SHOW_SUMMARY_PRODUCTS_SERVICES')) {
 			$relations = \Vtiger_Relation_Model::getAllRelations($this->getModule(), false, true, true, 'modulename');
 			if (isset($relations['Products']) || isset($relations['Services']) || isset($relations['Assets']) || isset($relations['OSSSoldServices'])) {

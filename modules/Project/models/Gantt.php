@@ -3,9 +3,12 @@
 /**
  * Gantt Model class.
  *
- * @copyright YetiForce Sp. z o.o.
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @package Model
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Rafal Pospiech <r.pospiech@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Project_Gantt_Model
 {
@@ -119,16 +122,16 @@ class Project_Gantt_Model
 	}
 
 	/**
-	 * Calculate duration in days.
+	 * Calculate duration in seconds.
 	 *
 	 * @param string $startDateStr
 	 * @param string $endDateStr
 	 *
 	 * @return int
 	 */
-	private function calculateDuration($startDateStr, $endDateStr)
+	private function calculateDuration($startDateStr, $endDateStr): int
 	{
-		return ((int) (new DateTime($startDateStr))->diff(new DateTime($endDateStr), true)->format('%a')) * 24 * 60 * 60;
+		return ((int) (new DateTime($startDateStr))->diff(new DateTime($endDateStr), true)->format('%a')) * 24 * 60 * 60 * 1000;
 	}
 
 	/**
@@ -293,7 +296,7 @@ class Project_Gantt_Model
 		});
 		if ($firstDate < 0 || '2038-01-19' === date('Y-m-d', $firstDate)) {
 			$firstDate = strtotime(date('Y-m-d'));
-			$node['duration'] = 1;
+			$node['duration'] = 24 * 60 * 60 * 1000;
 		}
 		if (empty($node['start_date'])) {
 			$node['start_date'] = date('Y-m-d', $firstDate);
@@ -333,13 +336,13 @@ class Project_Gantt_Model
 		}
 		if (empty($node['end_date'])) {
 			$node['end_date'] = date('Y-m-d', $lastDate);
-			$node['end'] = $lastDate * 1000;
+			$node['end'] = $lastDate;
 		}
 		// iterate one more time setting up empty dates
 		$this->iterateNodes($node, $lastDate, function (&$child, $lastDate) {
 			if (empty($child['end_date'])) {
 				$child['end_date'] = date('Y-m-d', $lastDate);
-				$child['end'] = $lastDate * 1000;
+				$child['end'] = $lastDate;
 			}
 			return $lastDate;
 		});
@@ -353,7 +356,7 @@ class Project_Gantt_Model
 	{
 		foreach ($this->tasks as &$task) {
 			if (empty($task['duration']) && isset($task['start_date'], $task['end_date'])) {
-				$task['duration'] = $this->calculateDuration($task['start_date'], $task['end_date']) * 1000;
+				$task['duration'] = $this->calculateDuration($task['start_date'], $task['end_date']);
 			}
 		}
 	}
@@ -462,7 +465,7 @@ class Project_Gantt_Model
 				'url' => 'index.php?module=Project&view=Detail&record=' . $row['id'],
 				'parentId' => !empty($row['parentid']) ? $row['parentid'] : null,
 				'priority' => $queryGenerator->getModuleField('projectpriority')->getDisplayValue($row['projectpriority'], $row['id'], false, true),
-				'priority_label' => \App\Language::translate($row['projectpriority'], 'Project'),
+				'priority_label' => \App\Language::translate($row['projectpriority'] ?? '', 'Project'),
 				'sum_time' => $queryGenerator->getModuleField('sum_time')->getDisplayValue($row['sum_time'], $row['id'], false, true),
 				'estimated_work_time' => $queryGenerator->getModuleField('estimated_work_time')->getDisplayValue($row['estimated_work_time'], $row['id'], false, true),
 				'status' => 'STATUS_ACTIVE',
@@ -489,15 +492,15 @@ class Project_Gantt_Model
 				$project['dependentOn'] = [$project['parentId']];
 			}
 			if (!empty($row['startdate'])) {
-				$project['start_date'] = $queryGenerator->getModuleField('startdate')->getDisplayValue($row['startdate'], $row['id'], false, true);
+				$project['start_date'] = date('Y-m-d', strtotime($row['startdate']));
 				$project['start'] = date('Y-m-d H:i:s', strtotime($row['startdate']));
 			}
-			$project['end_date'] = $queryGenerator->getModuleField('actualenddate')->getDisplayValue($row['actualenddate'], $row['id'], false, true);
-			$project['target_end_date'] = $queryGenerator->getModuleField('targetenddate')->getDisplayValue($row['targetenddate'], $row['id'], false, true);
+			$project['end_date'] = $row['actualenddate'] ?: $row['targetenddate'] ?: '';
+			$project['target_end_date'] = $row['targetenddate'] ? date('Y-m-d', strtotime($row['targetenddate'])) : '';
 			if (empty($project['end_date']) && !empty($row['targetenddate'])) {
 				$endDate = strtotime(date('Y-m-d', strtotime($row['targetenddate'])) . ' +1 days');
 				$project['end_date'] = date('Y-m-d', $endDate);
-				$project['end'] = strtotime($project['end_date']) * 1000;
+				$project['end'] = strtotime($project['end_date']);
 			}
 			$project['planned_duration'] = $project['estimated_work_time'];
 			$project['style'] = [
@@ -646,12 +649,12 @@ class Project_Gantt_Model
 			} else {
 				$milestone['dependentOn'] = [$milestone['parentId']];
 			}
-			if ($row['projectmilestonedate']) {
+			if ($pmDate = $row['projectmilestonedate']) {
 				$milestone['duration'] = 24 * 60 * 60 * 1000;
-				$milestone['start'] = date('Y-m-d H:i:s', strtotime($row['projectmilestonedate']));
-				$milestone['start_date'] = date('Y-m-d', strtotime($row['projectmilestonedate']));
-				$endDate = strtotime(date('Y-m-d', strtotime($row['projectmilestonedate'])) . ' +1 days');
-				$milestone['end'] = $endDate * 1000;
+				$milestone['start'] = date('Y-m-d H:i:s', strtotime($pmDate));
+				$milestone['start_date'] = date('Y-m-d', strtotime($pmDate));
+				$endDate = strtotime(date('Y-m-d', strtotime($pmDate)) . ' +1 days');
+				$milestone['end'] = $endDate;
 				$milestone['end_date'] = date('Y-m-d', $endDate);
 				$milestone['v'] = $queryGenerator->getModuleField('estimated_work_time')->getDisplayValue($row['estimated_work_time'], $row['id'], false, true);
 			}
@@ -696,14 +699,14 @@ class Project_Gantt_Model
 				'name' => $taskName,
 				'label' => $taskName,
 				'url' => 'index.php?module=ProjectTask&view=Detail&record=' . $row['id'],
-				'parentId' => (int) ($row['parentid'] ?? 0),
+				'parentId' => (int) ($row['parentid'] ?: $row['projectid']),
 				'canWrite' => false,
 				'canDelete' => false,
 				'cantWriteOnParent' => false,
 				'canAdd' => false,
 				'progress' => (int) $row['projecttaskprogress'],
 				'priority' => $queryGenerator->getModuleField('projecttaskpriority')->getDisplayValue($row['projecttaskpriority'], $row['id'], false, true),
-				'priority_label' => \App\Language::translate($row['projecttaskpriority'], 'ProjectTask'),
+				'priority_label' => \App\Language::translate($row['projecttaskpriority'] ?? '', 'ProjectTask'),
 				'sum_time' => $queryGenerator->getModuleField('sum_time')->getDisplayValue($row['sum_time'], $row['id'], false, true),
 				'no' => $queryGenerator->getModuleField('projecttask_no')->getDisplayValue($row['projecttask_no'], $row['id'], false, true),
 				'normalized_status' => $queryGenerator->getModuleField('projecttaskstatus')->getDisplayValue($row['projecttaskstatus'], $row['id'], false, true),
@@ -711,7 +714,7 @@ class Project_Gantt_Model
 				'color' => ($row['projecttaskstatus'] && isset($this->statusColors['ProjectTask']['projecttaskstatus'][$row['projecttaskstatus']])) ? $this->statusColors['ProjectTask']['projecttaskstatus'][$row['projecttaskstatus']] : App\Colors::getRandomColor('projecttaskstatus_' . $row['id']),
 				'start_date' => date('Y-m-d', strtotime($row['startdate'])),
 				'start' => date('Y-m-d H:i:s', strtotime($row['startdate'])),
-				'end_date' => $row['enddate'],
+				'end_date' => $row['enddate'] ?: $row['targetenddate'],
 				'target_end_date' => $row['targetenddate'],
 				'assigned_user_id' => $row['assigned_user_id'],
 				'assigned_user_name' => \App\Fields\Owner::getUserLabel($row['assigned_user_id']),
@@ -735,8 +738,8 @@ class Project_Gantt_Model
 				]
 			];
 			unset($task['color']);
-			$endDate = strtotime(date('Y-m-d', strtotime($row['targetenddate'])) . ' +1 days');
-			$task['duration'] = $this->calculateDuration($task['start_date'], $task['end_date']) * 1000;
+			$endDate = date('Y-m-d', strtotime('+1 day', strtotime($task['end_date'])));
+			$task['duration'] = $this->calculateDuration($task['start_date'], $endDate);
 			$task['planned_duration'] = $queryGenerator->getModuleField('estimated_work_time')->getDisplayValue($row['estimated_work_time'], $row['id'], false, true);
 			$taskTime += $row['estimated_work_time'];
 			$ganttTasks[] = $task;

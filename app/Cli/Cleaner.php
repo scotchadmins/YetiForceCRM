@@ -2,10 +2,10 @@
 /**
  * Cleaner cli file.
  *
- * @package App
+ * @package Cli
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -34,17 +34,19 @@ class Cleaner extends Base
 	 */
 	public function logs(): void
 	{
-		$i = 0;
+		$i = $s = 0;
 		$this->climate->bold('Removing all logs...');
 		foreach ($iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(ROOT_DIRECTORY . '/cache/logs', \RecursiveDirectoryIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST) as $item) {
 			if ($item->isFile() && 'index.html' !== $item->getBasename()) {
 				$this->climate->bold($iterator->getSubPathName() . ' - ' . \vtlib\Functions::showBytes($item->getSize()));
+				$s += $item->getSize();
 				unlink($item->getPathname());
 				++$i;
 			}
 		}
 		$this->climate->lightYellow()->border('─', 200);
 		$this->climate->bold('Number of deleted log files: ' . $i);
+		$this->climate->bold('Size of deleted log files: ' . \vtlib\Functions::showBytes($s));
 		$this->climate->lightYellow()->border('─', 200);
 	}
 
@@ -59,7 +61,9 @@ class Cleaner extends Base
 		\App\Session::load();
 		$this->climate->bold('Number of deleted sessions: ' . \App\Session::cleanAll());
 		$this->climate->lightYellow()->border('─', 200);
-		$this->cli->actionsList('Cleaner');
+		if (!$this->climate->arguments->defined('action')) {
+			$this->cli->actionsList('Cleaner');
+		}
 	}
 
 	/**
@@ -72,7 +76,9 @@ class Cleaner extends Base
 		$this->climate->bold('Clear: ' . \App\Cache::clear());
 		$this->climate->bold('Clear opcache: ' . \App\Cache::clearOpcache());
 		$this->climate->lightYellow()->border('─', 200);
-		$this->cli->actionsList('Cleaner');
+		if (!$this->climate->arguments->defined('action')) {
+			$this->cli->actionsList('Cleaner');
+		}
 	}
 
 	/**
@@ -85,6 +91,8 @@ class Cleaner extends Base
 		$stats = \App\Cache::clearTemporaryFiles('now');
 		$this->climate->bold(" - files: {$stats['counter']} , size: " . \vtlib\Functions::showBytes($stats['size']));
 		$this->climate->lightYellow()->border('─', 200);
-		$this->cli->actionsList('Cleaner');
+		if (!$this->climate->arguments->defined('action')) {
+			$this->cli->actionsList('Cleaner');
+		}
 	}
 }

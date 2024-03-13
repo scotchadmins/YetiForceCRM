@@ -5,8 +5,8 @@
  *
  * @package   Tests
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -46,6 +46,7 @@ class YtResultPrinter extends PHPUnit\TextUI\DefaultResultPrinter
 		'cache/logs/webserviceErrors.log',
 		// 'cache/logs/webserviceDebug.log',
 		'tests/records.log',
+		'/var/www/html/cache/logs/selenium.log',
 	];
 
 	/**
@@ -99,9 +100,9 @@ class YtResultPrinter extends PHPUnit\TextUI\DefaultResultPrinter
 		$this->lastTestFailed = false;
 		if ($test instanceof TestCase) {
 			if (!$test->hasExpectationOnOutput() && ($out = $test->getActualOutput())) {
-				$this->writeWithColor('bold,fg-green', "+++++++  {$this->getTestName($test)} | Test output   ++++++++", false);
-				$this->write(PHP_EOL . $out);
-				$this->write(str_repeat('+', 100) . PHP_EOL);
+				$this->writeWithColor('bold,fg-yellow', str_repeat('+', 20) . "   {$this->getTestName($test)}   " . str_repeat('+', 20), true);
+				$this->write($out);
+				$this->writeWithColor('bold,fg-yellow', str_repeat('+', 100), true);
 			}
 		}
 		if ($this->debug) {
@@ -118,10 +119,10 @@ class YtResultPrinter extends PHPUnit\TextUI\DefaultResultPrinter
 	 */
 	public function printResult(TestResult $result): void
 	{
-		$this->write(str_repeat('*', 140));
 		parent::printResult($result);
-		$this->write(PHP_EOL . str_repeat('*', 140));
-		$this->showLogs();
+		if (getenv('SHOW_LOGS') || $result->errorCount() || $result->warningCount() || $result->failureCount()) {
+			$this->showLogs();
+		}
 	}
 
 	/**
@@ -194,7 +195,7 @@ class YtResultPrinter extends PHPUnit\TextUI\DefaultResultPrinter
 	 */
 	public function addFailure(Test $test, AssertionFailedError $e, float $time): void
 	{
-		$this->writeProgressWithColor('bg-red, fg-white', '! Test ' . $this->getTestName($test) . ' failed !!!' . PHP_EOL . $e->__toString());
+		$this->writeProgressWithColor('bg-red, fg-black', '! Test ' . $this->getTestName($test) . ' failed !!!' . PHP_EOL . $e->__toString());
 		$this->write(PHP_EOL);
 		$this->lastTestFailed = true;
 		$time = round($time, 2);
@@ -243,7 +244,7 @@ class YtResultPrinter extends PHPUnit\TextUI\DefaultResultPrinter
 	public function addSkippedTest(Test $test, Throwable $t, float $time): void
 	{
 		$time = round($time, 2);
-		$this->writeProgressWithColor('fg-cyan, bold', "! Test '{$this->getTestName($test)}' has been skipped. ($time second(s))\n" . PHP_EOL . $t->__toString());
+		$this->writeProgressWithColor('fg-cyan, bold', "! Test '{$this->getTestName($test)}' has been skipped. ($time second(s))\n" . PHP_EOL . trim($t->__toString()) . PHP_EOL);
 		$this->lastTestFailed = true;
 	}
 
@@ -262,8 +263,7 @@ class YtResultPrinter extends PHPUnit\TextUI\DefaultResultPrinter
 			if (file_exists($file)) {
 				$content = file_get_contents($file);
 				if ($content) {
-					$this->writeWithColor('bold,fg-green', "\nLogs:  $file", false);
-					$this->write(PHP_EOL . str_repeat('-', 50) . PHP_EOL);
+					$this->writeWithColor('bold,fg-green', "\nLogs:  $file");
 					echo $content;
 					$this->write(str_repeat('+', 100));
 				}

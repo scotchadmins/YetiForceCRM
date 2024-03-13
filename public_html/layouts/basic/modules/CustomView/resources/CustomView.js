@@ -5,26 +5,36 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  *************************************************************************************/
 'use strict';
 
 class CustomView {
 	constructor(url) {
-		let progressIndicatorElement = $.progressIndicator();
+		let progressIndicatorElement = $.progressIndicator({
+			position: 'html',
+			blockInfo: {
+				enabled: true
+			}
+		});
 		app.showModalWindow(null, url, () => {
-			this.contentsCotainer = $('.js-filter-modal__container');
+			this.modalContainer = $('.js-filter-modal__container');
 			this.advanceFilterInstance = new Vtiger_ConditionBuilder_Js(
-				this.contentsCotainer.find('.js-condition-builder'),
-				this.contentsCotainer.find('#sourceModule').val()
+				this.modalContainer.find('.js-condition-builder-view .js-condition-builder'),
+				this.modalContainer.find('#sourceModule').val()
 			);
 			this.advanceFilterInstance.registerEvents();
+			CustomView.registerAdvancedConditionsEvents(this.modalContainer);
+
 			//This will store the columns selection container
 			this.columnSelectElement = false;
 			this.registerEvents();
 			progressIndicatorElement.progressIndicator({ mode: 'hide' });
 		});
 	}
+
+	/** @type {Vtiger_ConditionBuilder_Js} Condition builder object */
+	static advancedConditionsBuilder;
 
 	loadDateFilterValues() {
 		let selectedDateFilter = $('#standardDateFilter option:selected');
@@ -39,10 +49,10 @@ class CustomView {
 	 * @return : jQuery object of contents container
 	 */
 	getContentsContainer() {
-		if (this.contentsCotainer == false) {
-			this.contentsCotainer = $('.js-filter-modal__container');
+		if (!this.modalContainer) {
+			this.modalContainer = $('.js-filter-modal__container');
 		}
-		return this.contentsCotainer;
+		return this.modalContainer;
 	}
 
 	/**
@@ -50,7 +60,7 @@ class CustomView {
 	 * @return : jQuery object of view columns selection element
 	 */
 	getColumnSelectElement() {
-		if (this.columnSelectElement == false) {
+		if (!this.columnSelectElement) {
 			this.columnSelectElement = $('#viewColumnsSelect');
 		}
 		return this.columnSelectElement;
@@ -63,6 +73,19 @@ class CustomView {
 	getSelectedColumns() {
 		let columnListSelectElement = this.getColumnSelectElement();
 		return columnListSelectElement.val();
+	}
+	/**
+	 * Get custom labels
+	 * @returns array
+	 */
+	getCustomLabels() {
+		let customFieldNames = {};
+		this.getContentsContainer()
+			.find('.js-short-label')
+			.each(function () {
+				customFieldNames[$(this).attr('data-field-value')] = $(this).val();
+			});
+		return customFieldNames;
 	}
 
 	saveFilter() {
@@ -79,25 +102,32 @@ class CustomView {
 	}
 
 	saveAndViewFilter() {
-		this.saveFilter().done(function (data) {
-			let response = data.result;
-			if (response && response.success) {
-				let url;
-				if (app.getParentModuleName() == 'Settings') {
-					url = 'index.php?module=CustomView&parent=Settings&view=Index&sourceModule=' + $('#sourceModule').val();
+		this.saveFilter()
+			.done(function (data) {
+				let response = data.result;
+				if (response && response.success) {
+					let url;
+					if (app.getParentModuleName() == 'Settings') {
+						url = 'index.php?module=CustomView&parent=Settings&view=Index&sourceModule=' + $('#sourceModule').val();
+					} else {
+						url = response.listviewurl;
+					}
+					window.location.href = url;
 				} else {
-					url = response.listviewurl;
+					$.unblockUI();
+					app.showNotify({
+						title: response.message ? response.message : app.vtranslate('JS_ERROR'),
+						text: response.message,
+						type: 'error'
+					});
 				}
-				window.location.href = url;
-			} else {
-				$.unblockUI();
+			})
+			.fail(function (error) {
 				app.showNotify({
-					title: app.vtranslate('JS_DUPLICATE_RECORD'),
-					text: response.message,
+					title: error,
 					type: 'error'
 				});
-			}
-		});
+			});
 	}
 
 	registerIconEvents() {
@@ -112,32 +142,6 @@ class CustomView {
 					iconElement.removeClass(iconElement.data('check')).addClass(iconElement.data('unchecked'));
 				}
 			});
-	}
-
-	registerBlockToggleEvent() {
-		const container = this.getContentsContainer();
-		container.on('click', '.blockHeader', function (e) {
-			const target = $(e.target);
-			if (
-				target.is('input') ||
-				target.is('button') ||
-				target.parents().is('button') ||
-				target.hasClass('js-stop-propagation') ||
-				target.parents().hasClass('js-stop-propagation')
-			) {
-				return false;
-			}
-			const blockHeader = $(e.currentTarget);
-			const blockContents = blockHeader.next();
-			const iconToggle = blockHeader.find('.iconToggle');
-			if (blockContents.hasClass('d-none')) {
-				blockContents.removeClass('d-none');
-				iconToggle.removeClass(iconToggle.data('hide')).addClass(iconToggle.data('show'));
-			} else {
-				blockContents.addClass('d-none');
-				iconToggle.removeClass(iconToggle.data('show')).addClass(iconToggle.data('hide'));
-			}
-		});
 	}
 
 	registerColorEvent() {
@@ -175,7 +179,7 @@ class CustomView {
 	registerDuplicatesEvents() {
 		const container = this.getContentsContainer();
 		App.Fields.Picklist.showSelect2ElementView(container.find('.js-duplicates-container .js-duplicates-field'));
-		container.on('click', '.js-duplicates-remove', function (e) {
+		container.on('click', '.js-duplicates-remove', function () {
 			$(this).closest('.js-duplicates-row').remove();
 		});
 		container.find('.js-duplicate-add-field').on('click', function () {
@@ -188,6 +192,7 @@ class CustomView {
 	}
 	registerSubmitEvent(select2Element) {
 		$('#CustomView').on('submit', (e) => {
+			const form = $(e.currentTarget);
 			let selectElement = this.getColumnSelectElement();
 			if ($('#viewname').val().length > 100) {
 				app.showNotify({
@@ -204,12 +209,7 @@ class CustomView {
 			let selectedOptions = selectElement.val();
 			let mandatoryFieldsMissing = true;
 			if (selectedOptions) {
-				for (let i = 0; i < selectedOptions.length; i++) {
-					if ($.inArray(selectedOptions[i], mandatoryFieldsList) >= 0) {
-						mandatoryFieldsMissing = false;
-						break;
-					}
-				}
+				mandatoryFieldsMissing = selectedOptions.filter((value) => mandatoryFieldsList.includes(value)).length <= 0;
 			}
 			if (mandatoryFieldsMissing) {
 				selectElement.validationEngine(
@@ -225,8 +225,8 @@ class CustomView {
 				select2Element.validationEngine('hide');
 			}
 			//Mandatory Fields validation ends
-			let result = $(e.currentTarget).validationEngine('validate');
-			if (result == true) {
+			let result = form.validationEngine('validate');
+			if (result) {
 				//handled standard filters saved values.
 				let stdfilterlist = {};
 
@@ -242,10 +242,13 @@ class CustomView {
 					$('#stdfilterlist').val(JSON.stringify(stdfilterlist));
 				}
 				//handled advanced filters saved values.
-				let advfilterlist = this.advanceFilterInstance.getConditions();
-				$('#advfilterlist').val(JSON.stringify(advfilterlist));
+				let contentContainer = this.getContentsContainer();
+				$('#advfilterlist').val(JSON.stringify(this.advanceFilterInstance.getConditions()));
+				form.find('#advancedConditions').val(JSON.stringify(CustomView.getAdvancedConditions(form)));
 				$('[name="duplicatefields"]').val(JSON.stringify(this.getDuplicateFields()));
-				$('input[name="columnslist"]', this.getContentsContainer()).val(JSON.stringify(this.getSelectedColumns()));
+				$('input[name="columnslist"]', contentContainer).val(JSON.stringify(this.getSelectedColumns()));
+				contentContainer.find('.js-custom-field-names').val(JSON.stringify(this.getCustomLabels()));
+
 				this.saveAndViewFilter();
 				return false;
 			} else {
@@ -260,21 +263,178 @@ class CustomView {
 	registerDisableSubmitOnEnter() {
 		this.getContentsContainer()
 			.find('#viewname, [name="color"]')
-			.keydown(function (e) {
-				if (e.keyCode === 13) {
+			.on('keydown', (e) => {
+				if (e.key === 'Enter') {
 					e.preventDefault();
 				}
 			});
 	}
 
+	/**
+	 * Function to register the advanced conditions events for customview
+	 * @param {jQuery} listViewContainer
+	 */
+	static registerCustomViewAdvCondEvents(listViewContainer) {
+		listViewContainer.on('click', '.js-custom-view-adv-cond-modal', () => {
+			const customViewAdvCond = listViewContainer.find('.js-custom-view-adv-cond');
+			let advancedConditions = customViewAdvCond.val();
+			if (advancedConditions) {
+				advancedConditions = JSON.parse(advancedConditions);
+			}
+			AppConnector.request({
+				module: app.getModuleName(),
+				view: 'CustomViewAdvCondModal',
+				advancedConditions: advancedConditions
+			})
+				.done((data) => {
+					if (data) {
+						app.showModalWindow(data, (modalContainer) => {
+							App.Tools.Form.registerBlockToggle(modalContainer);
+							this.registerAdvancedConditionsEvents(modalContainer);
+							modalContainer.find('[name="saveButton"]').on('click', () => {
+								customViewAdvCond.val(JSON.stringify(this.getAdvancedConditions(modalContainer)));
+								app.hideModalWindow();
+								if (typeof app.pageController.getListViewRecords !== 'undefined') {
+									app.pageController.getListViewRecords();
+								}
+							});
+						});
+					}
+				})
+				.fail((_textStatus, errorThrown) => {
+					app.showNotify({
+						textTrusted: false,
+						title: app.vtranslate('JS_ERROR'),
+						text: errorThrown,
+						type: 'error'
+					});
+				});
+		});
+	}
+	/**
+	 * Function to register the advanced conditions events for custom view
+	 * @param {jQuery} container
+	 */
+	static registerAdvancedConditionsEvents(container) {
+		const self = this;
+		const builder = container.find('.js-adv-condition-builder-view');
+		const relationSelect = container.find('.js-relation-select');
+		if (relationSelect.val() != 0) {
+			this.advancedConditionsBuilder = new Vtiger_ConditionBuilder_Js(
+				builder.find('.js-condition-builder'),
+				relationSelect.find('option:selected').data('module')
+			);
+			this.advancedConditionsBuilder.registerEvents();
+		}
+		relationSelect.on('change', function () {
+			const moduleName = $(this).find('option:selected').data('module');
+			builder.html('');
+			delete self.advancedConditionsBuilder;
+			if (moduleName) {
+				AppConnector.request({
+					module: app.getModuleName(),
+					parent: app.getParentModuleName(),
+					view: 'ConditionBuilder',
+					mode: 'builder',
+					sourceModuleName: moduleName
+				}).done((data) => {
+					builder.html(data);
+					self.advancedConditionsBuilder = new Vtiger_ConditionBuilder_Js(
+						builder.find('.js-condition-builder'),
+						moduleName
+					);
+					self.advancedConditionsBuilder.registerEvents();
+				});
+			}
+		});
+	}
+	/**
+	 * Function to register the advanced conditions events for custom view
+	 * @param {jQuery} container
+	 * @return {object}
+	 */
+	static getAdvancedConditions(container) {
+		const advancedConditions = {
+			relationId: container.find('.js-relation-select').val()
+		};
+		container.find('.js-relation-checkbox:checked').each(function () {
+			if (typeof advancedConditions.relationColumns === 'undefined') {
+				advancedConditions.relationColumns = [];
+			}
+			advancedConditions.relationColumns.push($(this).val());
+		});
+		if (this.advancedConditionsBuilder) {
+			advancedConditions.relationConditions = this.advancedConditionsBuilder.getConditions();
+		}
+		return advancedConditions;
+	}
+	/**
+	 * Register change selected columns
+	 */
+	registerChangeSelectedColumns() {
+		this.container.find('.js-view-columns-select').on('change', () => {
+			this.registerAppendCustomLabels();
+		});
+	}
+	/**
+	 *	Register append custom labels
+	 */
+	registerAppendCustomLabels() {
+		let shorterNamesContainer = this.container.find('.js-custom-name-fields');
+		let selectedColumns = this.container
+			.find('.js-view-columns-select option:selected')
+			.toArray()
+			.map((item) => ({
+				text: item.getAttribute('data-field-label'),
+				value: item.value,
+				customLabel: item.getAttribute('data-custom-label') || ''
+			}));
+		shorterNamesContainer.empty();
+		let newCustomLabelElement = '';
+		let customLabelElement = '';
+		let customLabelValue = '';
+		let inputContainerElement = '';
+		let inputElement = '';
+		$.each(selectedColumns, function (_index, element) {
+			newCustomLabelElement = document.createElement('div');
+			newCustomLabelElement.setAttribute('class', 'd-flex mb-1');
+
+			customLabelElement = document.createElement('div');
+			customLabelElement.setAttribute('class', 'col-form-label col-md-2 pl-0');
+			customLabelValue = document.createTextNode(element.text);
+			customLabelElement.appendChild(customLabelValue);
+			newCustomLabelElement.appendChild(customLabelElement);
+
+			inputContainerElement = document.createElement('div');
+			inputContainerElement.setAttribute('class', 'col-md-4');
+
+			inputElement = document.createElement('input');
+			inputElement.setAttribute('type', 'text');
+			inputElement.setAttribute('class', 'form-control js-short-label');
+			inputElement.setAttribute('data-field-value', element.value);
+			inputElement.setAttribute(
+				'data-validation-engine',
+				'validate[maxSize[50], funcCall[Vtiger_Base_Validator_Js.invokeValidation]]'
+			);
+			inputElement.setAttribute('data-validator', '[{"name":"FieldLabel"}]');
+			inputElement.setAttribute('value', element.customLabel);
+
+			inputContainerElement.appendChild(inputElement);
+			newCustomLabelElement.appendChild(inputContainerElement);
+			shorterNamesContainer.append(newCustomLabelElement);
+		});
+	}
+	/**
+	 * Register events
+	 */
 	registerEvents() {
+		this.container = this.getContentsContainer();
 		this.registerIconEvents();
-		App.Fields.Text.Editor.register(this.getContentsContainer().find('.js-editor'));
 		App.Fields.Tree.register(this.getContentsContainer());
-		this.registerBlockToggleEvent();
+		App.Tools.Form.registerBlockToggle(this.getContentsContainer());
 		this.registerColorEvent();
 		this.registerDuplicatesEvents();
-		let select2Element = App.Fields.Picklist.showSelect2ElementView(this.getColumnSelectElement());
+		const select2Element = App.Fields.Picklist.showSelect2ElementView(this.getColumnSelectElement());
 		this.registerSubmitEvent(select2Element);
 		$('.stndrdFilterDateSelect').datepicker();
 		$('#standardDateFilter').on('change', () => {
@@ -282,5 +442,38 @@ class CustomView {
 		});
 		$('#CustomView').validationEngine(app.validationEngineOptions);
 		this.registerDisableSubmitOnEnter();
+		this.registerChangeSelectedColumns();
+		this.registerAppendCustomLabels();
 	}
 }
+
+Vtiger_Base_Validator_Js(
+	'Vtiger_FieldLabel_Validator_Js',
+	{
+		/** @inheritdoc */
+		invokeValidation: function (field, _rules, _i, _options) {
+			let instance = new Vtiger_FieldLabel_Validator_Js();
+			instance.setElement(field);
+			let response = instance.validate();
+			if (response !== true) {
+				return instance.getError();
+			}
+		}
+	},
+	{
+		/** @inheritdoc */
+		validate: function () {
+			return this.validateValue(this.getFieldValue());
+		},
+		/** @inheritdoc */
+		validateValue: function (fieldValue) {
+			let specialChars = /[&\<\>\:\'\"\,]/;
+			if (specialChars.test(fieldValue)) {
+				let errorInfo = app.vtranslate('JS_SPECIAL_CHARACTERS') + ' & < > \' " : , ' + app.vtranslate('JS_NOT_ALLOWED');
+				this.setError(errorInfo);
+				return false;
+			}
+			return true;
+		}
+	}
+);

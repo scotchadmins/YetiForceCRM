@@ -4,8 +4,8 @@
  *
  * @package   Cron
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -18,5 +18,8 @@ class Vtiger_Cache_Cron extends \App\CronHandler
 	public function process()
 	{
 		\App\Cache::clearTemporaryFiles();
+		\App\Db::getInstance('admin')->createCommand()
+			->delete(\App\Utils\Tokens::TABLE_NAME, ['<', 'expiration_date', date('Y-m-d H:i:s')])
+			->execute();
 	}
 }

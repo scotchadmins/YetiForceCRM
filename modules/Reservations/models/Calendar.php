@@ -1,27 +1,30 @@
 <?php
 
 /**
- * Reservations calendar model class.
+ * Reservations calendar model file.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @package   Model
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ */
+/**
+ * Reservations calendar model class.
  */
 class Reservations_Calendar_Model extends Vtiger_Calendar_Model
 {
-	/**
-	 * {@inheritdoc}
-	 */
-	public function getSideBarLinks($linkParams)
+	/** {@inheritdoc} */
+	public function getCalendarTypes(): array
 	{
-		$links = parent::getSideBarLinks($linkParams);
-		$link = Vtiger_Link_Model::getInstanceFromValues([
-			'linktype' => 'SIDEBARWIDGET',
-			'linklabel' => 'LBL_TYPE',
-			'linkdata' => ['cache' => 'calendar-types', 'name' => 'types'],
-			'linkurl' => 'module=' . $this->getModuleName() . '&view=RightPanel&mode=getTypesList'
-		]);
-		array_unshift($links, $link);
-		return $links;
+		$calendarTypes = [];
+		$moduleField = $this->getModule()->getFieldByName('type');
+		if ($moduleField && $moduleField->isActiveField()) {
+			$calendarTypes = (new App\Db\Query())->select(['tree', 'label'])->from('vtiger_trees_templates_data')
+				->where(['templateid' => $moduleField->getFieldParams()])
+				->createCommand()->queryAllByGroup(0);
+		}
+		return $calendarTypes;
 	}
 
 	/**
@@ -62,7 +65,7 @@ class Reservations_Calendar_Model extends Vtiger_Calendar_Model
 					'and',
 					['<', 'vtiger_reservations.date_start', $dbStartDate],
 					['>', 'vtiger_reservations.due_date', $dbEndDate],
-				]
+				],
 			]);
 		}
 
@@ -77,10 +80,17 @@ class Reservations_Calendar_Model extends Vtiger_Calendar_Model
 			}
 		}
 		$conditions = [];
-		if (!empty($this->get('user'))) {
-			$conditions[] = ['vtiger_crmentity.smownerid' => $this->get('user')];
-			$subQuery = (new \App\Db\Query())->select(['crmid'])->from('u_#__crmentity_showners')->where(['userid' => $this->get('user')]);
-			$conditions[] = ['vtiger_crmentity.crmid' => $subQuery];
+		if (!empty($this->get('user')) && isset($this->get('user')['selectedIds'][0])) {
+			$selectedUsers = $this->get('user');
+			$selectedIds = $selectedUsers['selectedIds'];
+			if ('all' !== $selectedIds[0]) {
+				$conditions[] = ['vtiger_crmentity.smownerid' => $selectedIds];
+				$subQuery = (new \App\Db\Query())->select(['crmid'])->from('u_#__crmentity_showners')->where(['userid' => $selectedIds]);
+				$conditions[] = ['vtiger_crmentity.crmid' => $subQuery];
+			}
+			if (isset($selectedUsers['excludedIds']) && 'all' === $selectedIds[0]) {
+				$conditions[] = ['not in', 'vtiger_crmentity.smownerid', $selectedUsers['excludedIds']];
+			}
 		}
 		if ($conditions) {
 			$query->andWhere(array_merge(['or'], $conditions));
@@ -101,6 +111,7 @@ class Reservations_Calendar_Model extends Vtiger_Calendar_Model
 		$result = [];
 		$moduleModel = Vtiger_Module_Model::getInstance($this->getModuleName());
 		$isSummaryViewSupported = $moduleModel->isSummaryViewSupported();
+		$colors = \App\Fields\Picklist::getColors('reservations_status', false);
 		while ($record = $dataReader->read()) {
 			$item = [];
 			$item['id'] = $record['id'];
@@ -114,9 +125,10 @@ class Reservations_Calendar_Model extends Vtiger_Calendar_Model
 			$item['end'] = DateTimeField::convertToUserTimeZone($record['due_date'] . ' ' . $record['time_end'])->format('Y-m-d') . ' ' . $dateTimeInstance->getFullcalenderTime();
 			$item['end_display'] = $dateTimeInstance->getDisplayDateTimeValue();
 
-			$item['className'] = 'js-popover-tooltip--record ownerCBg_' . $record['assigned_user_id'] . " picklistCBr_{$this->getModuleName()}_reservations_status_" . $record['reservations_status'];
+			$item['borderColor'] = $colors[$record['reservations_status']] ?? '';
+			$item['className'] = 'js-popover-tooltip--record ownerCBg_' . $record['assigned_user_id'];
 			if ($isSummaryViewSupported) {
-				$item['url'] = 'index.php?module=' . $this->getModuleName() . '&view=QuickDetailModal&record=' . $record['id'];
+				$item['url'] = 'index.php?module=' . $this->getModuleName() . '&view=Detail&record=' . $record['id'];
 				$item['className'] .= ' js-show-modal';
 			} else {
 				$item['url'] = $moduleModel->getDetailViewUrl($record['id']);
@@ -125,22 +137,5 @@ class Reservations_Calendar_Model extends Vtiger_Calendar_Model
 		}
 		$dataReader->close();
 		return $result;
-	}
-
-	/**
-	 * Function to get calendar types.
-	 *
-	 * @return string[]
-	 */
-	public function getCalendarTypes()
-	{
-		$calendarTypes = [];
-		$moduleField = $this->getModule()->getFieldByName('type');
-		if ($moduleField && $moduleField->isActiveField()) {
-			$calendarTypes = (new App\Db\Query())->select(['tree', 'label'])->from('vtiger_trees_templates_data')
-				->where(['templateid' => $moduleField->getFieldParams()])
-				->createCommand()->queryAllByGroup(0);
-		}
-		return $calendarTypes;
 	}
 }

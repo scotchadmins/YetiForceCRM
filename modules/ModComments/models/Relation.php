@@ -2,8 +2,8 @@
 /**
  * Relation Model Class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
@@ -12,9 +12,7 @@
  */
 class ModComments_Relation_Model extends Vtiger_Relation_Model
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function addRelation($sourceRecordId, $destinationRecordIds, $params = false)
 	{
 		$result = false;
@@ -38,5 +36,20 @@ class ModComments_Relation_Model extends Vtiger_Relation_Model
 			$eventHandler->trigger('EntityAfterLink');
 		}
 		return $result;
+	}
+
+	/**
+	 * Set exceptional data.
+	 */
+	public function setExceptionData()
+	{
+		$data = [
+			'tabid' => $this->getParentModuleModel()->getId(),
+			'related_tabid' => $this->getRelationModuleModel()->getId(),
+			'name' => 'getRelatedRecord',
+			'actions' => '',
+			'modulename' => $this->getParentModuleModel()->getName(),
+		];
+		$this->setData($data);
 	}
 }

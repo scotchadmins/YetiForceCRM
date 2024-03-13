@@ -1,14 +1,16 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 class Vtiger_ConditionBuilder_Js {
 	/**
 	 * Constructor
 	 * @param {jQuery} container
+	 * @param {(string|Object)} params
+	 * @param {function} onChange
 	 */
-	constructor(container, sourceModuleName, onChange) {
+	constructor(container, params, onChange) {
 		this.container = container;
-		this.sourceModuleName = sourceModuleName;
+		this.params = typeof params === 'string' ? { sourceModuleName: params } : params;
 		if (onChange) {
 			this.onChange = onChange;
 		} else {
@@ -26,6 +28,18 @@ class Vtiger_ConditionBuilder_Js {
 			this.onChange(this);
 		});
 	}
+	/**
+	 * Get default params
+	 * @returns {Object}
+	 */
+	getDefaultParams() {
+		return {
+			module: app.getModuleName(),
+			parent: app.getParentModuleName(),
+			view: 'ConditionBuilder',
+			...this.params
+		};
+	}
 
 	/**
 	 * Register events when change conditions
@@ -33,7 +47,7 @@ class Vtiger_ConditionBuilder_Js {
 	 */
 	registerChangeConditions(container) {
 		let self = this;
-		container.find('.js-conditions-fields, .js-conditions-operator').on('change', function (e) {
+		container.on('change', '.js-conditions-fields, .js-conditions-operator', (e) => {
 			let progress = $.progressIndicator({
 				position: 'html',
 				blockInfo: {
@@ -44,26 +58,17 @@ class Vtiger_ConditionBuilder_Js {
 			let requestParams = {};
 			if (currentTarget.hasClass('js-conditions-fields')) {
 				requestParams = {
-					module: app.getModuleName(),
-					parent: app.getParentModuleName(),
-					view: 'ConditionBuilder',
-					sourceModuleName: self.sourceModuleName,
 					fieldname: currentTarget.val()
 				};
 			} else {
 				requestParams = {
-					module: app.getModuleName(),
-					parent: app.getParentModuleName(),
-					view: 'ConditionBuilder',
-					sourceModuleName: self.sourceModuleName,
 					fieldname: container.find('.js-conditions-fields').val(),
 					operator: currentTarget.val()
 				};
 			}
-			AppConnector.request(requestParams).done(function (data) {
+			AppConnector.request({ ...requestParams, ...this.getDefaultParams() }).done(function (data) {
 				progress.progressIndicator({ mode: 'hide' });
 				container.html($(data).html());
-				self.registerChangeConditions(container);
 				self.registerField(container);
 				self.registerChangeValueEvent(container);
 				self.onChange(self);
@@ -89,22 +94,17 @@ class Vtiger_ConditionBuilder_Js {
 	 */
 	registerAddCondition() {
 		let self = this;
-		this.container.on('click', '.js-condition-add', function (e) {
+		this.container.on('click', '.js-condition-add', (e) => {
 			let progress = $.progressIndicator({
 				position: 'html',
 				blockInfo: {
 					enabled: true
 				}
 			});
-			let container = $(this)
+			let container = $(e.currentTarget)
 				.closest('.js-condition-builder-group-container')
 				.find('> .js-condition-builder-conditions-container');
-			AppConnector.request({
-				module: app.getModuleName(),
-				parent: app.getParentModuleName(),
-				view: 'ConditionBuilder',
-				sourceModuleName: self.sourceModuleName
-			}).done(function (data) {
+			AppConnector.request(this.getDefaultParams()).done(function (data) {
 				progress.progressIndicator({ mode: 'hide' });
 				data = $(data);
 				App.Fields.Picklist.showSelect2ElementView(data.find('select.select2'));
@@ -155,8 +155,8 @@ class Vtiger_ConditionBuilder_Js {
 	 * Block submit on press enter key
 	 */
 	registerDisableSubmitOnEnter() {
-		this.container.find('.js-condition-builder-value').keydown(function (e) {
-			if (e.keyCode === 13) {
+		this.container.find('.js-condition-builder-value').on('keydown', (e) => {
+			if (e.key === 'Enter') {
 				e.preventDefault();
 			}
 		});
@@ -165,15 +165,15 @@ class Vtiger_ConditionBuilder_Js {
 	/**
 	 * Read conditions in group
 	 * @param {jQuery} container
+	 * @param {boolean} skipEmpty
 	 * @returns {object}
 	 */
-	readCondition(container) {
+	readCondition(container, skipEmpty) {
 		let self = this;
 		let condition = container.find('> .js-condition-switch .js-condition-switch-value').hasClass('active')
 			? 'AND'
 			: 'OR';
 		let arr = {};
-		arr['condition'] = condition;
 		let rules = [];
 		container.find('> .js-condition-builder-conditions-container >').each(function () {
 			let element = $(this);
@@ -184,18 +184,26 @@ class Vtiger_ConditionBuilder_Js {
 					value: element.find('.js-condition-builder-value').val()
 				});
 			} else if (element.hasClass('js-condition-builder-group-container')) {
-				rules.push(self.readCondition(element));
+				let childRules = self.readCondition(element, skipEmpty);
+				if (!skipEmpty || Object.keys(childRules).length) {
+					rules.push(childRules);
+				}
 			}
 		});
-		arr['rules'] = rules;
+		if (!skipEmpty || rules.length) {
+			arr['condition'] = condition;
+			arr['rules'] = rules;
+		}
 		return arr;
 	}
 
 	/**
 	 * Returns conditions
+	 * @param {boolean} skipEmpty
+	 * @returns {object}
 	 */
-	getConditions() {
-		return this.readCondition(this.container.find('> .js-condition-builder-group-container'));
+	getConditions(skipEmpty = true) {
+		return this.readCondition(this.container.find('> .js-condition-builder-group-container'), skipEmpty);
 	}
 
 	/**
@@ -209,8 +217,10 @@ class Vtiger_ConditionBuilder_Js {
 		this.registerDeleteCondition();
 		this.registerDisableSubmitOnEnter();
 		this.container.find('.js-condition-builder-conditions-row').each(function () {
-			self.registerChangeConditions($(this));
-			self.registerField($(this));
+			let row = $(this);
+			self.registerChangeConditions(row);
+			self.registerChangeValueEvent(row);
+			self.registerField(row);
 		});
 	}
 }

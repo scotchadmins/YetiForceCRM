@@ -6,14 +6,15 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Settings_Workflows_FilterRecordStructure_Model extends Settings_Workflows_RecordStructure_Model
 {
 	/**
-	 * Function to get the values in stuctured format.
+	 * Function to get the values in structured format.
 	 *
-	 * @return <array> - values in structure array('block'=>array(fieldinfo));
+	 * @return array
 	 */
 	public function getStructure()
 	{
@@ -36,9 +37,8 @@ class Settings_Workflows_FilterRecordStructure_Model extends Settings_Workflows_
 						}
 						if (!empty($recordId)) {
 							//Set the fieldModel with the valuetype for the client side.
-							$fieldValueType = $recordModel->getFieldFilterValueType($fieldName);
 							$fieldInfo = $fieldModel->getFieldInfo();
-							$fieldInfo['workflow_valuetype'] = $fieldValueType;
+							$fieldInfo['workflow_valuetype'] = $recordModel->getFieldFilterValueType($fieldName);
 							$fieldModel->setFieldInfo($fieldInfo);
 						}
 						$fieldInfo['field_params'] = $fieldModel->getFieldParams();
@@ -49,17 +49,10 @@ class Settings_Workflows_FilterRecordStructure_Model extends Settings_Workflows_
 				}
 			}
 		}
-		if ($moduleModel->isCommentEnabled()) {
-			$commentFieldModel = Settings_Workflows_Field_Model::getCommentFieldForFilterConditions($moduleModel);
-			$commentFieldModelsList = [$commentFieldModel->getName() => $commentFieldModel];
-			$labelName = \App\Language::translate($moduleModel->getSingularLabelKey(), $moduleModel->getName()) . ' ' . \App\Language::translate('LBL_COMMENTS', $moduleModel->getName());
-			foreach ($commentFieldModelsList as $commentFieldName => $commentFieldModel) {
-				$commentFieldModel->set('workflow_columnname', $commentFieldName);
-				$values[$labelName][$commentFieldName] = $commentFieldModel;
-			}
-		}
 		//All the reference fields should also be sent
-		$fields = $moduleModel->getFieldsByType(['reference', 'owner', 'multireference']);
+		$referenceType = \Vtiger_Field_Model::$referenceTypes;
+		$referenceType[] = 'owner';
+		$fields = $moduleModel->getFieldsByType($referenceType);
 		foreach ($fields as $parentFieldName => $field) {
 			$type = $field->getFieldDataType();
 			$referenceModules = $field->getReferenceList();
@@ -77,7 +70,7 @@ class Settings_Workflows_FilterRecordStructure_Model extends Settings_Workflows_
 								$name = "($parentFieldName : ($refModule) $fieldName)";
 								$fieldModel->set('workflow_columnname', $name);
 								if (!empty($recordId)) {
-									$fieldValueType = $recordModel->getFieldFilterValueType($name);
+									$fieldValueType = $recordModel->getFieldFilterValueType($fieldName);
 									$fieldInfo = $fieldModel->getFieldInfo();
 									$fieldInfo['workflow_valuetype'] = $fieldValueType;
 									$fieldModel->setFieldInfo($fieldInfo);
@@ -87,12 +80,9 @@ class Settings_Workflows_FilterRecordStructure_Model extends Settings_Workflows_
 						}
 					}
 				}
-
-				$commentFieldModelsList = [];
 			}
 		}
 		$this->structuredValues = $values;
-
 		return $values;
 	}
 }

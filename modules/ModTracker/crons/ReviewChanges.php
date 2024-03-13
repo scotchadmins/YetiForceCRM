@@ -2,8 +2,8 @@
 /**
  * Cron task to review changes in records.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
@@ -28,9 +28,7 @@ class ModTracker_ReviewChanges_Cron extends \App\CronHandler
 		$this->displayed = ModTracker_Record_Model::DISPLAYED;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process()
 	{
 		$db = \App\Db::getInstance();

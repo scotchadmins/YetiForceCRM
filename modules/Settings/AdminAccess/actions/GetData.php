@@ -5,8 +5,8 @@
  *
  * @package   Settings.Action
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
@@ -15,11 +15,10 @@
  */
 class Settings_AdminAccess_GetData_Action extends \App\Controller\Action
 {
-	use \App\Controller\ExposeMethod, \App\Controller\Traits\SettingsPermission;
+	use \App\Controller\ExposeMethod;
+	use \App\Controller\Traits\SettingsPermission;
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function __construct()
 	{
 		parent::__construct();
@@ -115,6 +114,8 @@ class Settings_AdminAccess_GetData_Action extends \App\Controller\Action
 				if ('datetime' === $fieldModel->getFieldDataType()) {
 					$value = explode(',', $value);
 					$conditions[] = ['between', $fieldModel->getColumnName(), $value[0], $value[1]];
+				} elseif ('text' === $fieldModel->getFieldDataType()) {
+					$conditions[] = ['like', $fieldModel->getColumnName(), $value];
 				} else {
 					$conditions[] = [$fieldModel->getColumnName() => $value];
 				}
@@ -129,7 +130,7 @@ class Settings_AdminAccess_GetData_Action extends \App\Controller\Action
 			$field = $fields[$columns[$order['column']]];
 			$query->orderBy([$field->getColumnName() => \App\Db::ASC === strtoupper($order['dir']) ? \SORT_ASC : \SORT_DESC]);
 		}
-		$dataReader = $query->indexBy('id')->createCommand()->query();
+		$dataReader = $query->indexBy('id')->createCommand(\App\Db::getInstance('log'))->query();
 		while ($row = $dataReader->read()) {
 			$data = [];
 			foreach ($fields as $fieldModel) {

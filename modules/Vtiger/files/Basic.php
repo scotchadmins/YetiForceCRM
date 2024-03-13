@@ -4,8 +4,8 @@
  *
  * @package Files
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
@@ -82,15 +82,20 @@ abstract class Vtiger_Basic_File
 	 */
 	public function post(App\Request $request)
 	{
-		$attach = \App\Fields\File::uploadAndSave($request, $_FILES, $this->fileType, $this->storageName);
-		if ($request->isAjax()) {
-			$response = new Vtiger_Response();
-			$response->setResult([
-				'field' => $request->getByType('field', 'Alnum'),
-				'module' => $request->getModule(),
-				'attach' => $attach,
-			]);
-			$response->emit();
+		throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
+	}
+
+	/**
+	 * Function to validate request method.
+	 *
+	 * @param \App\Request $request
+	 *
+	 * @return void
+	 */
+	public function validateRequest(App\Request $request)
+	{
+		if (\App\Config::security('csrfActive')) {
+			\CsrfMagic\Csrf::check();
 		}
 	}
 }

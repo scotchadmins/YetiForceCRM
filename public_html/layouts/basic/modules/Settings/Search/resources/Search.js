@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 var Settings_Index_Js = {
@@ -47,24 +47,55 @@ var Settings_Index_Js = {
 			}
 		});
 	},
+	validate: function (e) {
+		let aDeferred = jQuery.Deferred();
+		let target = $(e.currentTarget);
+		let isSelect = target.is('select');
+		if (isSelect && !target.find(':selected').length) {
+			target.validationEngine(
+				'showPrompt',
+				app.vtranslate('JS_PLEASE_SELECT_ATLEAST_ONE_OPTION'),
+				'error',
+				'topLeft',
+				true
+			);
+			aDeferred.reject();
+		} else if (isSelect) {
+			let maximumLength = target.data('fieldinfo').maximumlength;
+			let value = target.val();
+			if (Array.isArray(value)) {
+				value = value.join(',');
+			}
+			if (maximumLength && value.length > parseInt(maximumLength)) {
+				target.validationEngine('showPrompt', app.vtranslate('JS_ENTERED_VALUE_IS_TOO_LONG'), 'error', 'topLeft', true);
+				aDeferred.reject();
+			} else {
+				target.validationEngine('hide');
+				aDeferred.resolve(target);
+			}
+		} else {
+			aDeferred.resolve(target);
+		}
+		return aDeferred.promise();
+	},
 	save: function (e) {
-		var target = $(e.currentTarget);
-		Settings_Index_Js.registerSaveEvent('save', {
-			name: target.attr('name'),
-			value: target.val(),
-			tabid: target.data('tabid')
+		Settings_Index_Js.validate(e).done(function (target) {
+			Settings_Index_Js.registerSaveEvent('save', {
+				name: target.attr('name'),
+				value: target.val(),
+				tabid: target.data('tabid')
+			});
 		});
 	},
 	registerSaveEvent: function (mode, data) {
-		var progress = $.progressIndicator({
+		let progress = $.progressIndicator({
 			message: app.vtranslate('Saving changes'),
 			position: 'html',
 			blockInfo: {
 				enabled: true
 			}
 		});
-		var resp = '';
-		var params = {};
+		let params = {};
 		params.data = {
 			module: app.getModuleName(),
 			parent: app.getParentModuleName(),
@@ -76,15 +107,22 @@ var Settings_Index_Js = {
 		params.dataType = 'json';
 		AppConnector.request(params)
 			.done(function (data) {
-				var response = data['result'];
-				var params = {
-					text: response['message'],
+				let response = data['result'];
+				let params = {
+					text: response.message,
 					type: 'success'
 				};
+				if (!response.success) {
+					params.type = 'error';
+				}
 				app.showNotify(params);
 				progress.progressIndicator({ mode: 'hide' });
 			})
 			.fail(function (data, err) {
+				app.showNotify({
+					text: app.vtranslate('JS_ERROR'),
+					type: 'error'
+				});
 				progress.progressIndicator({ mode: 'hide' });
 			});
 	},
@@ -205,6 +243,6 @@ var Settings_Index_Js = {
 		this.registerModuleSequenceSaveClick();
 	}
 };
-$(document).ready(function () {
+jQuery(function () {
 	Settings_Index_Js.registerEvents();
 });

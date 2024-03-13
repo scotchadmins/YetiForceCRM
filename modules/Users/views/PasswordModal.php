@@ -5,17 +5,16 @@
  *
  * @package   View
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Users_PasswordModal_View extends \App\Controller\Modal
 {
 	use \App\Controller\ExposeMethod;
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function __construct()
 	{
 		parent::__construct();
@@ -24,9 +23,7 @@ class Users_PasswordModal_View extends \App\Controller\Modal
 		$this->exposeMethod('massReset');
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		$currentUserModel = Users_Record_Model::getCurrentUserModel();
@@ -52,10 +49,8 @@ class Users_PasswordModal_View extends \App\Controller\Modal
 		throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
-	public function preProcessAjax(App\Request $request)
+	/** {@inheritdoc} */
+	public function getPageTitle(App\Request $request)
 	{
 		$moduleName = $request->getModule();
 		$record = $request->getInteger('record');
@@ -75,15 +70,23 @@ class Users_PasswordModal_View extends \App\Controller\Modal
 			default:
 				break;
 		}
-		$title = \App\Language::translate($modeTitle, $moduleName);
+		$this->pageTitle = \App\Language::translate($modeTitle, $moduleName);
 		if ($record) {
-			$title .= ' - ' . App\Fields\Owner::getUserLabel($record);
+			$this->pageTitle .= ' - ' . App\Fields\Owner::getUserLabel($record);
 		}
-		$this->pageTitle = $title;
-		if (App\User::getCurrentUserId() === $request->getInteger('record')) {
-			if (1 === (int) App\User::getCurrentUserModel()->getDetail('force_password_change') || 'pwned' === $request->getByType('type') || 2 === (int) \App\Session::get('ShowUserPasswordChange')) {
-				$this->lockExit = true;
-			}
+
+		return $this->pageTitle;
+	}
+
+	/** {@inheritdoc} */
+	public function preProcessAjax(App\Request $request)
+	{
+		if (App\User::getCurrentUserId() === $request->getInteger('record')
+			&& (1 === (int) App\User::getCurrentUserModel()->getDetail('force_password_change')
+			|| 'pwned' === $request->getByType('type')
+			|| 2 === (int) \App\Session::get('ShowUserPasswordChange'))
+		) {
+			$this->lockExit = true;
 		}
 		parent::preProcessAjax($request);
 	}
@@ -124,9 +127,9 @@ class Users_PasswordModal_View extends \App\Controller\Modal
 		if (App\User::getCurrentUserId() === $request->getInteger('record')) {
 			$userModel = App\User::getCurrentUserModel();
 			if (1 === (int) $userModel->getDetail('force_password_change')) {
-				$viewer->assign('WARNING', \App\Language::translate('LBL_FORCE_PASSWORD_CHANGE_ALERT', 'Users'));
+				$viewer->assign('WARNING', \App\Language::translate('LBL_FORCE_PASSWORD_CHANGE_ALERT', $moduleName));
 			} elseif ('pwned' === $request->getByType('type')) {
-				$viewer->assign('WARNING', \App\Language::translate('LBL_PWNED_PASSWORD_CHANGE_ALERT', 'Users'));
+				$viewer->assign('WARNING', \App\Language::translate('LBL_PWNED_PASSWORD_CHANGE_ALERT', $moduleName));
 			} else {
 				switch ((int) \App\Session::get('ShowUserPasswordChange')) {
 					case 1:
@@ -135,12 +138,13 @@ class Users_PasswordModal_View extends \App\Controller\Modal
 						\App\Session::delete('ShowUserPasswordChange');
 						break;
 					case 2:
-						$viewer->assign('WARNING', \App\Language::translate('LBL_YOUR_PASSWORD_HAS_EXPIRED', 'Users'));
+						$viewer->assign('WARNING', \App\Language::translate('LBL_YOUR_PASSWORD_HAS_EXPIRED', $moduleName));
 						break;
+					default: break;
 				}
 			}
 		} else {
-			$viewer->assign('WARNING', \App\Language::translate('LBL_CHANGING_PASSWORD_OF_ANOTHER_USER', 'Users'));
+			$viewer->assign('WARNING', \App\Language::translate('LBL_CHANGING_PASSWORD_OF_ANOTHER_USER', $moduleName));
 		}
 		$viewer->view('Modals/PasswordModal.tpl', $moduleName);
 	}
@@ -155,6 +159,7 @@ class Users_PasswordModal_View extends \App\Controller\Modal
 		$moduleName = $request->getModule();
 		$viewer = $this->getViewer($request);
 		$viewer->assign('MODULE_NAME', $moduleName);
+		$viewer->assign('RECORD', null);
 		$viewer->assign('MODE', 'massReset');
 		$viewer->assign('MODE_TITLE', 'LBL_MASS_RESET_PASSWORD_HEAD');
 		$viewer->assign('ACTIVE_SMTP', App\Mail::getDefaultSmtp());
@@ -164,9 +169,7 @@ class Users_PasswordModal_View extends \App\Controller\Modal
 		$viewer->view('Modals/PasswordModal.tpl', $moduleName);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function postProcessAjax(App\Request $request)
 	{
 		$viewer = $this->getViewer($request);

@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Documents_ListView_Model extends Vtiger_ListView_Model
@@ -38,7 +38,6 @@ class Documents_ListView_Model extends Vtiger_ListView_Model
 					'linkdata' => ['url' => 'index.php?module=' . $moduleName . '&view=PDF&fromview=List', 'type' => 'modal'],
 					'linkclass' => 'js-mass-action',
 					'linkicon' => 'fas fa-file-pdf',
-					'title' => \App\Language::translate('LBL_EXPORT_PDF'),
 				];
 			}
 		}
@@ -46,9 +45,9 @@ class Documents_ListView_Model extends Vtiger_ListView_Model
 		if ($moduleModel->isPermitted('QuickExportToExcel')) {
 			$advancedLinks[] = [
 				'linktype' => 'LISTVIEWMASSACTION',
-				'linklabel' => 'LBL_QUICK_EXPORT_TO_EXCEL',
-				'linkurl' => "javascript:Vtiger_List_Js.triggerQuickExportToExcel('$moduleName')",
-				'linkicon' => 'fas fa-file-excel',
+				'linklabel' => 'LBL_QUICK_EXPORT',
+				'linkurl' => "javascript:Vtiger_List_Js.triggerQuickExport('$moduleName')",
+				'linkicon' => 'fas fa-file-export',
 			];
 		}
 		if ($moduleModel->isPermitted('RecordMappingList')) {
@@ -81,13 +80,13 @@ class Documents_ListView_Model extends Vtiger_ListView_Model
 		$linkTypes = ['LISTVIEWMASSACTION'];
 		$links = Vtiger_Link_Model::getAllByType($moduleModel->getId(), $linkTypes, $linkParams);
 
-		//Opensource fix to make documents module mass editable
+		// Opensource fix to make documents module mass editable
 		$massActionLinks = [];
 		if ($moduleModel->isPermitted('MassEdit')) {
 			$massActionLinks[] = [
 				'linktype' => 'LISTVIEWMASSACTION',
 				'linklabel' => 'LBL_EDIT',
-				'linkurl' => "javascript:Vtiger_List_Js.triggerMassEdit('index.php?module=$moduleName&view=MassActionAjax&mode=showMassEditForm');",
+				'linkurl' => "javascript:Vtiger_List_Js.triggerMassEdit('index.php?module=$moduleName&view=MassActionAjax&mode=showMassEditForm&sourceView=List');",
 				'linkicon' => 'fas fa-edit',
 			];
 		}
@@ -95,7 +94,7 @@ class Documents_ListView_Model extends Vtiger_ListView_Model
 			$massActionLinks[] = [
 				'linktype' => 'LISTVIEWMASSACTION',
 				'linklabel' => 'LBL_MOVE',
-				'linkurl' => "javascript:Documents_List_Js.massMove('index.php?module=$moduleName&view=MoveDocuments');",
+				'linkurl' => "javascript:Documents_List_Js.massMove('index.php?module=$moduleName&view=MoveDocuments&sourceView=List');",
 				'linkicon' => 'fas fa-folder-open',
 			];
 		}
@@ -103,7 +102,7 @@ class Documents_ListView_Model extends Vtiger_ListView_Model
 			$massActionLinks[] = [
 				'linktype' => 'LISTVIEWMASSACTION',
 				'linklabel' => 'LBL_TRANSFER_OWNERSHIP',
-				'linkurl' => "javascript:Vtiger_List_Js.triggerTransferOwnership('index.php?module=$moduleName&view=MassActionAjax&mode=transferOwnership')",
+				'linkurl' => "javascript:Vtiger_List_Js.triggerTransferOwnership('index.php?module={$moduleName}&view=TransferOwnership')",
 				'linkicon' => 'yfi yfi-change-of-owner',
 			];
 		}
@@ -111,7 +110,12 @@ class Documents_ListView_Model extends Vtiger_ListView_Model
 			$massActionLinks[] = [
 				'linktype' => 'LISTVIEWMASSACTION',
 				'linklabel' => 'LBL_MASS_ADD',
-				'linkurl' => "javascript:Vtiger_Index_Js.massAddDocuments('index.php?module=$moduleName&view=MassAddDocuments')",
+				'linkdata' => [
+					'url' => 'index.php?module=' . $moduleName . '&view=MassAddDocuments&sourceView=List',
+					'cb' => 'Documents_MassAddDocuments_Js.register',
+					'view' => 'List',
+				],
+				'linkclass' => 'js-show-modal',
 				'linkicon' => 'yfi-document-templates',
 			];
 		}
@@ -163,7 +167,7 @@ class Documents_ListView_Model extends Vtiger_ListView_Model
 
 	public function loadListViewCondition()
 	{
-		$queryGenerator = $this->get('query_generator');
+		$queryGenerator = $this->getQueryGenerator();
 		$queryGenerator->setField('filetype');
 		$folderValue = $this->get('folder_value');
 		if (!empty($folderValue)) {

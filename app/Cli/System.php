@@ -2,10 +2,10 @@
 /**
  * System cli file.
  *
- * @package App
+ * @package Cli
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -24,9 +24,11 @@ class System extends Base
 		'history' => 'History of uploaded updates',
 		'update' => 'Update',
 		'checkRegStatus' => 'Check registration status',
+		'deleteRegistration' => 'Delete registration data',
 		'showProducts' => 'Show active products',
 		'reloadModule' => 'Reload modules',
 		'reloadUserPrivileges' => 'Reload users privileges',
+		'reloadMenus' => 'Reload menus',
 	];
 
 	/**
@@ -46,7 +48,9 @@ class System extends Base
 		} else {
 			$this->climate->lightGreen('No updates');
 		}
-		$this->cli->actionsList('System');
+		if (!$this->climate->arguments->defined('action')) {
+			$this->cli->actionsList('System');
+		}
 	}
 
 	/**
@@ -161,11 +165,13 @@ class System extends Base
 		try {
 			$packageInstance = new \vtlib\Package();
 			$this->climate->white($package['label'] . ' - Installing the package');
-			$response = $packageInstance->import(ROOT_DIRECTORY . \DIRECTORY_SEPARATOR . \Settings_ModuleManager_Module_Model::getUploadDirectory() . \DIRECTORY_SEPARATOR . $package['hash'] . '.zip', true);
+			$path = ROOT_DIRECTORY . \DIRECTORY_SEPARATOR . \Settings_ModuleManager_Module_Model::getUploadDirectory() . \DIRECTORY_SEPARATOR . $package['hash'] . '.zip';
+			$response = $packageInstance->import($path, true);
 			if ($packageInstance->_errorText) {
 				$this->climate->lightRed($packageInstance->_errorText);
 			} else {
-				echo $response;
+				echo $response . PHP_EOL;
+				unlink($path);
 			}
 		} catch (\Throwable $th) {
 			$this->climate->lightRed($th->__toString());
@@ -180,8 +186,8 @@ class System extends Base
 	 */
 	public function checkRegStatus(): void
 	{
-		$status = \App\YetiForce\Register::check(true);
-		$this->climate->bold('Status: ' . \App\Language::translate(\App\YetiForce\Register::STATUS_MESSAGES[$status], 'Settings::Companies'));
+		\App\YetiForce\Register::check(true);
+		$this->climate->bold('Status: ' . \App\Language::translate(\App\YetiForce\Register::STATUS_MESSAGES[\App\YetiForce\Register::getStatus()], 'Settings::Companies'));
 		$this->climate->border('─', 200);
 		$this->climate->bold('APP ID: ' . \App\YetiForce\Register::getInstanceKey());
 		$this->climate->border('─', 200);
@@ -201,7 +207,9 @@ class System extends Base
 		}
 		$this->climate->table($table);
 		$this->climate->border('─', 200);
-		$this->cli->actionsList('System');
+		if (!$this->climate->arguments->defined('action')) {
+			$this->cli->actionsList('System');
+		}
 	}
 
 	/**
@@ -216,13 +224,15 @@ class System extends Base
 			$row['params'] = \App\Utils::varExport($row['params']);
 			$table[] = $row;
 		}
-		$this->climate->table($table);
+		$table ? $this->climate->table($table) : $this->climate->bold('None');
 		$this->climate->border('─', 200);
-		$this->cli->actionsList('System');
+		if (!$this->climate->arguments->defined('action')) {
+			$this->cli->actionsList('System');
+		}
 	}
 
 	/**
-	 * Check registration status.
+	 * Reload modules.
 	 *
 	 * @return void
 	 */
@@ -237,11 +247,13 @@ class System extends Base
 		\App\Colors::generate();
 		$this->climate->bold('Colors');
 		$this->climate->lightYellow()->border('─', 200);
-		$this->cli->actionsList('System');
+		if (!$this->climate->arguments->defined('action')) {
+			$this->cli->actionsList('System');
+		}
 	}
 
 	/**
-	 * Check registration status.
+	 * Reload users privileges.
 	 *
 	 * @return void
 	 */
@@ -249,6 +261,37 @@ class System extends Base
 	{
 		$this->climate->bold('Users: ' . \App\UserPrivilegesFile::recalculateAll());
 		$this->climate->lightYellow()->border('─', 200);
-		$this->cli->actionsList('System');
+		if (!$this->climate->arguments->defined('action')) {
+			$this->cli->actionsList('System');
+		}
+	}
+
+	/**
+	 * Delete registration data.
+	 *
+	 * @return void
+	 */
+	public function deleteRegistration(): void
+	{
+		\App\Db::getInstance('admin')->createCommand()->update('s_#__companies', [
+			'status' => 0,
+			'name' => '', 'industry' => '', 'vat_id' => '', 'city' => '', 'address' => '',
+			'post_code' => '', 'country' => '', 'companysize' => '', 'website' => '', 'logo' => '',
+			'firstname' => '', 'lastname' => '', 'email' => '', 'facebook' => '', 'twitter' => '', 'linkedin' => '',
+		])->execute();
+	}
+
+	/**
+	 * Reload menus.
+	 *
+	 * @return void
+	 */
+	public function reloadMenus(): void
+	{
+		$menuRecordModel = new \Settings_Menu_Record_Model();
+		$menuRecordModel->refreshMenuFiles();
+		if (!$this->climate->arguments->defined('action')) {
+			$this->cli->actionsList('System');
+		}
 	}
 }

@@ -4,8 +4,8 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -45,7 +45,7 @@ class YetiForceMagento extends \App\YetiForce\Shop\AbstractBaseProduct
 			[$status, $message] = \App\YetiForce\Shop::checkWithMessage('YetiForceMagento');
 		} else {
 			$message = 'LBL_PAID_FUNCTIONALITY_ACTIVATED';
-			$status = !(new \App\Db\Query())->from('i_#__magento_servers')->exists();
+			$status = !(new \App\Db\Query())->from('i_#__magento_servers')->where(['status' => 1])->exists(\App\Db::getInstance('admin'));
 		}
 		return ['status' => $status, 'message' => $message];
 	}
@@ -59,7 +59,7 @@ class YetiForceMagento extends \App\YetiForce\Shop\AbstractBaseProduct
 		return [
 			'message' => \App\Language::translateArgs('LBL_FUNCTIONALITY_HAS_NOT_YET_BEEN_ACTIVATED', 'Settings:Magento', 'Magento'),
 			'type' => 'LBL_REQUIRES_INTERVENTION',
-			'href' => 'index.php?parent=Settings&module=Magento&view=List'
+			'href' => 'index.php?parent=Settings&module=Magento&view=List',
 		];
 	}
 
@@ -70,7 +70,7 @@ class YetiForceMagento extends \App\YetiForce\Shop\AbstractBaseProduct
 			\Vtiger_Link_Model::getInstanceFromValues([
 				'linklabel' => 'Website',
 				'relatedModuleName' => '_Base',
-				'linkicon' => 'fas fa-globe',
+				'linkicon' => 'fas fa-globe mr-2',
 				'linkhref' => true,
 				'linkExternal' => true,
 				'linktarget' => '_blank',

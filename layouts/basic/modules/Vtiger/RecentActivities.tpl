@@ -6,11 +6,11 @@
 * The Initial Developer of the Original Code is vtiger.
 * Portions created by vtiger are Copyright (C) vtiger.
 * All Rights Reserved.
-* Contributor(s): YetiForce.com
+* Contributor(s): YetiForce S.A.
 ********************************************************************************/
 -->*}
 {strip}
-	<div class="recentActivitiesContainer" >
+	<div class="recentActivitiesContainer">
 		<input type="hidden" id="updatesCurrentPage" value="{$PAGING_MODEL->get('page')}" />
 		<input type="hidden" id="updatesPageLimit" value="{$PAGING_MODEL->getPageLimit()}" />
 		<div>
@@ -27,6 +27,8 @@
 								{/if}
 							{/if}
 							{if $PROCEED}
+								{assign var=MODIFIER_IMAGE value=$RECENT_ACTIVITY->getModifiedBy()->getImage()}
+								{assign var=MODIFIER_NAME value=\App\Purifier::encodeHtml($RECENT_ACTIVITY->getModifierName())}
 								{if $RECENT_ACTIVITY->isReviewed() && $COUNT neq 0}
 									<div class="lineOfText">
 										<div>{\App\Language::translate('LBL_REVIEWED', $MODULE_BASE_NAME)}</div>
@@ -38,7 +40,7 @@
 										<div>
 											<span>
 												<strong>
-													{$RECENT_ACTIVITY->getModifiedBy()->getName()}
+													{$MODIFIER_NAME}&nbsp;
 												</strong>
 												{\App\Language::translate($RECENT_ACTIVITY->getStatusLabel(), 'ModTracker')}
 												{foreach item=FIELDMODEL from=$RECENT_ACTIVITY->getFieldInstances()}
@@ -65,14 +67,18 @@
 													{/if}
 												{/foreach}
 											</span>
-											<span class="float-right"><p class="muted"><small>{\App\Fields\DateTime::formatToViewDate($RECENT_ACTIVITY->getParent()->get('createdtime'))}</small></p></span>
+											<span class="float-right">
+												<p class="muted"><small>{\App\Fields\DateTime::formatToViewDate($RECENT_ACTIVITY->getParent()->get('createdtime'))}</small></p>
+											</span>
 										</div>
 									</li>
 								{else if $RECENT_ACTIVITY->isUpdate()}
 									<li>
 										<div>
-											<span><strong>{$RECENT_ACTIVITY->getModifiedBy()->getDisplayName()}</strong> {\App\Language::translate($RECENT_ACTIVITY->getStatusLabel(), 'ModTracker')}</span>
-											<span class="float-right"><p class="muted"><small>{\App\Fields\DateTime::formatToViewDate($RECENT_ACTIVITY->getActivityTime())}</small></p></span>
+											<span><strong>{$MODIFIER_NAME}</strong> {\App\Language::translate($RECENT_ACTIVITY->getStatusLabel(), 'ModTracker')}</span>
+											<span class="float-right">
+												<p class="muted"><small>{\App\Fields\DateTime::formatToViewDate($RECENT_ACTIVITY->getActivityTime())}</small></p>
+											</span>
 										</div>
 										{foreach item=FIELDMODEL from=$RECENT_ACTIVITY->getFieldInstances()}
 											{if $FIELDMODEL && $FIELDMODEL->getFieldInstance() && $FIELDMODEL->getFieldInstance()->isViewable() && $FIELDMODEL->getFieldInstance()->getDisplayType() neq '5'}
@@ -102,7 +108,7 @@
 									<li>
 										<div>
 											{assign var=RELATION value=$RECENT_ACTIVITY->getRelationInstance()}
-											<span><strong>{$RECENT_ACTIVITY->getModifiedBy()->getName()} </strong></span>
+											<span><strong>{$MODIFIER_NAME} </strong>&nbsp;</span>
 											<span>{\App\Language::translate($RECENT_ACTIVITY->getStatusLabel(), 'ModTracker')}</span>
 											<span>
 												{if $RELATION->get('targetmodule') eq 'Calendar'}
@@ -123,7 +129,7 @@
 									<li>
 										<div>
 											<span>
-												<strong>{$RECENT_ACTIVITY->getModifiedBy()->getName()}</strong>
+												<strong>{$MODIFIER_NAME}</strong>&nbsp;
 												{\App\Language::translate($RECENT_ACTIVITY->getStatusLabel(), 'ModTracker')}
 											</span>
 											<span class="float-right">
@@ -153,12 +159,12 @@
 			{if $PAGING_MODEL->isNextPageExists()}
 				<div class="ml-auto">
 					<button type="button"
-							class="btn btn-link btn-sm moreRecentUpdates">{\App\Language::translate('LBL_MORE',$MODULE_NAME)}
+						class="btn btn-link btn-sm moreRecentUpdates">{\App\Language::translate('LBL_MORE',$MODULE_NAME)}
 						..
 					</button>
 				</div>
 			{/if}
 		</div>
 	</div>
-</div>
+	</div>
 {/strip}

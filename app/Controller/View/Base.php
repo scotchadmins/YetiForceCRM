@@ -4,8 +4,8 @@
  *
  * @package   Controller
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -39,32 +39,6 @@ abstract class Base extends \App\Controller\Base
 	protected $breadcrumbTitle;
 
 	/**
-	 * {@inheritdoc}
-	 */
-	protected function showBodyHeader()
-	{
-		return false;
-	}
-
-	/**
-	 * {@inheritdoc}
-	 */
-	protected function showFooter()
-	{
-		return false;
-	}
-
-	/**
-	 * Show bread crumbs.
-	 *
-	 * @return bool
-	 */
-	protected function showBreadCrumbLine()
-	{
-		return true;
-	}
-
-	/**
 	 * Static function to get the Instance of the Vtiger_Viewer.
 	 *
 	 * @param \App\Request $request
@@ -85,10 +59,8 @@ abstract class Base extends \App\Controller\Base
 			$this->viewer->assign('CURRENT_USER', $user);
 			$this->viewer->assign('WIDTHTYPE', $user->getDetail('rowheight'));
 			$this->viewer->assign('WIDTHTYPE_GROUP', ['narrow' => 'input-group-sm', 'wide' => 'input-group-lg'][$user->getDetail('rowheight')] ?? '');
-			if ($request->isAjax()) {
-				if (!$request->isEmpty('parent', true) && 'Settings' === $request->getByType('parent', 2)) {
-					$this->viewer->assign('QUALIFIED_MODULE', $request->getModule(false));
-				}
+			if ($request->isAjax() && !$request->isEmpty('parent', true) && 'Settings' === $request->getByType('parent', 2)) {
+				$this->viewer->assign('QUALIFIED_MODULE', $request->getModule(false));
 			}
 		}
 		return $this->viewer;
@@ -135,9 +107,7 @@ abstract class Base extends \App\Controller\Base
 		return '';
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function preProcess(\App\Request $request, $display = true)
 	{
 		$moduleName = $request->getModule();
@@ -159,28 +129,6 @@ abstract class Base extends \App\Controller\Base
 		if ($display) {
 			$this->preProcessDisplay($request);
 		}
-	}
-
-	/**
-	 * Pre process display function.
-	 *
-	 * @param \App\Request $request
-	 */
-	protected function preProcessDisplay(\App\Request $request)
-	{
-		$this->getViewer($request)->view($this->preProcessTplName($request), $request->getModule());
-	}
-
-	/**
-	 * Pre process template name.
-	 *
-	 * @param \App\Request $request
-	 *
-	 * @return string
-	 */
-	protected function preProcessTplName(\App\Request $request)
-	{
-		return 'PageHeader.tpl';
 	}
 
 	/**
@@ -232,7 +180,6 @@ abstract class Base extends \App\Controller\Base
 			'~libraries/clockpicker/dist/bootstrap4-clockpicker.css',
 			'~libraries/animate.css/animate.css',
 			'~libraries/tributejs/dist/tribute.css',
-			'~libraries/emojipanel/dist/emojipanel.css',
 			'~libraries/emoji-mart-vue-fast/css/emoji-mart.css',
 			'~libraries/overlayscrollbars/css/OverlayScrollbars.css',
 			'~src/css/quasar.css',
@@ -266,9 +213,13 @@ abstract class Base extends \App\Controller\Base
 				'~libraries/quasar/dist/quasar.ie.polyfills.umd.min.js',
 				'~libraries/whatwg-fetch/dist/fetch.umd.js',
 				'~libraries/url-polyfill/url-polyfill.js',
-				'~libraries/gridstack/dist/gridstack-poly.min.js'
 			];
 			$jsFileNames = array_merge($polyfills, $jsFileNames);
+		}
+		foreach (\Vtiger_Link_Model::getAllByType(\vtlib\Link::IGNORE_MODULE, ['HEADER_SCRIPT']) as $headerScripts) {
+			foreach ($headerScripts as $headerScript) {
+				$jsFileNames[] = $headerScript->linkurl;
+			}
 		}
 		return $this->checkAndConvertJsScripts($jsFileNames);
 	}
@@ -299,7 +250,6 @@ abstract class Base extends \App\Controller\Base
 			'~libraries/popper.js/dist/umd/popper.js',
 			'~libraries/bootstrap/dist/js/bootstrap.js',
 			'~libraries/bootstrap-tabdrop/js/bootstrap-tabdrop.js',
-			'~libraries/bootbox/dist/bootbox.min.js',
 			'~libraries/microplugin/src/microplugin.js',
 			'~libraries/sifter/sifter.js',
 			'~libraries/jQuery-Validation-Engine/js/jquery.validationEngine.js',
@@ -311,7 +261,6 @@ abstract class Base extends \App\Controller\Base
 			'~vendor/ckeditor/ckeditor/ckeditor.js',
 			'~vendor/ckeditor/ckeditor/adapters/jquery.js',
 			'~libraries/tributejs/dist/tribute.js',
-			'~libraries/emojipanel/dist/emojipanel.js',
 			'~libraries/vue/dist/vue.js',
 			'~layouts/resources/libraries/quasar.config.js',
 			'~libraries/quasar/dist/quasar.umd.min.js',
@@ -330,7 +279,10 @@ abstract class Base extends \App\Controller\Base
 			'~layouts/resources/Tools.js',
 			'~layouts/resources/helper.js',
 			'~layouts/resources/Connector.js',
-			'~layouts/resources/ProgressIndicator.js'
+			'~layouts/resources/ProgressIndicator.js',
+			'~layouts/resources/integrations/pbx/Base.js',
+			'~layouts/resources/integrations/mail/Base.js',
+			'libraries.clipboard.dist.clipboard',
 		];
 		$languageHandlerShortName = \App\Language::getShortLanguageName();
 		$fileName = "~libraries/jQuery-Validation-Engine/js/languages/jquery.validationEngine-$languageHandlerShortName.js";
@@ -341,6 +293,15 @@ abstract class Base extends \App\Controller\Base
 		if (\App\Debuger::isDebugBar()) {
 			$jsFileNames[] = '~layouts/resources/debugbar/logs.js';
 		}
+		if (\App\Session::has('authenticated_user_id')) {
+			if (\App\Integrations\Pbx::isActive()) {
+				$jsFileNames[] = '~layouts/resources/integrations/pbx/' . \App\Integrations\Pbx::getInstance()->get('type') . '.js';
+			}
+			if ('Base' !== \App\Mail::getMailComposer()) {
+				$jsFileNames[] = '~layouts/resources/integrations/mail/' . \App\Mail::getMailComposer() . '.js';
+			}
+		}
+
 		return $this->checkAndConvertJsScripts($jsFileNames);
 	}
 
@@ -463,7 +424,7 @@ abstract class Base extends \App\Controller\Base
 			'soundFilesPath' => \App\Layout::getPublicUrl('layouts/resources/sounds/'),
 			'debug' => (bool) \App\Config::debug('JS_DEBUG'),
 			'modalTarget' => 'base',
-			'openUrlTarget' => 'base'
+			'openUrlTarget' => 'base',
 		];
 		if (\App\Session::has('authenticated_user_id')) {
 			$userModel = \App\User::getCurrentUserModel();
@@ -491,13 +452,58 @@ abstract class Base extends \App\Controller\Base
 				'rowHeight' => $userModel->getDetail('rowheight'),
 				'userId' => $userModel->getId(),
 				'purifierAllowedDomains' => \App\Config::security('purifierAllowedDomains', []),
+				'globalSearchDefaultOperator' => \App\RecordSearch::OPERATORS[$userModel->getDetail('default_search_operator')],
+				'maxUploadLimit' => \App\Config::getMaxUploadSize(),
 				// Modifying this file or functions that affect the footer appearance will violate the license terms!!!
 				'disableBranding' => \App\YetiForce\Shop::check('YetiForceDisableBranding'),
-				'globalSearchDefaultOperator' => \App\RecordSearch::OPERATORS[$userModel->getDetail('default_search_operator')]
 			];
 		}
 		foreach ($jsEnv as $key => $value) {
 			\App\Config::setJsEnv($key, $value);
 		}
+	}
+
+	/** {@inheritdoc} */
+	protected function showBodyHeader()
+	{
+		return false;
+	}
+
+	/** {@inheritdoc} */
+	protected function showFooter()
+	{
+		return false;
+	}
+
+	/**
+	 * Show bread crumbs.
+	 *
+	 * @return bool
+	 */
+	protected function showBreadCrumbLine()
+	{
+		return true;
+	}
+
+	/**
+	 * Pre process display function.
+	 *
+	 * @param \App\Request $request
+	 */
+	protected function preProcessDisplay(\App\Request $request)
+	{
+		$this->getViewer($request)->view($this->preProcessTplName($request), $request->getModule());
+	}
+
+	/**
+	 * Pre process template name.
+	 *
+	 * @param \App\Request $request
+	 *
+	 * @return string
+	 */
+	protected function preProcessTplName(\App\Request $request)
+	{
+		return 'PageHeader.tpl';
 	}
 }

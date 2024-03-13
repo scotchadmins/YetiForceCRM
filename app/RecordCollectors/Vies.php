@@ -1,12 +1,13 @@
 <?php
 /**
  * Vies record collector file.
- * http://ec.europa.eu/taxation_customs/vies/checkVatTestService.wsdl.
+ *
+ * @see https://ec.europa.eu/taxation_customs/vies/checkVatTestService.wsdl
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -18,16 +19,25 @@ namespace App\RecordCollectors;
 class Vies extends Base
 {
 	/** {@inheritdoc} */
-	protected static $allowedModules = ['Accounts', 'Leads', 'Vendors', 'Competition'];
+	public $allowedModules = ['Accounts', 'Leads', 'Vendors', 'Competition', 'Partners'];
 
 	/** {@inheritdoc} */
 	public $icon = 'yfi yfi-vies';
 
 	/** {@inheritdoc} */
-	public $label = 'Vies';
+	public $label = 'LBL_VIES';
 
 	/** {@inheritdoc} */
 	public $displayType = 'Summary';
+
+	/** {@inheritdoc} */
+	public $description = 'LBL_VIES_DESC';
+
+	/** {@inheritdoc} */
+	public $docUrl = 'https://ec.europa.eu/taxation_customs/vies/technicalInformation.html';
+
+	/** @var string Vies server address. */
+	protected $url = 'https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl';
 
 	/** {@inheritdoc} */
 	protected $fields = [
@@ -66,12 +76,12 @@ class Vies extends Base
 				'SI' => 'Slovenia',
 				'SK' => 'Slovakia',
 			],
-			'typeofdata' => 'V~M'
+			'typeofdata' => 'V~M',
 		],
 		'vatNumber' => [
 			'labelModule' => '_Base',
 			'label' => 'Vat ID',
-			'typeofdata' => 'V~M'
+			'typeofdata' => 'V~M',
 		],
 	];
 
@@ -88,53 +98,59 @@ class Vies extends Base
 		],
 		'Competition' => [
 			'vatNumber' => 'vat_id',
-		]
+		],
+		'Partners' => [
+			'vatNumber' => 'vat_id',
+		],
 	];
-
-	/**
-	 * Vies server address.
-	 *
-	 * @var string
-	 */
-	protected $url = 'http://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl';
 
 	/** {@inheritdoc} */
 	public function getFields(): array
 	{
-		$fields = parent::getFields();
+		$fieldsModels = parent::getFields();
 		foreach (['addresslevel1a', 'addresslevel1b', 'addresslevel1c'] as $value) {
 			if (!$this->request->isEmpty($value, true) && ($code = \App\Fields\Country::getCountryCode($this->request->getByType($value, 'Text')))) {
-				$fields['countryCode']->set('fieldvalue', $code);
+				$fieldsModels['countryCode']->set('fieldvalue', $code);
 				break;
 			}
 		}
-		return $fields;
+		return $fieldsModels;
 	}
 
 	/** {@inheritdoc} */
 	public function search(): array
 	{
+		if (!$this->isActive()) {
+			return [];
+		}
 		$vatNumber = str_replace([' ', ',', '.', '-'], '', $this->request->getByType('vatNumber', 'Text'));
 		if (!$vatNumber) {
 			return [];
 		}
 		$countryCode = $this->request->getByType('countryCode', 'Standard');
 		$response = [];
-		if ($client = new \SoapClient($this->url, \App\RequestHttp::getSoapOptions())) {
-			$params = ['countryCode' => $countryCode, 'vatNumber' => $vatNumber];
-			try {
-				$r = $client->checkVat($params);
+		try {
+			if ($client = new \SoapClient($this->url, \App\RequestHttp::getSoapOptions())) {
+				$r = $client->checkVatApprox([
+					'countryCode' => $countryCode,
+					'vatNumber' => $vatNumber,
+					'requesterCountryCode' => $countryCode,
+					'requesterVatNumber' => $vatNumber
+				]);
 				if ($r->valid) {
 					$response['fields'] = [
+						'Country' => $r->countryCode,
 						'Vat ID' => $r->countryCode . $r->vatNumber,
-						'LBL_COMPANY_NAME' => $r->name,
-						'Address details' => $r->address,
+						'LBL_COMPANY_NAME' => $r->traderName,
+						'Address details' => $r->traderAddress,
+						'LBL_REQUEST_DATE' => $r->requestDate,
+						'LBL_REQUEST_ID' => $r->requestIdentifier
 					];
 				}
-			} catch (\SoapFault $e) {
-				\App\Log::warning($e->faultstring, 'RecordCollectors');
-				$response['error'] = $e->faultstring;
 			}
+		} catch (\SoapFault $e) {
+			\App\Log::warning($e->faultstring, 'RecordCollectors');
+			$response['error'] = $e->faultstring;
 		}
 		return $response;
 	}

@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 Settings_Vtiger_List_Js(
@@ -14,8 +14,10 @@ Settings_Vtiger_List_Js(
 			};
 		},
 		container: false,
+		clipBoardInstances: false,
+
 		getContainer: function () {
-			if (this.container == false) {
+			if (!this.container) {
 				this.container = jQuery('div.contentsDiv');
 			}
 			return this.container;
@@ -39,20 +41,19 @@ Settings_Vtiger_List_Js(
 		},
 		updatePagination: function (pageNumber) {
 			pageNumber = typeof pageNumber !== 'undefined' ? pageNumber : 1;
-			var thisInstance = this;
-			var params = this.getDefaultParams();
+			let params = this.getDefaultParams();
 			params.view = 'Pagination';
 			params.page = pageNumber;
 			params.mode = 'getPagination';
-			params.totalCount = $('.pagination').data('totalCount');
-			params.noOfEntries = jQuery('#noOfEntries').val();
-			AppConnector.request(params).done(function (data) {
-				jQuery('.paginationDiv').html(data);
-				thisInstance.registerPageNavigationEvents();
+			params.totalCount = this.getContainer().find('.pagination').data('totalCount');
+			params.noOfEntries = this.getContainer().find('#noOfEntries').val();
+			AppConnector.request(params).done((data) => {
+				$('.paginationDiv').html(data);
+				this.registerPageNavigationEvents();
 			});
 		},
 		getDefaultParams: function () {
-			var params = {
+			return {
 				module: app.getModuleName(),
 				parent: app.getParentModuleName(),
 				page: jQuery('#pageNumber').val(),
@@ -61,23 +62,20 @@ Settings_Vtiger_List_Js(
 				sortorder: jQuery('#sortOrder').val(),
 				typeApi: this.getActiveTypeApi()
 			};
-			return params;
 		},
 		reloadTab: function (urlParams) {
-			var thisInstance = this;
-			var aDeferred = jQuery.Deferred();
+			const aDeferred = jQuery.Deferred();
 			if (urlParams == undefined) {
 				urlParams = {};
 			}
-			var tabContainer = this.getContainer().find('.listViewContent');
-			var defaultParams = this.getDefaultParams();
-			var params = jQuery.extend(defaultParams, urlParams);
+			let tabContainer = this.getContainer().find('.listViewContent');
+			let params = jQuery.extend(this.getDefaultParams(), urlParams);
 			AppConnector.request(params)
-				.done(function (data) {
+				.done((data) => {
 					tabContainer.html(data);
 					Vtiger_Header_Js.getInstance().registerFooTable();
-					thisInstance.registerPageNavigationEvents();
-					App.Fields.Text.registerCopyClipboard(tabContainer);
+					this.registerPageNavigationEvents();
+					this.registerClipboard();
 					aDeferred.resolve(data);
 				})
 				.fail(function (textStatus, errorThrown) {
@@ -86,15 +84,23 @@ Settings_Vtiger_List_Js(
 				});
 			return aDeferred.promise();
 		},
+		/**
+		 * Register Clipboard
+		 */
+		registerClipboard: function () {
+			if (typeof this.clipBoardInstances === 'object') {
+				this.clipBoardInstances.destroy();
+			}
+			this.clipBoardInstances = App.Fields.Text.registerCopyClipboard(this.getContainer().find('.listViewContent'));
+		},
 		registerEvents: function () {
-			var thisInstance = this;
 			this._super();
 			this.getContainer()
 				.find('li.tabApi')
-				.on('click', function (e) {
-					thisInstance.reloadTab({ typeApi: jQuery(this).data('typeapi') });
+				.on('click', (e) => {
+					this.reloadTab({ typeApi: e.currentTarget.dataset.typeapi, page: 1 });
 				});
-			App.Fields.Text.registerCopyClipboard(this.getContainer().find('.listViewContent'));
+			this.registerClipboard();
 		}
 	}
 );

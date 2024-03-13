@@ -3,8 +3,8 @@
 /**
  * Mail edit view.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Adrian Koń <a.kon@yetiforce.com>
  */
 class Settings_Mail_Detail_View extends Settings_Vtiger_Index_View
@@ -16,9 +16,7 @@ class Settings_Mail_Detail_View extends Settings_Vtiger_Index_View
 	 */
 	protected $pageTitle = 'LBL_MAIL_QUEUE_PAGE_TITLE';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		parent::checkPermission($request);

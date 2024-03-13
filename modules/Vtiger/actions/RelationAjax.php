@@ -7,7 +7,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Vtiger_RelationAjax_Action extends \App\Controller\Action
@@ -15,9 +15,7 @@ class Vtiger_RelationAjax_Action extends \App\Controller\Action
 	use App\Controller\ClearProcess;
 	use \App\Controller\ExposeMethod;
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function __construct()
 	{
 		parent::__construct();
@@ -33,9 +31,7 @@ class Vtiger_RelationAjax_Action extends \App\Controller\Action
 		$this->exposeMethod('checkFilesIntegrity');
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
@@ -119,7 +115,7 @@ class Vtiger_RelationAjax_Action extends \App\Controller\Action
 	 *
 	 * @return int[]
 	 */
-	public static function getRecordsListFromRequest(App\Request $request)
+	public static function getRecordsListFromRequest(App\Request $request): array
 	{
 		$selectedIds = $request->getArray('selected_ids', 2);
 		if ($selectedIds && 'all' !== $selectedIds[0]) {
@@ -140,7 +136,7 @@ class Vtiger_RelationAjax_Action extends \App\Controller\Action
 	{
 		$sourceModule = $request->getModule();
 		$sourceRecordId = $request->getInteger('src_record');
-		$relatedModule = $request->getByType('related_module', 2);
+		$relatedModule = $request->getByType('related_module', App\Purifier::ALNUM);
 		if (is_numeric($relatedModule)) {
 			$relatedModule = \App\Module::getModuleName($relatedModule);
 		}
@@ -153,7 +149,8 @@ class Vtiger_RelationAjax_Action extends \App\Controller\Action
 		} else {
 			$relationModel = Vtiger_Relation_Model::getInstanceById($request->getInteger('relationId'));
 		}
-		foreach ($request->getArray('related_record_list', 'Integer') as $relatedRecordId) {
+		$recordIdsToRelate = $request->has('selected_ids') ? $this->getRecordIdsToRelate($request) : $request->getArray('related_record_list', App\Purifier::INTEGER);
+		foreach ($recordIdsToRelate as $relatedRecordId) {
 			if (\App\Privilege::isPermitted($relatedModule, 'DetailView', $relatedRecordId)) {
 				$relationModel->addRelation($sourceRecordId, $relatedRecordId);
 			}
@@ -161,6 +158,70 @@ class Vtiger_RelationAjax_Action extends \App\Controller\Action
 		$response = new Vtiger_Response();
 		$response->setResult(true);
 		$response->emit();
+	}
+
+	/**
+	 * Get record ids to relate.
+	 *
+	 * @param App\Request $request
+	 *
+	 * @return array
+	 */
+	public function getRecordIdsToRelate(App\Request $request): array
+	{
+		$cvId = $request->isEmpty('cvId') ? '' : $request->getByType('cvId', App\Purifier::ALNUM);
+		$moduleName = $request->getByType('related_module', App\Purifier::ALNUM);
+		if ((!empty($cvId) && 'undefined' === $cvId) || '0' === $cvId) {
+			$cvId = CustomView_Record_Model::getAllFilterByModule($moduleName)->getId();
+		}
+		$customViewModel = CustomView_Record_Model::getInstanceById((int) $cvId);
+		if (!$customViewModel) {
+			return [];
+		}
+		$selectedIds = $request->getArray('selected_ids', App\Purifier::ALNUM);
+		if ($selectedIds && 'all' !== $selectedIds[0]) {
+			$queryGenerator = new App\QueryGenerator($moduleName);
+			$queryGenerator->initForCustomViewById($cvId);
+			$queryGenerator->addCondition('id', $selectedIds, 'e');
+		} else {
+			if (!$request->isEmpty('operator')) {
+				$operator = $request->getByType('operator');
+				$searchKey = $request->getByType('search_key', 'Alnum');
+				$customViewModel->set('operator', $operator);
+				$customViewModel->set('search_key', $searchKey);
+				$customViewModel->set('search_value', App\Condition::validSearchValue($request->getByType('search_value', App\Purifier::TEXT), $moduleName, $searchKey, $operator));
+			}
+			if ($request->getBoolean('isSortActive') && !$request->isEmpty('orderby')) {
+				$customViewModel->set('orderby', $request->getArray('orderby', \App\Purifier::STANDARD, [], \App\Purifier::SQL));
+			}
+			$customViewModel->set('search_params', App\Condition::validSearchParams($moduleName, $request->getArray('search_params')));
+			if ($advancedConditions = $request->has('advancedConditions') ? $request->getArray('advancedConditions') : []) {
+				$customViewModel->set('advancedConditions', \App\Condition::validAdvancedConditions($advancedConditions));
+			}
+			$queryGenerator = $customViewModel->getRecordsListQuery($request->getArray('excluded_ids', App\Purifier::ALNUM), $moduleName);
+
+			$queryGenerator->addNativeCondition(
+				['not in', $queryGenerator->getColumnName('id'), $this->getRelatedRecordIds($request)]
+			);
+		}
+		return $queryGenerator->clearFields()->createQuery()->column();
+	}
+
+	/**
+	 * Get related record ids.
+	 *
+	 * @param App\Request $request
+	 *
+	 * @return \App\Db\Query
+	 */
+	public function getRelatedRecordIds(App\Request $request): App\Db\Query
+	{
+		$parentRecordModel = \Vtiger_Record_Model::getInstanceById($request->getInteger('src_record'), $request->getByType('src_module'));
+		$relationId = $request->isEmpty('relationId') ? false : $request->getInteger('relationId');
+		$cvId = $request->isEmpty('cvId', true) ? 0 : $request->getByType('cvId', \App\Purifier::ALNUM);
+		$relationListView = Vtiger_RelationListView_Model::getInstance($parentRecordModel, $request->getByType('related_module', \App\Purifier::ALNUM), $relationId, $cvId);
+		$queryGenerator = $relationListView->getRelationQuery(true)->clearFields();
+		return $queryGenerator->createQuery();
 	}
 
 	/**
@@ -209,11 +270,13 @@ class Vtiger_RelationAjax_Action extends \App\Controller\Action
 		$relationId = $request->isEmpty('relationId') ? false : $request->getInteger('relationId');
 		$cvId = $request->isEmpty('cvId', true) ? 0 : $request->getByType('cvId', 'Alnum');
 		$relationListView = Vtiger_RelationListView_Model::getInstance($parentRecordModel, $relatedModuleName, $relationId, $cvId);
-		$rows = $this->getRecordsListFromRequest($request);
 		$relationModel = $relationListView->getRelationModel();
-		foreach ($rows as $relatedRecordId) {
-			if (\App\Privilege::isPermitted($relatedModuleName, 'DetailView', $relatedRecordId)) {
-				$relationModel->deleteRelation((int) $sourceRecordId, (int) $relatedRecordId);
+		if ($relationModel->privilegeToDelete()) {
+			$rows = $this->getRecordsListFromRequest($request);
+			foreach ($rows as $relatedRecordId) {
+				if (\App\Privilege::isPermitted($relatedModuleName, 'DetailView', $relatedRecordId) && $relationModel->privilegeToDelete(null, $relatedRecordId)) {
+					$relationModel->deleteRelation((int) $sourceRecordId, (int) $relatedRecordId);
+				}
 			}
 		}
 
@@ -229,114 +292,20 @@ class Vtiger_RelationAjax_Action extends \App\Controller\Action
 	 */
 	public function exportToExcel(App\Request $request)
 	{
-		$userModel = \App\User::getCurrentUserModel();
+		if (!\App\Privilege::isPermitted($request->getByType('relatedModule', \App\Purifier::ALNUM), 'QuickExportToExcel')) {
+			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 403);
+		}
 		$relationListView = static::getRelationListModel($request);
 		$relatedModuleName = $relationListView->getRelatedModuleModel()->getName();
-		$workbook = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-		$worksheet = $workbook->setActiveSheetIndex(0);
-		$header_styles = [
-			'fill' => ['type' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => 'E1E0F7']],
-			'font' => ['bold' => true],
-		];
-		$col = $row = 1;
 		$headers = $relationListView->getHeaders();
-		foreach ($headers as $fieldModel) {
-			$label = $fieldModel->getFullLabelTranslation($relationListView->getRelatedModuleModel());
-			$worksheet->setCellValueExplicitByColumnAndRow($col, $row, App\Purifier::decodeHtml($label), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-			++$col;
-		}
-		++$row;
-		foreach ($relationListView->getAllEntries() as $id => $record) {
-			$col = 1;
-			foreach ($headers as $fieldModel) {
-				//depending on the uitype we might want the raw value, the display value or something else.
-				//we might also want the display value sans-links so we can use strip_tags for that
-				//phone numbers need to be explicit strings
-				switch ($fieldModel->getFieldDataType()) {
-					case 'integer':
-						$value = $record->get($fieldModel->getName());
-						$worksheet->setCellValueExplicitByColumnAndRow($col, $row, $value, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
-						$worksheet->getStyleByColumnAndRow($col, $row)->getNumberFormat()->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_NUMBER);
-						break;
-					case 'currencyInventory':
-						$value = number_format((float) $record->get($fieldModel->getName()), $userModel->getDetail('no_of_currency_decimals'), '.', '');
-						$currencyId = current($record->getInventoryData())['currency'] ?? null;
-						$type = \PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_NUMBER_00;
-						if ($currencyId && ($currencySymbol = \App\Fields\Currency::getById($currencyId)['currency_symbol'] ?? '')) {
-							$currencySymbolPlacement = $userModel->getDetail('currency_symbol_placement');
-							if ('1.0$' === $currencySymbolPlacement) {
-								$type = "#,##0.00_-\"{$currencySymbol}\"";
-							} else {
-								$type = "\"{$currencySymbol}\"#,##0.00_-";
-							}
-						}
-						if (is_numeric($value)) {
-							$worksheet->setCellValueExplicitByColumnAndRow($col, $row, $value, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
-							$worksheet->getStyleByColumnAndRow($col, $row)->getNumberFormat()->setFormatCode($type);
-						} else {
-							$worksheet->setCellValueExplicitByColumnAndRow($col, $row, $value, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-						}
-						break;
-						case 'double':
-					case 'currency':
-						$value = $record->get($fieldModel->getName());
-						if (is_numeric($value)) {
-							$worksheet->setCellValueExplicitByColumnAndRow($col, $row, $value, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
-							$worksheet->getStyleByColumnAndRow($col, $row)->getNumberFormat()->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_NUMBER_00);
-						} else {
-							$worksheet->setCellValueExplicitByColumnAndRow($col, $row, $value, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-						}
-						break;
-					case 'date':
-						$value = $record->get($fieldModel->getName());
-						if ($value) {
-							$worksheet->setCellValueExplicitByColumnAndRow($col, $row, \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($value), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
-							$worksheet->getStyleByColumnAndRow($col, $row)->getNumberFormat()->setFormatCode('DD/MM/YYYY');
-						} else {
-							$worksheet->setCellValueExplicitByColumnAndRow($col, $row, '', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-						}
-						break;
-					case 'datetime':
-						$value = $record->get($fieldModel->getName());
-						if ($value) {
-							$worksheet->setCellValueExplicitByColumnAndRow($col, $row, \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($value), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
-							$worksheet->getStyleByColumnAndRow($col, $row)->getNumberFormat()->setFormatCode('DD/MM/YYYY HH:MM');
-						} else {
-							$worksheet->setCellValueExplicitByColumnAndRow($col, $row, '', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-						}
-						break;
-					default:
-						$value = $record->getListViewDisplayValue($fieldModel, true);
-						$worksheet->setCellValueExplicitByColumnAndRow($col, $row, App\Purifier::decodeHtml($value), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-				}
-				++$col;
-			}
-			++$row;
-		}
-		//having written out all the data lets have a go at getting the columns to auto-size
-		$row = $col = 1;
-		foreach ($headers as $fieldModel) {
-			$cell = $worksheet->getCellByColumnAndRow($col, $row);
-			$worksheet->getStyleByColumnAndRow($col, $row)->applyFromArray($header_styles);
-			$worksheet->getColumnDimension($cell->getColumn())->setAutoSize(true);
-			++$col;
-		}
-		$tmpDir = \App\Config::main('tmp_dir');
-		$tempFileName = tempnam(ROOT_DIRECTORY . DIRECTORY_SEPARATOR . $tmpDir, 'xls');
-		$workbookWriter = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($workbook, 'Xls');
-		$workbookWriter->save($tempFileName);
-		if (isset($_SERVER['HTTP_USER_AGENT']) && strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE')) {
-			header('pragma: public');
-			header('cache-control: must-revalidate, post-check=0, pre-check=0');
-		}
-		header('content-type: application/x-msexcel');
-		header('content-length: ' . filesize($tempFileName));
-		$filename = \App\Language::translate($relatedModuleName, $relatedModuleName) . '.xls';
-		header("content-disposition: attachment; filename=\"$filename\"");
-		$fp = fopen($tempFileName, 'r');
-		fpassthru($fp);
-		fclose($fp);
-		unlink($tempFileName);
+
+		$exportModel = \App\Export\Records::getInstance($relatedModuleName, 'xls')
+			->setLimit(\App\Config::performance('MAX_NUMBER_EXPORT_RECORDS'))
+			->setFormat(\App\Export\Records::USER_FORMAT);
+		$exportModel->queryGenerator = $relationListView->getRelationQuery(true);
+		$exportModel->setFields(array_keys($headers));
+		$exportModel->sendHttpHeader();
+		$exportModel->exportData();
 	}
 
 	/**
@@ -428,9 +397,9 @@ class Vtiger_RelationAjax_Action extends \App\Controller\Action
 			$categoryCount = ['Products', 'OutsourcedProducts', 'Services', 'OSSOutsourcedServices'];
 			$pagingModel = new Vtiger_Paging_Model();
 			$parentRecordModel = Vtiger_Record_Model::getInstanceById($parentId, $moduleName);
-			$currentUserPriviligesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
+			$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
 			foreach ($relModules as $relModule) {
-				if (!$currentUserPriviligesModel->hasModulePermission($relModule)) {
+				if (!$userPrivilegesModel->hasModulePermission($relModule)) {
 					continue;
 				}
 				$relationListView = Vtiger_RelationListView_Model::getInstance($parentRecordModel, $relModule, $relationId, $cvId);
@@ -496,14 +465,15 @@ class Vtiger_RelationAjax_Action extends \App\Controller\Action
 		if (!$fieldModel->isCalculateField()) {
 			throw new \App\Exceptions\Security('ERR_NOT_SUPPORTED_FIELD', 406);
 		}
-		$columnName = $fieldQueryModel->getColumnName();
-		if ('sum' === $request->getByType('calculateType')) {
-			$fieldName = $fieldModel->getName();
-			$query = $queryGenerator->setFields(['id'])->setDistinct(null)->setGroup('id')->createQuery()->select([$fieldName => $columnName]);
-			$value = (new \App\Db\Query())->from(['c' => $query])->sum("c.{$fieldName}");
-		} else {
+		if ('sum' !== $request->getByType('calculateType')) {
 			throw new \App\Exceptions\NotAllowedMethod('LBL_PERMISSION_DENIED', 406);
 		}
+
+		$columnName = $fieldQueryModel->getColumnName();
+		$fieldName = $fieldModel->getName();
+		$query = $queryGenerator->setFields(['id'])->setDistinct(null)->setGroup('id')->createQuery()->select([$fieldName => new \yii\db\Expression("MAX({$columnName})")]);
+		$value = (new \App\Db\Query())->from(['c' => $query])->sum("c.{$fieldName}");
+
 		$response = new Vtiger_Response();
 		$response->setResult($fieldModel->getDisplayValue($value));
 		$response->emit();

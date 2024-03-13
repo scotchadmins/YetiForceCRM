@@ -3,8 +3,10 @@
 /**
  * Notification Action Class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @package Action
+ *
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -21,12 +23,8 @@ class Notification_Notification_Action extends \App\Controller\Action
 	 */
 	public function checkPermission(App\Request $request)
 	{
-		if (!$request->isEmpty('id')) {
-			$notice = Notification_NoticeEntries_Model::getInstanceById($request->getInteger('id'));
-			$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
-			if ($userPrivilegesModel->getId() != $notice->getUserId()) {
-				throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
-			}
+		if (!$request->isEmpty('record') && !Vtiger_Record_Model::getInstanceById($request->getInteger('record'), $request->getModule())->isEditable()) {
+			throw new \App\Exceptions\NoPermittedToRecord('LBL_PERMISSION_DENIED', 406);
 		}
 		$mode = $request->getMode();
 		if ('createMessage' === $mode && !\App\Privilege::isPermitted('Notification', 'CreateView')) {
@@ -46,7 +44,6 @@ class Notification_Notification_Action extends \App\Controller\Action
 		$this->exposeMethod('setMark');
 		$this->exposeMethod('saveWatchingModules');
 		$this->exposeMethod('tracking');
-		$this->exposeMethod('getReminders');
 	}
 
 	/**
@@ -56,10 +53,9 @@ class Notification_Notification_Action extends \App\Controller\Action
 	 */
 	public function setMark(App\Request $request)
 	{
-		foreach ($request->getArray('ids', 'Integer') as $id) {
-			$recordModel = Vtiger_Record_Model::getInstanceById($id, $request->getModule());
-			$recordModel->setMarked();
-		}
+		$recordModel = Vtiger_Record_Model::getInstanceById($request->getInteger('record'), $request->getModule());
+		$recordModel->setMarked();
+
 		$response = new Vtiger_Response();
 		$response->setResult(true);
 		$response->emit();
@@ -67,7 +63,7 @@ class Notification_Notification_Action extends \App\Controller\Action
 
 	public function saveWatchingModules(App\Request $request)
 	{
-		$selectedModules = $request->getArray('selctedModules', 2);
+		$selectedModules = $request->getArray('selectedModules', \App\Purifier::INTEGER);
 		$watchingModules = Vtiger_Watchdog_Model::getWatchingModules();
 		Vtiger_Watchdog_Model::setSchedulerByUser($request->getArray('sendNotifications', 'Integer'), $request->getInteger('frequency'));
 		foreach ($selectedModules as $moduleId) {
@@ -86,9 +82,7 @@ class Notification_Notification_Action extends \App\Controller\Action
 		$response->emit();
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function isSessionExtend(App\Request $request)
 	{
 		return 'tracking' !== $request->getMode();
@@ -105,27 +99,6 @@ class Notification_Notification_Action extends \App\Controller\Action
 	{
 		$response = new Vtiger_Response();
 		$response->setResult(Vtiger_Module_Model::getInstance($request->getModule())->getEntriesCount());
-		$response->emit();
-	}
-
-	public function getReminders(App\Request $request)
-	{
-		$moduleModel = Vtiger_Module_Model::getInstance($request->getModule());
-		if ($request->has('limit')) {
-			$moduleModel->set('limit', $request->getInteger('limit'));
-		} else {
-			$moduleModel->set('limit', \App\Config::module($request->getModule(), 'MAX_NUMBER_NOTIFICATIONS'));
-		}
-		if ($request->has('page')) {
-			$moduleModel->set('page', $request->getInteger('page'));
-		}
-		if ($request->has('lastId')) {
-			$moduleModel->set('lastId', $request->getInteger('lastId'));
-		}
-		$response = new Vtiger_Response();
-		$response->setResult([
-			'entries' => $moduleModel->getEntries()
-		]);
 		$response->emit();
 	}
 }

@@ -5,8 +5,8 @@
  *
  * @package Settings.Model
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 /**
@@ -14,40 +14,28 @@
  */
 class Settings_MeetingServices_Module_Model extends Settings_Vtiger_Module_Model
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $name = 'MeetingServices';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $baseTable = \App\MeetingService::TABLE_NAME;
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $baseIndex = 'id';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $listFields = [
 		'url' => 'FL_URL',
-		'status' => 'FL_STATUS'
+		'status' => 'FL_STATUS',
 	];
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getDefaultUrl()
 	{
 		return "index.php?parent=Settings&module={$this->getName()}&view=List";
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getCreateRecordUrl()
 	{
 		return "index.php?parent=Settings&module={$this->getName()}&view=Edit";
@@ -61,7 +49,8 @@ class Settings_MeetingServices_Module_Model extends Settings_Vtiger_Module_Model
 	public static $formFields = [
 		'url' => ['required' => 1, 'purifyType' => \App\Purifier::URL, 'label' => 'FL_URL', 'maximumlength' => '255'],
 		'status' => ['required' => 0, 'purifyType' => \App\Purifier::BOOL, 'label' => 'FL_STATUS', 'maximumlength' => '2'],
-		'secret' => ['required' => 1, 'default' => '', 'purifyType' => \APP\Purifier::TEXT, 'label' => 'FL_PASSWORD', 'maximumlength' => '100']
+		'key' => ['required' => 1, 'default' => '', 'purifyType' => \APP\Purifier::TEXT, 'label' => 'FL_APP_ID', 'maximumlength' => '64'],
+		'secret' => ['required' => 1, 'default' => '', 'purifyType' => \APP\Purifier::TEXT, 'label' => 'FL_SECRET_KEY', 'maximumlength' => '100'],
 	];
 
 	/**

@@ -4,8 +4,8 @@
  *
  * @package   Tests
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Adach <a.adach@yetiforce.com>
  */
 
@@ -24,11 +24,11 @@ class Groups extends \Tests\Base
 	public function testAddGroups()
 	{
 		$modules = ['4', '7'];
-		$recordModel = new \Settings_Groups_Record_Model();
+		$recordModel = \Settings_Groups_Record_Model::getCleanInstance();
 		$recordModel->set('groupname', 'Test groups');
 		$recordModel->set('description', 'Test description');
-		$recordModel->set('group_members', ['Users:1', 'Groups:2', 'Roles:H6', 'RoleAndSubordinates:H34']);
-		$recordModel->set('modules', $modules);
+		$recordModel->set('members', $recordModel->getFieldInstanceByName('members')->getDBValue(['Users:1', 'Groups:2', 'Roles:H6', 'RoleAndSubordinates:H34']));
+		$recordModel->set('modules', $recordModel->getFieldInstanceByName('modules')->getDBValue($modules));
 		$recordModel->save();
 
 		self::$id = $recordModel->getId();
@@ -70,8 +70,8 @@ class Groups extends \Tests\Base
 		$modules = ['7'];
 		$recordModel->set('groupname', 'Test groups edit');
 		$recordModel->set('description', 'Test description edit');
-		$recordModel->set('group_members', ['Users:1']);
-		$recordModel->set('modules', $modules);
+		$recordModel->set('members', $recordModel->getFieldInstanceByName('members')->getDBValue(['Users:1']));
+		$recordModel->set('modules', $recordModel->getFieldInstanceByName('modules')->getDBValue($modules));
 		$recordModel->save();
 
 		$row = (new \App\Db\Query())->from('vtiger_groups')->where(['groupid' => self::$id])->one();

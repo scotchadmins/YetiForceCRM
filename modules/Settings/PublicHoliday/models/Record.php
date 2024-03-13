@@ -3,8 +3,8 @@
 /**
  * Settings PublicHoliday record model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class Settings_PublicHoliday_Record_Model extends Settings_Vtiger_Record_Model
 {
@@ -13,7 +13,7 @@ class Settings_PublicHoliday_Record_Model extends Settings_Vtiger_Record_Model
 	 *
 	 * @var Settings_PublicHoliday_Module_Model
 	 */
-	protected $module;
+	public $module;
 
 	/**
 	 * Returns record id.
@@ -78,9 +78,7 @@ class Settings_PublicHoliday_Record_Model extends Settings_Vtiger_Record_Model
 		return new self();
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public static function getInstanceById($id)
 	{
 		$moduleModel = Settings_PublicHoliday_Module_Model::getInstance();
@@ -117,18 +115,16 @@ class Settings_PublicHoliday_Record_Model extends Settings_Vtiger_Record_Model
 	 */
 	public function getDisplayValue(string $key)
 	{
-		$moduleModel = $this->getModule();
-		$moduleName = $moduleModel->getName();
 		$value = $this->get($key);
 		switch ($key) {
 			case 'holidaydate':
 				$displayValue = DateTimeField::convertToUserFormat($value);
 				break;
 			case 'holidaytype':
-				$displayValue = \App\Language::translate($value, $moduleName);
+				$displayValue = \App\Language::translate($value, 'Settings:PublicHoliday');
 				break;
 			default:
-				$displayValue = $value;
+				$displayValue = \App\Purifier::encodeHtml($value);
 				break;
 		}
 		return $displayValue;

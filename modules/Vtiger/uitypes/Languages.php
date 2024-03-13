@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Vtiger_Languages_UIType extends Vtiger_Picklist_UIType
@@ -14,15 +14,14 @@ class Vtiger_Languages_UIType extends Vtiger_Picklist_UIType
 	/** {@inheritdoc} */
 	public function validate($value, $isUserFormat = false)
 	{
-		if (empty($value) || isset($this->validate[$value])) {
+		if (empty($value) || isset($this->validate["$value"])) {
 			return;
 		}
 		parent::validate($value, $isUserFormat);
-		$this->validate = false;
 		if (false === \App\Language::getLanguageLabel($value)) {
 			throw new \App\Exceptions\Security('ERR_ILLEGAL_FIELD_VALUE||' . $this->getFieldModel()->getFieldName() . '||' . $this->getFieldModel()->getModuleName() . '||' . $value, 406);
 		}
-		$this->validate[$value] = true;
+		$this->validate["$value"] = true;
 	}
 
 	/** {@inheritdoc} */
@@ -47,6 +46,6 @@ class Vtiger_Languages_UIType extends Vtiger_Picklist_UIType
 	/** {@inheritdoc} */
 	public function getQueryOperators()
 	{
-		return ['e', 'n', 'y', 'ny'];
+		return ['e', 'n', 'y', 'ny', 'ef', 'nf'];
 	}
 }

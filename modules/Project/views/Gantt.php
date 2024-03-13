@@ -3,15 +3,13 @@
 /**
  * Gantt view.
  *
- * @copyright YetiForce Sp. z o.o.
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Rafal Pospiech <r.pospiech@yetiforce.com>
  */
 class Project_Gantt_View extends Vtiger_Index_View
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function preProcess(App\Request $request, $display = true)
 	{
 		parent::preProcess($request, false);
@@ -26,17 +24,13 @@ class Project_Gantt_View extends Vtiger_Index_View
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function preProcessTplName(App\Request $request)
 	{
 		return 'gantt/GanttViewPreProcess.tpl';
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function postProcess(App\Request $request, $display = true)
 	{
 		$viewer = $this->getViewer($request);
@@ -44,9 +38,7 @@ class Project_Gantt_View extends Vtiger_Index_View
 		parent::postProcess($request);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$moduleName = $request->getModule();
@@ -62,14 +54,10 @@ class Project_Gantt_View extends Vtiger_Index_View
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getFooterScripts(App\Request $request)
 	{
 		$jsFileNames = [
-			'~libraries/chart.js/dist/Chart.js',
-			'~libraries/chartjs-plugin-datalabels/dist/chartjs-plugin-datalabels.js',
 			'modules.Project.resources.Gantt',
 			'~libraries/gantt-elastic/dist/bundle.js',
 			'modules.Project.resources.GanttController',

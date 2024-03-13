@@ -4,10 +4,11 @@
  *
  * @package   Cron
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Tomasz Kur <t.kur@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 /**
@@ -15,14 +16,17 @@
  */
 class Vtiger_SessionCleaner_Cron extends \App\CronHandler
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process()
 	{
 		$dbCommand = \App\Db::getInstance('webservice')->createCommand();
-		$dbCommand->delete('w_#__portal_session', ['<', 'created', date('Y-m-d H:i:s', strtotime('now') - \Config\Security::$apiLifetimeSessionCreate * 60)])->execute();
-		$dbCommand->delete('w_#__portal_session', ['<', 'changed', date('Y-m-d H:i:s', strtotime('now') - \Config\Security::$apiLifetimeSessionUpdate * 60)])->execute();
+		foreach (\Api\Core\Containers::LIST_TABLES as $row) {
+			if (!isset($row['session'])) {
+				continue;
+			}
+			$dbCommand->delete($row['session'], ['<', 'created', date('Y-m-d H:i:s', strtotime('now') - \Config\Security::$apiLifetimeSessionCreate * 60)])->execute();
+			$dbCommand->delete($row['session'], ['<', 'changed', date('Y-m-d H:i:s', strtotime('now') - \Config\Security::$apiLifetimeSessionUpdate * 60)])->execute();
+		}
 		if (!headers_sent()) {
 			$dbCommand = \App\Db::getInstance()->createCommand();
 			foreach (App\Session\File::clean() as $userId => $userName) {
@@ -32,7 +36,7 @@ class Vtiger_SessionCleaner_Cron extends \App\CronHandler
 					'logout_time' => date('Y-m-d H:i:s'),
 					'status' => 'Automatic signed off'
 				])->execute();
-				OSSMail_Logout_Model::logutUserById($userId);
+				OSSMail_Logout_Model::logoutUserById($userId);
 			}
 		} else {
 			\App\Log::warning('Session cleaning has been omitted because the server headers have already been sent');

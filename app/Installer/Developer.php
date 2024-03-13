@@ -4,9 +4,10 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 namespace App\Installer;
@@ -16,12 +17,17 @@ namespace App\Installer;
  */
 class Developer
 {
+	/** @var string Default path */
+	public const PATH = '/api/doc';
+
 	/**
 	 * Generate interactive OpenAPI documentation for your RESTful API using doctrine annotations.
 	 *
+	 * @param string $path
+	 *
 	 * @return string
 	 */
-	public static function generateSwagger(): string
+	public static function generateSwagger(string $path = self::PATH): string
 	{
 		set_error_handler(function ($errNo, $errStr, $errFile, $errLine) {
 			$errorString = \App\ErrorHandler::error2string($errNo);
@@ -29,8 +35,8 @@ class Developer
 			echo "<pre>$msg</pre><hr>";
 		}, E_ALL);
 		$json = '';
-		foreach (['Portal', 'ManageConsents'] as $type) {
-			$json .= self::generateSwaggerByType($type, false);
+		foreach (\Api\Core\Containers::LIST as $type) {
+			$json .= self::generateSwaggerByType($type, $path, false);
 		}
 		return $json;
 	}
@@ -40,10 +46,11 @@ class Developer
 	 *
 	 * @param string $type
 	 * @param bool   $errorHandler
+	 * @param string $path
 	 *
 	 * @return string
 	 */
-	public static function generateSwaggerByType(string $type, $errorHandler = true): string
+	public static function generateSwaggerByType(string $type, string $path = self::PATH, $errorHandler = true): string
 	{
 		if ($errorHandler) {
 			set_error_handler(function ($errNo, $errStr, $errFile, $errLine) {
@@ -52,9 +59,9 @@ class Developer
 				echo "<pre>$msg</pre><hr>";
 			}, E_ALL);
 		}
-		$openApi = \OpenApi\scan(ROOT_DIRECTORY . '/api/webservice/' . $type);
-		$openApi->saveAs(ROOT_DIRECTORY . "/public_html/api/{$type}.json");
-		$openApi->saveAs(ROOT_DIRECTORY . "/public_html/api/{$type}.yaml");
+		$openApi = \OpenApi\Generator::scan([ROOT_DIRECTORY . '/api/webservice/' . $type]);
+		$openApi->saveAs(ROOT_DIRECTORY . "{$path}/{$type}.json");
+		$openApi->saveAs(ROOT_DIRECTORY . "{$path}/{$type}.yaml");
 		return $openApi->toJson();
 	}
 }

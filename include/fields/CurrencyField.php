@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
 class CurrencyField
@@ -132,9 +132,9 @@ class CurrencyField
 	 *
 	 * @global Users    $current_user
 	 *
+	 * @param mixed     $value
 	 * @param \App\User $user
 	 * @param bool      $skipConversion
-	 * @param mixed     $value
 	 * @param mixed     $skipFormatting
 	 *
 	 * @deprecated    	Recommend using function \App\Fields\Currency::formatToDisplay
@@ -145,7 +145,7 @@ class CurrencyField
 	{
 		// To support negative values
 		$negative = false;
-		if (0 === stripos($value, '-')) {
+		if (0 === stripos($value ?? '', '-')) {
 			$negative = true;
 			$value = substr($value, 1);
 		}

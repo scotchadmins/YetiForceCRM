@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class ModTracker_Record_Model extends Vtiger_Record_Model
@@ -38,11 +38,11 @@ class ModTracker_Record_Model extends Vtiger_Record_Model
 		2 => 'LBL_CREATED',
 		3 => 'LBL_ACTIVE',
 		4 => 'LBL_ADDED',
-		5 => 'LBL_REMOVED',
+		5 => 'LBL_UNLINK',
 		6 => 'LBL_CONVERTED_FROM_LEAD',
 		7 => 'LBL_DISPLAYED',
 		8 => 'LBL_ARCHIVED',
-		// 9 => 'LBL_REMOVED',
+		9 => 'LBL_REMOVED',
 		10 => 'LBL_TRANSFER_EDIT',
 		11 => 'LBL_TRANSFER_DELETE',
 		12 => 'LBL_TRANSFER_UNLINK',
@@ -146,7 +146,7 @@ class ModTracker_Record_Model extends Vtiger_Record_Model
 		}
 		$lastReviewedUsers = (new \App\Db\Query())->select(['last_reviewed_users'])->from('vtiger_modtracker_basic')
 			->where(['crmid' => $recordId])
-			->andWhere(['<>', 'status', self::DISPLAYED])->orderBy(['changedon' => SORT_DESC, 'id' => SORT_DESC])->limit(1)->scalar();
+			->andWhere(['<>', 'status', self::DISPLAYED])->orderBy(['changedon' => SORT_DESC, 'id' => SORT_DESC])->scalar();
 		if (false !== $lastReviewedUsers) {
 			return false === strpos($lastReviewedUsers, "#$userId#");
 		}
@@ -169,7 +169,7 @@ class ModTracker_Record_Model extends Vtiger_Record_Model
 		}
 		$query = (new \App\Db\Query())->select(['crmid', 'u' => 'last_reviewed_users'])->from('vtiger_modtracker_basic')
 			->where(['crmid' => $recordsId])
-			->andWhere(['<>', 'status', self::DISPLAYED]);
+			->andWhere(['not in', 'status', [self::DISPLAYED, self::SHOW_HIDDEN_DATA]]);
 		if ($sort) {
 			$query->addSelect(['vtiger_ossmailview.type'])
 				->leftJoin('vtiger_modtracker_relations', 'vtiger_modtracker_basic.id = vtiger_modtracker_relations.id')
@@ -204,7 +204,7 @@ class ModTracker_Record_Model extends Vtiger_Record_Model
 	/**
 	 * Function to get the name of the module to which the record belongs.
 	 *
-	 * @return string - Record Module Name
+	 * @return Vtiger_Module_Model
 	 */
 	public function getModule(): Vtiger_Module_Model
 	{
@@ -245,9 +245,18 @@ class ModTracker_Record_Model extends Vtiger_Record_Model
 		return "index.php?module=$moduleName&$action&record=" . $this->get('crmid');
 	}
 
+	/**
+	 * Undocumented function.
+	 *
+	 * @param int    $id
+	 * @param string $moduleName
+	 *
+	 * @return $this
+	 */
 	public function setParent($id, $moduleName)
 	{
 		$this->parent = Vtiger_Record_Model::getInstanceById($id, $moduleName);
+		return $this;
 	}
 
 	public function getParent()
@@ -377,11 +386,24 @@ class ModTracker_Record_Model extends Vtiger_Record_Model
 		return static::$statusLabel[$this->get('status')];
 	}
 
+	/**
+	 * Get the modifier object.
+	 *
+	 * @return \App\User
+	 */
 	public function getModifiedBy()
 	{
-		$changeUserId = $this->get('whodid');
+		return \App\User::getUserModel($this->get('whodid'));
+	}
 
-		return Users_Record_Model::getInstanceById($changeUserId, 'Users');
+	/**
+	 * Get name for modifier by.
+	 *
+	 * @return string|bool
+	 */
+	public function getModifierName()
+	{
+		return \App\Fields\Owner::getUserLabel($this->get('whodid'));
 	}
 
 	public function getDisplayActivityTime()
@@ -408,11 +430,12 @@ class ModTracker_Record_Model extends Vtiger_Record_Model
 		if ($this->isCreate() || $this->isUpdate() || $this->isTransferEdit()) {
 			$dataReader = (new \App\Db\Query())->from('vtiger_modtracker_detail')->where(['id' => $this->get('id')])->createCommand()->query();
 			while ($row = $dataReader->read()) {
-				$row = array_map('html_entity_decode', $row);
+				$row['prevalue'] = html_entity_decode((string) $row['prevalue']);
+				$row['postvalue'] = html_entity_decode((string) $row['postvalue']);
 				if ('record_id' === $row['fieldname'] || 'record_module' === $row['fieldname']) {
 					continue;
 				}
-				if (!($fieldModel = Vtiger_Field_Model::getInstance($row['fieldname'], $this->getModule()))) {
+				if (!($fieldModel = $this->getModule()->getFieldByName($row['fieldname']))) {
 					continue;
 				}
 				$fieldInstance = new ModTracker_Field_Model();
@@ -445,6 +468,7 @@ class ModTracker_Record_Model extends Vtiger_Record_Model
 					}
 					$changes[$key]['item'] = $changed['item'];
 					$changes[$key]['historyState'] = empty($changed['prevalue']) ? 'LBL_INV_ADDED' : (empty($changed['postvalue']) ? 'LBL_INV_DELETED' : 'LBL_INV_UPDATED');
+					$changes[$key]['data'] = [];
 					foreach ($changed['prevalue'] as $fieldName => $value) {
 						if ($inventoryModel->isField($fieldName)) {
 							$changes[$key]['data'][$fieldName]['field'] = $inventoryModel->getField($fieldName);
@@ -601,7 +625,7 @@ class ModTracker_Record_Model extends Vtiger_Record_Model
 			->select(['vtiger_modtracker_basic.changedon', 'vtiger_modtracker_detail.prevalue', 'vtiger_modtracker_detail.postvalue'])
 			->from('vtiger_modtracker_detail')
 			->leftJoin('vtiger_modtracker_basic', 'vtiger_modtracker_detail.id = vtiger_modtracker_basic.id')
-			->where(['vtiger_modtracker_basic.crmid' => $record, 'vtiger_modtracker_detail.fieldname' => $fieldName]);
+			->where(['vtiger_modtracker_basic.crmid' => $record, 'vtiger_modtracker_detail.fieldname' => $fieldName])->orderBy(['vtiger_modtracker_basic.id' => SORT_ASC]);
 		$dataReader = $query->createCommand()->query();
 		while ($row = $dataReader->read()) {
 			$rows[] = $row;

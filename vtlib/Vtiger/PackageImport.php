@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com.
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
 namespace vtlib;
@@ -613,7 +613,7 @@ class PackageImport extends PackageExport
 	 */
 	public function importModule()
 	{
-		$tabname = $this->_modulexml->name;
+		$moduleName = (string) $this->_modulexml->name;
 		$tabLabel = $this->_modulexml->label;
 		$tabVersion = $this->_modulexml->version;
 		$isextension = false;
@@ -632,7 +632,7 @@ class PackageImport extends PackageExport
 		$vtigerMaxVersion = $this->_modulexml->dependencies->vtiger_max_version;
 
 		$moduleInstance = new Module();
-		$moduleInstance->name = $tabname;
+		$moduleInstance->name = $moduleName;
 		$moduleInstance->label = $tabLabel;
 		$moduleInstance->isentitytype = (true !== $isextension);
 		$moduleInstance->version = (!$tabVersion) ? 0 : $tabVersion;
@@ -657,8 +657,13 @@ class PackageImport extends PackageExport
 		$this->importCronTasks($this->_modulexml);
 		Module::fireEvent($moduleInstance->name, Module::EVENT_MODULE_POSTINSTALL);
 		register_shutdown_function(function () {
-			chdir(ROOT_DIRECTORY);
-			(new \App\BatchMethod(['method' => '\App\UserPrivilegesFile::recalculateAll', 'params' => []]))->save();
+			try {
+				chdir(ROOT_DIRECTORY);
+				(new \App\BatchMethod(['method' => '\App\UserPrivilegesFile::recalculateAll', 'params' => []]))->save();
+			} catch (\Throwable $e) {
+				\App\Log::error($e->getMessage() . PHP_EOL . $e->__toString());
+				throw $e;
+			}
 		});
 	}
 
@@ -1064,7 +1069,7 @@ class PackageImport extends PackageExport
 
 		foreach ($modulenode->customlinks->customlink as $customlinknode) {
 			$handlerInfo = null;
-			if (!empty($customlinknode->handler_path)) {
+			if (isset($customlinknode->handler_path)) {
 				$handlerInfo = [];
 				$handlerInfo = ['path' => "$customlinknode->handler_path",
 					'class' => "$customlinknode->handler_class",
@@ -1150,9 +1155,11 @@ class PackageImport extends PackageExport
 		}
 		Functions::recurseDelete($dirName);
 		register_shutdown_function(function () {
-			$viewer = \Vtiger_Viewer::getInstance();
-			$viewer->clearAllCache();
-			Functions::recurseDelete('cache/templates_c');
+			try {
+				Functions::recurseDelete('cache/templates_c');
+			} catch (\Exception $e) {
+				\App\Log::error($e->getMessage() . PHP_EOL . $e->__toString());
+			}
 		});
 		\App\Module::createModuleMetaFile();
 		\App\Cache::clear();
@@ -1202,7 +1209,7 @@ class PackageImport extends PackageExport
 						break;
 					case 'displayType':
 						$displayType = (int) $fieldNode->displaytype;
-						if (!\in_array($displayType, $fieldModel->displayTypeBase())) {
+						if (!isset($fieldModel->displayTypeBase()[$displayType])) {
 							throw new \App\Exceptions\IllegalValue("ERR_NOT_ALLOWED_VALUE||{$name}||" . $displayType, 406);
 						}
 						$fieldModel->set($name, $displayType);

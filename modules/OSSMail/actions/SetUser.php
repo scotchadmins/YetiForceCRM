@@ -3,8 +3,8 @@
 /**
  * OSSMail SetUser action class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class OSSMail_SetUser_Action extends \App\Controller\Action
 {
@@ -17,9 +17,9 @@ class OSSMail_SetUser_Action extends \App\Controller\Action
 	 */
 	public function checkPermission(App\Request $request)
 	{
-		$currentUserPriviligesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
+		$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
 		$users = OSSMail_Autologin_Model::getAutologinUsers();
-		if (!$currentUserPriviligesModel->hasModulePermission($request->getModule()) || !isset($users[$request->getInteger('user')])) {
+		if (!$userPrivilegesModel->hasModulePermission($request->getModule()) || !isset($users[$request->getInteger('user')])) {
 			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
 		}
 	}
@@ -32,6 +32,7 @@ class OSSMail_SetUser_Action extends \App\Controller\Action
 	public function process(App\Request $request)
 	{
 		$user = $request->getInteger('user');
+		OSSMail_Logout_Model::logoutCurrentUser();
 		\App\Session::set('AutoLoginUser', $user);
 		OSSMail_Autologin_Model::updateActive($user);
 		$response = new Vtiger_Response();

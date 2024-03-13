@@ -2,8 +2,8 @@
 /**
  * Base for action creating relations on the basis of prefix.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -13,7 +13,13 @@
 abstract class OSSMailScanner_PrefixScannerAction_Model
 {
 	public $prefix;
+	/**
+	 * @var string Module name
+	 */
 	public $moduleName;
+	/**
+	 * @var OSSMail_Mail_Model Mail instance
+	 */
 	public $mail;
 	public $tableName;
 	public $tableColumn;

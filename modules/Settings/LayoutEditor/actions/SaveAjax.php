@@ -1,11 +1,17 @@
 <?php
 
 /**
- * Save Inventory Action Class.
+ * Settings layout editor save action field.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @package   Settings.Action
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ */
+
+/**
+ * Settings layout editor save action class.
  */
 class Settings_LayoutEditor_SaveAjax_Action extends Settings_Vtiger_Basic_Action
 {
@@ -20,6 +26,9 @@ class Settings_LayoutEditor_SaveAjax_Action extends Settings_Vtiger_Basic_Action
 		$this->exposeMethod('saveSequence');
 		$this->exposeMethod('delete');
 		$this->exposeMethod('contextHelp');
+		if ($recordId = \App\Request::_get('record')) {
+			Settings_Vtiger_Tracker_Model::setRecordId($recordId);
+		}
 		Settings_Vtiger_Tracker_Model::addBasic('save');
 	}
 
@@ -32,7 +41,7 @@ class Settings_LayoutEditor_SaveAjax_Action extends Settings_Vtiger_Basic_Action
 	{
 		$type = $request->getInteger('type');
 		$moduleName = $request->getByType('sourceModule', 'Alnum');
-		if ($result['success'] = (new \App\BatchMethod(['method' => '\App\Module::changeType', 'params' => ['module' => $moduleName, 'type' => $type]]))->save()) {
+		if ($result['success'] = (new \App\BatchMethod(['method' => '\App\Module::changeType', 'params' => [$moduleName, $type]]))->save()) {
 			$result['message'] = \App\Language::translate('LBL_CHANGED_MODULE_TYPE_INFO', $request->getModule(false));
 		}
 		$response = new Vtiger_Response();
@@ -47,53 +56,37 @@ class Settings_LayoutEditor_SaveAjax_Action extends Settings_Vtiger_Basic_Action
 	 */
 	public function saveInventoryField(App\Request $request)
 	{
-		$inventory = Vtiger_Inventory_Model::getInstance($request->getByType('sourceModule', 'Standard'));
-		if ($isNew = $request->isEmpty('id')) {
-			$fieldModel = $inventory->getFieldCleanInstance($request->getByType('type'));
-			$fieldModel->setDefaultDataConfig();
+		$inventory = Vtiger_Inventory_Model::getInstance($request->getByType('sourceModule', \App\Purifier::STANDARD));
+		$recordId = $request->getInteger('record', 0);
+		if ($recordId) {
+			$fieldModel = $inventory->getFieldById($request->getInteger('record'));
 		} else {
-			$fieldModel = $inventory->getFieldById($request->getInteger('id'));
+			$fieldModel = $inventory->getFieldCleanInstance($request->getByType('type', \App\Purifier::STANDARD))->setDefaultDataConfig();
 		}
-		$fields = ['label', 'defaultValue', 'block', 'displayType', 'params', 'colSpan'];
-		foreach ($fields as $name) {
-			if ($request->has($name)) {
-				switch ($name) {
-					case 'label':
-						$fieldModel->set($name, $request->getByType($name, 'Text'));
-						break;
-					case 'defaultValue':
-						$fieldModel->set($name, $request->getByType($name, 'Text'));
-						break;
-					case 'block':
-						$blockId = $request->getInteger($name);
-						if (!\in_array($blockId, $fieldModel->getBlocks())) {
-							throw new \App\Exceptions\IllegalValue("ERR_NOT_ALLOWED_VALUE||{$name}||" . $blockId, 406);
-						}
-						$fieldModel->set($name, $blockId);
-						break;
-					case 'displayType':
-						$displayType = $request->getInteger($name);
-						if (!\in_array($displayType, $fieldModel->displayTypeBase())) {
-							throw new \App\Exceptions\IllegalValue("ERR_NOT_ALLOWED_VALUE||{$name}||" . $displayType, 406);
-						}
-						$fieldModel->set($name, $displayType);
-						break;
-					case 'params':
-						$fieldModel->set($name, $request->getByType($name, 'Text'));
-						break;
-					case 'colSpan':
-						$fieldModel->set($name, $request->getInteger($name));
-						break;
-					default:
-						break;
+
+		$params = [];
+		foreach ($fieldModel->getConfigFields() as $fieldName => $field) {
+			if ($request->has($fieldName) && !$field->isEditableReadOnly()) {
+				$value = $request->getByType($fieldName, $field->get('purifyType'));
+				$fieldUITypeModel = $field->getUITypeModel();
+				$fieldUITypeModel->validate($value, true);
+				$value = $field->getDBValue($value);
+				if (\in_array($fieldName, $fieldModel->getParams())) {
+					$params[$fieldName] = $value;
+				} else {
+					$fieldModel->set($field->getColumnName(), $value);
 				}
 			}
 		}
-		$inventory->saveField($fieldModel);
-		$data = $fieldModel->getData();
-		$data['translate'] = \App\Language::translate($data['label'], $fieldModel->getModuleName());
+		if ($params) {
+			$fieldModel->set('params', \App\Json::encode($params));
+		}
+
+		$result = $inventory->saveField($fieldModel);
+		\Settings_Vtiger_Tracker_Model::addDetail($fieldModel->getPreviousValue(), $recordId ? array_intersect_key($fieldModel->getData(), $fieldModel->getPreviousValue()) : $fieldModel->getData());
+
 		$response = new Vtiger_Response();
-		$response->setResult(['data' => $data, 'edit' => !$isNew]);
+		$response->setResult($result);
 		$response->emit();
 	}
 

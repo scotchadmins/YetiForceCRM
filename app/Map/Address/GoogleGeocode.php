@@ -3,13 +3,14 @@
 /**
  * Address finder Google file.
  *
- * @see       maps.googleapis.com Documentation  of Google Geocoding API
+ * @see https://maps.googleapis.com Documentation  of Google Geocoding API
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 namespace App\Map\Address;
@@ -26,24 +27,23 @@ class GoogleGeocode extends Base
 	 */
 	protected static $url = 'https://maps.googleapis.com/maps/api/geocode/json?';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $docUrl = 'https://code.google.com/apis/console/?noredirect';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $customFields = [
 		'key' => [
-			'type' => 'text',
-			'validator' => 'required,custom[onlyLetterNumber]'
+			'validator' => [['name' => 'AlphaNumeric']],
+			'uitype' => 1,
+			'label' => 'LBL_KEY',
+			'purifyType' => \App\Purifier::ALNUM,
+			'maximumlength' => '200',
+			'typeofdata' => 'V~M',
+			'tooltip' => 'LBL_KEY_PLACEHOLDER',
 		],
 	];
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function find($value)
 	{
 		if (empty($value) || !\App\RequestUtil::isNetConnection()) {
@@ -87,7 +87,9 @@ class GoogleGeocode extends Base
 					foreach ($body['results'] as $row) {
 						$rows[] = [
 							'label' => $row['formatted_address'],
-							'address' => $this->parse($row['address_components'])
+							'address' => $this->parse($row['address_components']),
+							'coordinates' => ['lat' => $row['geometry']['lat'], 'lon' => $row['geometry']['lng']],
+							'countryCode' => '',
 						];
 					}
 				}

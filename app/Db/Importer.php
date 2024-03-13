@@ -4,8 +4,8 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -28,7 +28,7 @@ class Importer
 	/**
 	 * Start time.
 	 *
-	 * @var [type]
+	 * @var string|float
 	 */
 	private $startTime;
 	/**
@@ -55,7 +55,7 @@ class Importer
 	/**
 	 * Array with objects to import.
 	 *
-	 * @var App\Db\Importers\Base[]
+	 * @var Base[]
 	 */
 	private $importers = [];
 
@@ -597,6 +597,9 @@ class Importer
 		if (isset($importer->dropColumns)) {
 			$this->dropColumns($importer->dropColumns);
 		}
+		if (isset($importer->dropIndexes)) {
+			$this->dropIndexes($importer->dropIndexes);
+		}
 	}
 
 	/**
@@ -662,13 +665,29 @@ class Importer
 				} else {
 					$tableSchema = $schema->getTableSchema($tableName);
 					foreach ($this->getColumns($importer, $table) as $columnName => $column) {
-						if (!isset($tableSchema->columns[$columnName])) {
+						$renameFrom = $mode = null;
+						if (\is_array($column)) {
+							$renameFrom = $column['renameFrom'] ?? '';
+							$mode = $column['mode'] ?? $mode; // 0,null - create/update, 1 - update only
+							$column = $column['type'] ?? '';
+						}
+						$columnExists = isset($tableSchema->columns[$columnName]);
+						if ($renameFrom && !$columnExists && isset($tableSchema->columns[$renameFrom])) {
+							$this->logs .= "  > rename column: {$tableName}:{$renameFrom} -> {$columnName}... ";
+							$start = microtime(true);
+							$dbCommand->renameColumn($tableName, $renameFrom, $columnName)->execute();
+							$time = round((microtime(true) - $start), 1);
+							$this->logs .= "done    ({$time}s)\n";
+							$tableSchema = $schema->getTableSchema($tableName, true);
+							$columnExists = isset($tableSchema->columns[$columnName]);
+						}elseif (!$columnExists && 1 !== $mode) {
 							$this->logs .= "  > add column: $tableName:$columnName ... ";
 							$start = microtime(true);
 							$dbCommand->addColumn($tableName, $columnName, $column)->execute();
 							$time = round((microtime(true) - $start), 1);
 							$this->logs .= "done    ({$time}s)\n";
-						} elseif ($column instanceof \yii\db\ColumnSchemaBuilder && $this->compareColumns($queryBuilder, $tableSchema->columns[$columnName], $column)) {
+						}
+						if ($columnExists && $column instanceof \yii\db\ColumnSchemaBuilder && $this->compareColumns($queryBuilder, $tableSchema->columns[$columnName], $column)) {
 							$primaryKey = false;
 							if ($column instanceof \yii\db\ColumnSchemaBuilder && (\in_array($column->get('type'), ['upk', 'pk', 'ubigpk', 'bigpk']))) {
 								$primaryKey = true;
@@ -707,7 +726,7 @@ class Importer
 					}
 				}
 			} catch (\Throwable $e) {
-				$this->logs .= " | Error(7) [{$e->getMessage()}] in  \n{$e->getTraceAsString()} !!!\n";
+				$this->logs .= " | Error(7) {$tableName} [{$e->getMessage()}] in  \n{$e->getTraceAsString()} !!!\n";
 				if ($this->dieOnError) {
 					throw new \App\Exceptions\AppException('Importer error: ' . $e->getMessage(), (int) $e->getCode(), $e);
 				}
@@ -731,14 +750,14 @@ class Importer
 								$this->logs .= "  > update index: {$index[0]} ... ";
 								$start = microtime(true);
 								$dbCommand->dropIndex($index[0], $tableName)->execute();
-								$dbCommand->createIndex($index[0], $tableName, $index[1], (isset($index[2]) && $index[2]) ? true : false)->execute();
+								$dbCommand->createIndex($index[0], $tableName, $index[1], !empty($index[2]))->execute();
 								$time = round((microtime(true) - $start), 1);
 								$this->logs .= "done    ({$time}s)\n";
 							}
 						} else {
 							$this->logs .= "  > create index: {$index[0]} ... ";
 							$start = microtime(true);
-							$dbCommand->createIndex($index[0], $tableName, $index[1], (isset($index[2]) && $index[2]) ? true : false)->execute();
+							$dbCommand->createIndex($index[0], $tableName, $index[1], !empty($index[2]))->execute();
 							$time = round((microtime(true) - $start), 1);
 							$this->logs .= "done    ({$time}s)\n";
 						}
@@ -760,7 +779,7 @@ class Importer
 						}
 					}
 					if ($status) {
-						$this->logs .= "  > update primary key: {$primaryKey[0]} , table: $tableName , column: {$primaryKey[1]} ... ";
+						$this->logs .= "  > update primary key: {$primaryKey[0]} , table: $tableName , column: " . (\is_array($primaryKey[1]) ? implode(',', $primaryKey[1]) : $primaryKey[1]) . ' ... ';
 						$start = microtime(true);
 						try {
 							if (isset($dbPrimaryKeys[$primaryKey[0]])) {
@@ -797,7 +816,7 @@ class Importer
 	 */
 	protected function compareColumns(\yii\db\QueryBuilder $queryBuilder, \yii\db\ColumnSchema $baseColumn, \yii\db\ColumnSchemaBuilder $targetColumn)
 	{
-		return rtrim($baseColumn->dbType, ' unsigned') !== strtok($queryBuilder->getColumnType($targetColumn), ' ')
+		return strtok($baseColumn->dbType, ' ') !== strtok($queryBuilder->getColumnType($targetColumn), ' ')
 		|| ($baseColumn->allowNull !== (null === $targetColumn->isNotNull))
 		|| ($baseColumn->defaultValue !== $targetColumn->default)
 		|| ($baseColumn->unsigned !== $targetColumn->isUnsigned)
@@ -830,7 +849,7 @@ class Importer
 				}
 			}
 			if ($add) {
-				$this->logs .= "  > add: $keyName, $sourceTableName ... ";
+				$this->logs .= "  > add: {$keyName}, {$sourceTableName}:{$key[2]}, {$destTableName}:{$key[4]} ... ";
 				$start = microtime(true);
 				try {
 					$dbCommand->addForeignKey($keyName, $sourceTableName, $key[2], $destTableName, $key[4], $key[5], $key[6])->execute();

@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
 namespace vtlib;
@@ -46,8 +46,6 @@ class Module extends ModuleBasic
 	 * @param mixed $functionName
 	 * @param mixed $fieldName
 	 * @param mixed $fields
-	 *
-	 * @internal Creates table vtiger_crmentityrel if it does not exists
 	 */
 	public function setRelatedList($moduleInstance, $label = '', $actions = false, $functionName = 'getRelatedList', $fieldName = null, $fields = [])
 	{
@@ -128,12 +126,9 @@ class Module extends ModuleBasic
 	/**
 	 * Unset related list information that exists with other module.
 	 *
-	 * @param \Module Instance of target module with which relation should be setup
-	 * @param string Label to display in related list (default is target module name)
-	 * @param string Callback function name of this module to use as handler
-	 * @param mixed $moduleInstance
-	 * @param mixed $label
-	 * @param mixed $function_name
+	 * @param Module $moduleInstance Instance of target module with which relation should be setup
+	 * @param string $label          Label to display in related list (default is target module name)
+	 * @param string $function_name  Callback function name of this module to use as handler
 	 */
 	public function unsetRelatedList($moduleInstance, $label = '', $function_name = 'getRelatedList')
 	{
@@ -143,15 +138,14 @@ class Module extends ModuleBasic
 		if (empty($label)) {
 			$label = $moduleInstance->name;
 		}
-		$id = (new \App\Db\Query())
+		$relationId = (new \App\Db\Query())
 			->select(['relation_id'])
 			->from('vtiger_relatedlists')
 			->where(['tabid' => $this->id, 'related_tabid' => $moduleInstance->id, 'name' => $function_name, 'label' => $label])
 			->scalar();
-		$createCommand = \App\Db::getInstance()->createCommand();
-		$createCommand->delete('vtiger_relatedlists', ['relation_id' => $id])->execute();
-		$createCommand->delete('vtiger_relatedlists_fields', ['relation_id' => $id])->execute();
-		\App\Relation::clearCacheById($id);
+		if ($relationId) {
+			\Vtiger_Relation_Model::removeRelationById($relationId);
+		}
 		\App\Log::trace("Unsetting relation with $moduleInstance->name ... DONE", __METHOD__);
 	}
 
@@ -330,6 +324,12 @@ class Module extends ModuleBasic
 		$fire = self::fireEvent($moduleName, $eventType);
 		if ($fire) {
 			\App\Db::getInstance()->createCommand()->update('vtiger_tab', ['presence' => $enableDisable], ['name' => $moduleName])->execute();
+			$tabId = \App\Module::getModuleId($moduleName);
+			\App\Cache::delete('moduleTabByName', $moduleName);
+			\App\Cache::delete('moduleTabById', $tabId);
+			\App\Cache::delete('moduleTabs', 'all');
+			\App\Cache::staticDelete('module', $moduleName);
+			\App\Cache::staticDelete('module', $tabId);
 			\App\Module::createModuleMetaFile();
 			\Settings_GlobalPermission_Record_Model::recalculate();
 			$menuRecordModel = new \Settings_Menu_Record_Model();

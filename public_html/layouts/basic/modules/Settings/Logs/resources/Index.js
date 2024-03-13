@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 Settings_Vtiger_Index_Js('Settings_Logs_Index_Js', {
@@ -27,7 +27,7 @@ Settings_Vtiger_Index_Js('Settings_Logs_Index_Js', {
 			});
 	},
 	registerWarningsList: function (container) {
-		container.find('table').dataTable({
+		container.find('.js-warning-table').dataTable({
 			order: [
 				[2, 'desc'],
 				[1, 'asc']
@@ -35,8 +35,8 @@ Settings_Vtiger_Index_Js('Settings_Logs_Index_Js', {
 			lengthMenu: [20, 40, 60, 80, 100],
 			pageLength: 20
 		});
-		container.find('.showDescription').on('click', (e) => {
-			app.showModalWindow($(e.currentTarget).closest('td').find('.showDescriptionContent').html());
+		container.find('.js-show-description').on('click', (e) => {
+			app.showModalWindow($(e.currentTarget).closest('td').find('.js-show-description-content').html());
 		});
 		container.find('.setIgnore').on('click', (e) => {
 			container.find('.js-popover-tooltip').popover('hide');
@@ -111,5 +111,56 @@ Settings_Vtiger_Index_Js('Settings_Logs_Index_Js', {
 	},
 	registerEventsLoadContent: function (thisInstance, mode, container) {
 		thisInstance.registerWarningsFolders(container);
+	},
+	reloadContent: function () {
+		$('.js-tabs li .active').trigger('click');
+	},
+	registerTabEvents: function () {
+		var thisInstance = this;
+		$('.js-tabs li').on('click', function () {
+			thisInstance.loadContent($(this).data('mode'), false, $(this).data('params'));
+		});
+	},
+	getSelectedFolders: function () {
+		var selected = [];
+		$.each($('#jstreeContainer').jstree('get_selected', true), function (index, value) {
+			selected.push(value.original.subPath);
+		});
+		return selected;
+	},
+	loadContent: function (mode, page, modeParams) {
+		const thisInstance = this;
+		let container = $('.indexContainer');
+		let params = {
+			mode: mode,
+			module: app.getModuleName(),
+			parent: app.getParentModuleName(),
+			view: app.getViewName()
+		};
+		if (page) {
+			params.page = page;
+		}
+		if (modeParams) {
+			params.params = modeParams;
+		}
+		const progressIndicatorElement = $.progressIndicator({
+			position: 'html',
+			blockInfo: {
+				enabled: true,
+				elementToBlock: container
+			}
+		});
+		AppConnector.request(params).done(function (data) {
+			progressIndicatorElement.progressIndicator({ mode: 'hide' });
+			container.html(data);
+			thisInstance.registerEventsLoadContent(thisInstance, mode, container);
+		});
+	},
+	/**
+	 * Register events
+	 */
+	registerEvents: function () {
+		this.registerTabEvents();
+		this.reloadContent();
 	}
 });

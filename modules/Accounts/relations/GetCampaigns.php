@@ -4,8 +4,8 @@
  *
  * @package   Relation
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 /**
@@ -13,9 +13,7 @@
  */
 class Accounts_GetCampaigns_Relation extends Campaigns_GetCampaigns_Relation
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function delete(int $sourceRecordId, int $destinationRecordId): bool
 	{
 		return (bool) App\Db::getInstance()->createCommand()->delete(self::TABLE_NAME, ['and',
@@ -27,9 +25,7 @@ class Accounts_GetCampaigns_Relation extends Campaigns_GetCampaigns_Relation
 		])->execute();
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function create(int $sourceRecordId, int $destinationRecordId): bool
 	{
 		$result = false;

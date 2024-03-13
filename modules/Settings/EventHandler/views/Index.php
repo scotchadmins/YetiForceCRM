@@ -5,9 +5,10 @@
  *
  * @package   Settings.View
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
- * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 /**
@@ -15,17 +16,13 @@
  */
 class Settings_EventHandler_Index_View extends Settings_Vtiger_Index_View
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function preProcess(App\Request $request, $display = true)
 	{
 		parent::preProcess($request);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$activeTab = 'EditViewPreSave';
@@ -33,7 +30,14 @@ class Settings_EventHandler_Index_View extends Settings_Vtiger_Index_View
 			$activeTab = $request->getByType('tab');
 		}
 		$qualifiedModuleName = $request->getModule(false);
+		$handlers = [];
+		foreach (\App\EventHandler::getAll(false) as $handler) {
+			if (\App\EventHandler::SYSTEM !== (int) $handler['privileges']) {
+				$handlers[$handler['event_name']][$handler['handler_class']] = $handler;
+			}
+		}
 		$viewer = $this->getViewer($request);
+		$viewer->assign('HANDLERS', $handlers);
 		$viewer->assign('QUALIFIED_MODULE', $qualifiedModuleName);
 		$viewer->assign('ACTIVE_TAB', $activeTab);
 		$viewer->view('Index.tpl', $qualifiedModuleName);

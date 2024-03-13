@@ -4,8 +4,8 @@
  *
  * @package   Tests
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Sławomir Kłos <s.klos@yetiforce.com>
  */
 
@@ -28,13 +28,13 @@ class CronTasks extends \Tests\Base
 	public function testUpdateTasksSequence()
 	{
 		$moduleModel = \Settings_CronTasks_Module_Model::getInstance('Settings:CronTasks');
-		$dbSequence = $testSequence = (new \App\Db\Query())->select(['sequence', 'id'])->from('vtiger_cron_task')->orderBy('sequence ASC')->createCommand()->queryAllByGroup(0);
+		$this->logs = $dbSequence = $testSequence = (new \App\Db\Query())->select(['sequence', 'id'])->from('vtiger_cron_task')->where(['status' => 1])->orderBy('sequence ASC')->createCommand()->queryAllByGroup(0);
 
 		$tmp = $testSequence[1];
-		$testSequence[1] = $testSequence[3];
-		$testSequence[3] = $tmp;
+		$testSequence[1] = $testSequence[2];
+		$testSequence[2] = $tmp;
 		$moduleModel->updateSequence($testSequence);
-		$currentSequence = (new \App\Db\Query())->select(['sequence', 'id'])->from('vtiger_cron_task')->orderBy('sequence ASC')->createCommand()->queryAllByGroup(0);
+		$currentSequence = (new \App\Db\Query())->select(['sequence', 'id'])->from('vtiger_cron_task')->where(['status' => 1])->orderBy('sequence ASC')->createCommand()->queryAllByGroup(0);
 		$this->assertSame($testSequence, $currentSequence, 'Current sequence is different from provided');
 		$moduleModel->updateSequence($dbSequence);
 	}

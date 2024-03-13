@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com.
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 namespace vtlib;
@@ -18,8 +18,6 @@ class Access
 {
 	/**
 	 * Recalculate sharing access rules.
-	 *
-	 * @internal This function could take up lot of resource while execution
 	 */
 	public static function syncSharingAccess()
 	{
@@ -46,8 +44,6 @@ class Access
 	 * Initialize sharing access.
 	 *
 	 * @param ModuleBasic $moduleInstance
-	 *
-	 * @internal This method is called from Module during creation
 	 */
 	public static function initSharing(ModuleBasic $moduleInstance)
 	{
@@ -68,8 +64,6 @@ class Access
 	 * Delete sharing access setup for module.
 	 *
 	 * @param ModuleBasic $moduleInstance
-	 *
-	 * @internal This method is called from Module during deletion
 	 */
 	public static function deleteSharing(ModuleBasic $moduleInstance)
 	{

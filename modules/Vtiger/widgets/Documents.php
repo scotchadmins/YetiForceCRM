@@ -4,9 +4,10 @@
  *
  * @package Widget
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class Vtiger_Documents_Widget extends Vtiger_RelatedModule_Widget
 {
@@ -42,13 +43,16 @@ class Vtiger_Documents_Widget extends Vtiger_RelatedModule_Widget
 		if (\App\Privilege::isPermitted($moduleName, 'CreateView')) {
 			$links[] = Vtiger_Link_Model::getInstanceFromValues([
 				'linklabel' => App\Language::translate('LBL_MASS_ADD', $moduleName),
-				'linkurl' => 'javascript:Vtiger_Index_Js.massAddDocuments("index.php?module=Documents&view=MassAddDocuments")',
+				'linkdata' => [
+					'url' => 'index.php?module=Documents&view=MassAddDocuments&sourceModule=' . $this->Module . '&sourceRecord=' . $this->Record,
+					'cb' => 'Documents_MassAddDocuments_Js.register',
+					'view' => 'Detail',
+				],
 				'linkicon' => 'yfi-document-templates',
-				'linkclass' => 'btn-light btn-sm',
+				'linkclass' => 'btn-light btn-sm js-show-modal',
 			]);
 		}
-		if (!empty($this->Data['email_template']) && \App\Config::main('isActiveSendingMails') && \App\Privilege::isPermitted('OSSMail')
-			&& 1 === \App\User::getCurrentUserModel()->getDetail('internal_mailer') && \App\Record::isExists($this->Data['email_template'], 'EmailTemplates')
+		if (!empty($this->Data['email_template']) && \App\Mail::checkInternalMailClient() && \App\Record::isExists($this->Data['email_template'], 'EmailTemplates')
 		) {
 			$links[] = Vtiger_Link_Model::getInstanceFromValues([
 				'linkhint' => App\Language::translate('LBL_SEND_MAIL', $moduleName),

@@ -4,8 +4,8 @@
  *
  * @package   Cron
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -15,9 +15,7 @@
  */
 class Vtiger_AddressBook_Cron extends \App\CronHandler
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process()
 	{
 		\App\Log::trace('Start create AddressBook');
@@ -51,6 +49,7 @@ class Vtiger_AddressBook_Cron extends \App\CronHandler
 			if (empty($fields)) {
 				continue;
 			}
+			$this->updateLastActionTime();
 			$emailFields = array_keys($fields);
 			$metainfo = \App\Module::getEntityInfo($moduleName);
 			$queryFields = array_merge(['id'], $metainfo['fieldnameArr'], $emailFields);

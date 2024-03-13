@@ -6,7 +6,7 @@
 * The Initial Developer of the Original Code is vtiger.
 * Portions created by vtiger are Copyright (C) vtiger.
 * All Rights Reserved.
-* Contributor(s): YetiForce Sp. z o.o
+* Contributor(s): YetiForce S.A.
 ********************************************************************************/
 -->*}
 {strip}
@@ -17,7 +17,7 @@
 					{assign var=IMAGE value=$RECORD->getImage()}
 					<span class="moduleIcon{if $IMAGE} o-detail__record-img mr-1{/if}">
 						{if $IMAGE}
-							<img class="js-detail-hierarchy rounded-circle" data-js="click" title="{$RECORD->getName()}" src="{$IMAGE.url}">
+							<img class="js-detail-hierarchy rounded-circle" data-js="click" title="{$RECORD->getName()}" src="{$IMAGE['url']}">
 						{else}
 							<span class="pl-0 o-detail__icon js-detail__icon js-detail-hierarchy yfm-{$MODULE}" data-js="click"></span>
 						{/if}
@@ -41,11 +41,11 @@
 						<span class="modCT_{$MODULE_NAME}">{$RECORD->getName()}</span>
 					</h4>
 					<span class="fas fa-info-circle fa-sm js-popover-icon d-none" data-js="class: d-none"></span>
-					{assign var=RECORD_STATE value=\App\Record::getState($RECORD->getId())}
-					{if $RECORD_STATE !== 'Active'}
+					{assign var=RECORD_STATE value=\App\Record::getStateLabel($RECORD->getId())}
+					{if $RECORD_STATE && $RECORD_STATE !== 'Active'}
 						{assign var=COLOR value=App\Config::search('LIST_ENTITY_STATE_COLOR')}
-						<span class="badge badge-secondary ml-1" {if $COLOR[$RECORD_STATE]}style="background-color: {$COLOR[$RECORD_STATE]};"{/if}>
-							{if \App\Record::getState($RECORD->getId()) === 'Trash'}
+						<span class="badge badge-secondary ml-1" {if $COLOR[$RECORD_STATE]}style="background-color: {$COLOR[$RECORD_STATE]};" {/if}>
+							{if $RECORD_STATE === 'Trash'}
 								{\App\Language::translate('LBL_ENTITY_STATE_TRASH')}
 							{else}
 								{\App\Language::translate('LBL_ENTITY_STATE_ARCHIVED')}

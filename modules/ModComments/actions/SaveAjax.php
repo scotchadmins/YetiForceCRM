@@ -1,49 +1,62 @@
 <?php
-/* +***********************************************************************************
- * The contents of this file are subject to the vtiger CRM Public License Version 1.0
- * ("License"); You may not use this file except in compliance with the License
- * The Original Code is:  vtiger CRM Open Source
- * The Initial Developer of the Original Code is vtiger.
- * Portions created by vtiger are Copyright (C) vtiger.
- * All Rights Reserved.
- * Contributor(s): YetiForce.com
- * *********************************************************************************** */
+/**
+ * ModComments save ajax action file.
+ *
+ * @package   Action
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ */
 
+/**
+ * ModComments save ajax action class.
+ */
 class ModComments_SaveAjax_Action extends Vtiger_SaveAjax_Action
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
-		//Do not allow ajax edit of existing comments
-		if (!$request->isEmpty('record', true)) {
-			throw new \App\Exceptions\AppException('LBL_PERMISSION_DENIED');
-		}
-		$this->record = Vtiger_Record_Model::getCleanInstance($request->getModule());
-		if (!$this->record->isCreateable()) {
-			throw new \App\Exceptions\AppException('LBL_PERMISSION_DENIED', 406);
+		parent::checkPermission($request);
+		$parentCommentId = $request->isEmpty('parent_comments') ? 0 : $request->getInteger('parent_comments');
+		if ($parentCommentId && \App\Record::STATE_ACTIVE !== \App\Record::getState($parentCommentId)) {
+			throw new \App\Exceptions\NoPermittedToRecord('ERR_NO_PERMISSIONS_FOR_THE_RECORD', 406);
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
-	public function process(App\Request $request)
+	/** {@inheritdoc} */
+	public function getRecordModelFromRequest(App\Request $request)
 	{
-		$this->saveRecord($request);
-		$fieldModelList = $this->record->getModule()->getFields();
-		$result = [];
-		foreach ($fieldModelList as $fieldName => $fieldModel) {
-			$fieldValue = $this->record->get($fieldName);
-			$result[$fieldName] = ['value' => $fieldValue, 'display_value' => $fieldModel->getDisplayValue($fieldValue)];
+		if ('QuickEdit' === $request->getByType('fromView')) {
+			$fields = array_merge(['reasontoedit', 'commentcontent'], array_keys($this->record->getModule()->getFieldsByType('serverAccess', true)));
+		} else {
+			$request->set('assigned_user_id', App\User::getCurrentUserRealId());
 		}
-		$result['id'] = $this->record->getId();
-		$result['_recordLabel'] = $this->record->getName();
-		$result['_recordId'] = $this->record->getId();
-		$response = new Vtiger_Response();
-		$response->setEmitType(Vtiger_Response::$EMIT_JSON);
-		$response->setResult($result);
-		$response->emit();
+		if (!empty($fields)) {
+			$viewName = $this->record->isNew() ? 'Create' : 'Edit';
+			foreach ($this->record->getModule()->getFields() as $fieldName => $fieldModel) {
+				if (!$fieldModel->isWritable($viewName)) {
+					continue;
+				}
+				if ($request->has($fieldName) && !\in_array($fieldName, $fields)) {
+					$fieldModel->set('isReadOnly', true);
+				}
+			}
+		}
+		return parent::getRecordModelFromRequest($request);
+	}
+
+	/**
+	 * Add custom data to the response.
+	 *
+	 * @param array $result
+	 *
+	 * @return void
+	 */
+	protected function addCustomResult(array &$result): void
+	{
+		$result['modifiedtime']['formatToViewDate'] = \App\Fields\DateTime::formatToViewDate($this->record->get('modifiedtime'));
+		$result['modifiedtime']['formatToDay'] = \App\Fields\DateTime::formatToDay($this->record->get('modifiedtime'));
 	}
 }

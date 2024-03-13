@@ -4,8 +4,8 @@
  *
  * @package   Model
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Rafal Pospiech <r.pospiech@yetiforce.com>
  */
 class Settings_BusinessHours_Record_Model extends Settings_Vtiger_Record_Model
@@ -43,9 +43,7 @@ class Settings_BusinessHours_Record_Model extends Settings_Vtiger_Record_Model
 		return $this->get('name');
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function set($key, $value)
 	{
 		if ($oldValue = $this->get($key)) {
@@ -143,7 +141,7 @@ class Settings_BusinessHours_Record_Model extends Settings_Vtiger_Record_Model
 			$data['id'] = \App\Purifier::purifyByType($data['id'], 'Integer');
 		}
 		$data['name'] = \App\Purifier::purifyByType($data['name'], 'Text');
-		if (\App\TextParser::getTextLength($data['name']) > 254) {
+		if (\App\TextUtils::getTextLength($data['name']) > 254) {
 			throw new \App\Exceptions\AppException('ERR_EXCEEDED_NUMBER_CHARACTERS||255', 406);
 		}
 		if (!\is_string($data['working_days'])) {
@@ -157,17 +155,17 @@ class Settings_BusinessHours_Record_Model extends Settings_Vtiger_Record_Model
 			}
 		}
 		$data['working_days'] = implode(',', $days);
-		$data['working_hours_from'] = \App\Purifier::purifyByType($data['working_hours_from'], 'Time');
-		$data['working_hours_to'] = \App\Purifier::purifyByType($data['working_hours_to'], 'Time');
+		$data['working_hours_from'] = \App\Purifier::purifyByType($data['working_hours_from'], 'time');
+		$data['working_hours_to'] = \App\Purifier::purifyByType($data['working_hours_to'], 'time');
 		if (isset($data['holidays']) && 0 !== $data['holidays'] && 1 !== $data['holidays']) {
 			throw new \App\Exceptions\AppException('ERR_NOT_ALLOWED_VALUE||' . $data['holidays'], 406);
 		}
 		if (isset($data['default']) && 0 !== $data['default'] && 1 !== $data['default']) {
 			throw new \App\Exceptions\AppException('ERR_NOT_ALLOWED_VALUE||' . $data['default'], 406);
 		}
-		$data['reaction_time'] = \App\Purifier::purifyByType($data['reaction_time'], 'TimePeriod');
-		$data['idle_time'] = \App\Purifier::purifyByType($data['idle_time'], 'TimePeriod');
-		$data['resolve_time'] = \App\Purifier::purifyByType($data['resolve_time'], 'TimePeriod');
+		$data['reaction_time'] = \App\Purifier::purifyByType($data['reaction_time'], 'timePeriod');
+		$data['idle_time'] = \App\Purifier::purifyByType($data['idle_time'], 'timePeriod');
+		$data['resolve_time'] = \App\Purifier::purifyByType($data['resolve_time'], 'timePeriod');
 		return $data;
 	}
 
@@ -218,6 +216,8 @@ class Settings_BusinessHours_Record_Model extends Settings_Vtiger_Record_Model
 			$value = \App\Fields\TimePeriod::getLabel($value);
 		} elseif ('holidays' === $key) {
 			$value = $value ? \App\Language::translate('LBL_HOLIDAYS', 'Settings:BusinessHours') : '';
+		} else {
+			$value = \App\Purifier::encodeHtml($value);
 		}
 		return $value;
 	}
@@ -238,11 +238,7 @@ class Settings_BusinessHours_Record_Model extends Settings_Vtiger_Record_Model
 		return $delete;
 	}
 
-	/**
-	 * Function to get the list view actions for the record.
-	 *
-	 * @return array - Associate array of Vtiger_Link_Model instances
-	 */
+	/** {@inheritdoc} */
 	public function getRecordLinks(): array
 	{
 		$links = [];
@@ -252,14 +248,14 @@ class Settings_BusinessHours_Record_Model extends Settings_Vtiger_Record_Model
 				'linklabel' => 'LBL_EDIT_RECORD',
 				'linkurl' => $this->getEditViewUrl(),
 				'linkicon' => 'yfi yfi-full-editing-view',
-				'linkclass' => 'btn btn-primary btn-sm'
+				'linkclass' => 'btn btn-primary btn-sm',
 			],
 			[
 				'linktype' => 'LISTVIEWRECORD',
 				'linklabel' => 'LBL_DELETE_RECORD',
 				'linkurl' => 'javascript:Settings_BusinessHours_List_Js.deleteById(' . $this->getId() . ');',
 				'linkicon' => 'fas fa-trash-alt',
-				'linkclass' => 'btn text-white btn-danger btn-sm'
+				'linkclass' => 'btn text-white btn-danger btn-sm',
 			],
 		];
 		foreach ($recordLinks as $recordLink) {

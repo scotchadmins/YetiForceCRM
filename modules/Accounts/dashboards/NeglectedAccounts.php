@@ -3,8 +3,8 @@
 /**
  * Wdiget to show neglected accounts.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Tomasz Kur <t.kur@yetiforce.com>
  */
 class Accounts_NeglectedAccounts_Dashboard extends Vtiger_IndexAjax_View
@@ -23,8 +23,7 @@ class Accounts_NeglectedAccounts_Dashboard extends Vtiger_IndexAjax_View
 	private function getAccounts($moduleName, $user, Vtiger_Paging_Model $pagingModel)
 	{
 		$queryGenerator = new App\QueryGenerator($moduleName);
-		$queryGenerator->setFields(['id', 'accountname', 'assigned_user_id']);
-		$queryGenerator->setCustomColumn('vtiger_entity_stats.crmactivity');
+		$queryGenerator->setFields(['id', 'accountname', 'assigned_user_id', 'crmactivity']);
 		$queryGenerator->addJoin(['INNER JOIN', 'vtiger_entity_stats', 'vtiger_entity_stats.crmid = vtiger_account.accountid']);
 		$queryGenerator->addNativeCondition(['or', ['<=', 'vtiger_entity_stats.crmactivity', 0], ['vtiger_entity_stats.crmactivity' => null]]);
 		$queryGenerator->addCondition('assigned_user_id', $user, 'e');
@@ -34,8 +33,7 @@ class Accounts_NeglectedAccounts_Dashboard extends Vtiger_IndexAjax_View
 			->addOrderBy(['vtiger_entity_stats.crmactivity' => SORT_ASC])->createCommand()->query();
 		$accounts = [];
 		while ($row = $dataReader->read()) {
-			$row['userModel'] = Users_Privileges_Model::getInstanceById($row['assigned_user_id']);
-			$accounts[$row['id']] = $row;
+			$accounts[$row['id']] = \Vtiger_Module_Model::getInstance($moduleName)->getRecordFromArray($row);
 		}
 		$dataReader->close();
 		$this->conditions = [

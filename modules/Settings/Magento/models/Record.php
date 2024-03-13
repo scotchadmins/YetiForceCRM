@@ -4,8 +4,8 @@
  *
  * @package   Settings.Model
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Dudek <a.dudek@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
@@ -66,12 +66,8 @@ class Settings_Magento_Record_Model extends Settings_Vtiger_Record_Model
 		return '?parent=Settings&module=Magento&action=SaveAjax&mode=save';
 	}
 
-	/**
-	 * Function to get the list view actions for the record.
-	 *
-	 * @return array - Associate array of Vtiger_Link_Model instances
-	 */
-	public function getRecordLinks()
+	/** {@inheritdoc} */
+	public function getRecordLinks(): array
 	{
 		$links = [];
 		$recordLinks = [
@@ -233,6 +229,7 @@ class Settings_Magento_Record_Model extends Settings_Vtiger_Record_Model
 				break;
 			case 'url':
 				$params['uitype'] = 17;
+				$params['maximumlength'] = '250';
 				break;
 			case 'sync_currency':
 			case 'sync_categories':
@@ -254,7 +251,10 @@ class Settings_Magento_Record_Model extends Settings_Vtiger_Record_Model
 		$value = $this->get($key);
 		switch ($key) {
 			case 'status':
-				$value = \App\Language::translate(1 == $value ? 'LBL_ACTIVE' : 'LBL_INACTIVE', 'Settings.Magento');
+				$value = \App\Language::translate(1 == $value ? 'LBL_ACTIVE' : 'LBL_INACTIVE', 'Settings:Magento');
+				break;
+			default:
+				$value = \App\Purifier::encodeHtml($value);
 				break;
 		}
 		return $value;

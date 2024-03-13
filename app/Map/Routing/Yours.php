@@ -4,8 +4,8 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  *
  * @see      https://wiki.openstreetmap.org/wiki/YOURS
@@ -18,25 +18,22 @@ namespace App\Map\Routing;
  */
 class Yours extends Base
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function calculate()
 	{
 		if (!\App\RequestUtil::isNetConnection()) {
 			throw new \App\Exceptions\AppException('ERR_NO_INTERNET_CONNECTION');
 		}
 		$coordinates = [];
-		$travel = $distance = 0;
 		$description = '';
 		foreach ($this->parsePoints() as $track) {
 			$url = $this->url . '?format=geojson&flat=' . $track['startLat'] . '&flon=' . $track['startLon'] . '&tlat=' . $track['endLat'] . '&tlon=' . $track['endLon'] . '&lang=' . \App\Language::getLanguage() . '&instructions=1';
-			\App\Log::beginProfile("GET|Yours::calculate|{$url}", __NAMESPACE__);
+			\App\Log::beginProfile("GET|YoursRouting::calculate|{$url}", __NAMESPACE__);
 			$response = (new \GuzzleHttp\Client(\App\RequestHttp::getOptions()))->request('GET', $url, [
-				'timeout' => 60,
+				'timeout' => 120,
 				'http_errors' => false,
 			]);
-			\App\Log::endProfile("GET|Yours::calculate|{$url}", __NAMESPACE__);
+			\App\Log::endProfile("GET|YoursRouting::calculate|{$url}", __NAMESPACE__);
 			if (200 === $response->getStatusCode()) {
 				$json = \App\Json::decode($response->getBody());
 			} else {
@@ -44,21 +41,17 @@ class Yours extends Base
 			}
 			$coordinates = array_merge($coordinates, $json['coordinates']);
 			$description .= $json['properties']['description'];
-			$travel += $json['properties']['traveltime'];
-			$distance += $json['properties']['distance'];
+			$this->travelTime += $json['properties']['traveltime'];
+			$this->distance += $json['properties']['distance'];
 		}
 		$this->geoJson = [
 			'type' => 'LineString',
 			'coordinates' => $coordinates,
 		];
-		$this->travelTime = $travel;
-		$this->distance = $distance;
 		$this->description = $description;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function parsePoints(): array
 	{
 		$tracks = [];
@@ -82,7 +75,7 @@ class Yours extends Base
 			'startLat' => $startLat,
 			'startLon' => $startLon,
 			'endLat' => $this->end['lat'],
-			'endLon' => $this->end['lon']
+			'endLon' => $this->end['lon'],
 		];
 		return $tracks;
 	}

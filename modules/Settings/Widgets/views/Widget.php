@@ -5,8 +5,8 @@
  *
  * @package   Settings.View
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class Settings_Widgets_Widget_View extends Settings_Vtiger_Index_View
 {
@@ -70,7 +70,6 @@ class Settings_Widgets_Widget_View extends Settings_Vtiger_Index_View
 		$viewer->assign('MODULE_MODEL', $moduleModel);
 		$viewer->assign('QUALIFIED_MODULE', $qualifiedModuleName);
 		$viewer->assign('RELATEDMODULES', \App\Relation::getByModule($widgetModuleName));
-		$viewer->assign('PRIVILEGESMODEL', Users_Privileges_Model::getCurrentUserPrivilegesModel());
 		$className = Vtiger_Loader::getComponentClassName('Widget', $type, $widgetModuleName);
 		if (class_exists($className)) {
 			$widgetInstance = new $className($widgetModuleName, null, null, []);

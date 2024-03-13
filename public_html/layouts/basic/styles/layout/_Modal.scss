@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 
 .modal-content {
 	-moz-box-shadow: 0 0 10px 5px rgba(0, 0, 0, 0.5);
@@ -34,10 +34,7 @@
 	.modal-full {
 		max-width: 72%;
 	}
-}
-@include media-breakpoint-up(md) {
-	.modal-fullscreen:not(.bootbox),
-	.bootbox.modal-fullscreen > .modal-dialog {
+	.modal-fullscreen {
 		top: 21px;
 		right: 32px;
 		left: 0;
@@ -47,19 +44,7 @@
 		margin-right: 0;
 		min-height: calc(100% - 80px); // if not - nested modals will be cutted
 	}
-	.bootbox.modal-fullscreen {
-		.modal-body {
-			padding-bottom: 0;
-		}
-		.bootbox-body {
-			margin-bottom: calculate-rem(-5px);
-		}
-		iframe.modal-iframe {
-			height: calc(100vh - #{calculate-rem(229px)});
-		}
-	}
 }
-
 .modal-blg {
 	max-width: 90%;
 }
@@ -114,4 +99,13 @@
 
 .clonedPopupUi.modal {
 	top: $h-header;
+}
+
+.c-modal-center {
+	display: flex !important;
+	align-items: center;
+	justify-content: center;
+}
+.c-modal-center .modal-dialog {
+	margin: auto;
 }

@@ -5,9 +5,10 @@
  *
  * @package   Model
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Dudek <a.dudek@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
 /**
@@ -25,18 +26,20 @@ class RecycleBin_Module_Model extends Vtiger_Module_Model
 		return \vtlib\Functions::getAllModules(true, false, 0);
 	}
 
-	/**
-	 * Function to identify if the module supports quick search or not.
-	 */
-	public function isQuickSearchEnabled()
+	/** {@inheritdoc} */
+	public function isQuickSearchEnabled(): bool
 	{
 		return false;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
-	public function isAdvSortEnabled()
+	/** {@inheritdoc} */
+	public function isAdvSortEnabled(): bool
+	{
+		return false;
+	}
+
+	/** {@inheritdoc} */
+	public function isCustomViewAdvCondEnabled(): bool
 	{
 		return false;
 	}
@@ -65,7 +68,7 @@ class RecycleBin_Module_Model extends Vtiger_Module_Model
 					['and',
 						['vtiger_crmentity.deleted' => 1],
 						['in', 'setype', array_column($modulesList, 'name')],
-						['<=', 'modifiedtime', $untilModifiedTime]])
+						['<=', 'modifiedtime', $untilModifiedTime], ])
 				->createCommand()->query();
 			while ($row = $dataReader->read()) {
 				if (0 >= $deleteMaxCount) {

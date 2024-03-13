@@ -2,10 +2,10 @@
 /**
  * Environment cli file.
  *
- * @package App
+ * @package Cli
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -78,10 +78,11 @@ class Environment extends Base
 				if (0 === strpos($value, 'LBL_')) {
 					$value = \App\Language::translate($value);
 				}
+				$value = \is_array($value) ? \App\Json::encode($value) : $value;
 				$table[] = [
 					'Parameter' => $item['status'] ? $name : "<light_red>{$name}</light_red>",
-					'Recommended' => $item['recommended'] ?? '-',
-					'Value' => $item['status'] ? $value : "<light_red>{$value}</light_red>",
+					'Recommended' => empty($item['recommended']) ? '-' : print_r($item['recommended'], true),
+					'Value' => $item['status'] ? $value : ("<light_red>{$value}</light_red>"),
 				];
 			}
 			if ($table) {
@@ -103,14 +104,10 @@ class Environment extends Base
 	public function htmlToText(array &$item): void
 	{
 		if (false !== strpos($item['val'], '<b class="text-danger">')) {
-			$item['val'] = preg_replace_callback("'<b class=\"text-danger\">(.*?)</b>'si", function ($match) {
-				return "<light_red>{$match['1']}</light_red>";
-			}, $item['val']);
+			$item['val'] = preg_replace_callback("'<b class=\"text-danger\">(.*?)</b>'si", fn ($match) => "<light_red>{$match['1']}</light_red>", $item['val']);
 		}
 		if (false !== strpos($item['recommended'], '<b class="text-danger">')) {
-			$item['recommended'] = preg_replace_callback("'<b class=\"text-danger\">(.*?)</b>'si", function ($match) {
-				return "<light_red>{$match['1']}</light_red>";
-			}, $item['recommended']);
+			$item['recommended'] = preg_replace_callback("'<b class=\"text-danger\">(.*?)</b>'si", fn ($match) => "<light_red>{$match['1']}</light_red>", $item['recommended']);
 		}
 	}
 }

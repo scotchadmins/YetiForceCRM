@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 window.MailIntegration_Compose = {
@@ -69,7 +69,7 @@ window.MailIntegration_Compose = {
 	/**
 	 * Register autocomplete
 	 *
-	 * @return  {object}  autocomplete instance
+	 * @return  {jQuery}  autocomplete instance
 	 */
 	registerAutocomplete() {
 		return this.container.find('.js-search-input').autocomplete({
@@ -82,7 +82,20 @@ window.MailIntegration_Compose = {
 				window.MailIntegration_Compose.findEmail(request, response);
 			},
 			select: function (e, ui) {
-				window.MailIntegration_Compose.onSelectRecipient(e.toElement, ui.item);
+				let toElement = 'to';
+				if (e.target.dataset.copyTarget) {
+					toElement = e.target.dataset.copyTarget;
+				} else if (e.originalEvent.target.dataset.copyTarget) {
+					toElement = e.originalEvent.target.dataset.copyTarget;
+				} else if (e.originalEvent.originalEvent.target.dataset.copyTarget) {
+					toElement = e.originalEvent.originalEvent.target.dataset.copyTarget;
+				}
+				window.MailIntegration_Compose.copyRecipient(toElement, [
+					{
+						displayName: ui.item.name,
+						emailAddress: ui.item.mail
+					}
+				]);
 			}
 		});
 	},
@@ -107,20 +120,6 @@ window.MailIntegration_Compose = {
 			});
 			callBack(data);
 		});
-	},
-	/**
-	 * [onRecipientSelect description]
-	 *
-	 * @param   {object}  toElement  html node object
-	 * @param   {object}  item       selected item object
-	 */
-	onSelectRecipient(toElement, item) {
-		this.copyRecipient(toElement.dataset.copyTarget ? toElement.dataset.copyTarget : 'to', [
-			{
-				displayName: item.name,
-				emailAddress: item.mail
-			}
-		]);
 	},
 	/**
 	 * Copy recipient to outlook field

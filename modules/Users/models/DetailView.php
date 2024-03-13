@@ -6,21 +6,19 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Users_DetailView_Model extends Vtiger_DetailView_Model
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getDetailViewLinks(array $linkParams): array
 	{
-		$currentUserModel = Users_Record_Model::getCurrentUserModel();
+		$currentUserModel = \App\User::getCurrentUserModel();
 		$recordModel = $this->getRecord();
 		$recordId = $recordModel->getId();
 		$linkModelList['DETAIL_VIEW_BASIC'] = [];
-		if ((true === $currentUserModel->isAdminUser() || $currentUserModel->get('id') === $recordId) && 'Active' === $recordModel->get('status')) {
+		if (($currentUserModel->isAdmin() || $currentUserModel->getId() === $recordId) && 'Active' === $recordModel->get('status')) {
 			$recordModel = $this->getRecord();
 			$detailViewLinks = [];
 			$detailViewLinks[] = [
@@ -31,7 +29,7 @@ class Users_DetailView_Model extends Vtiger_DetailView_Model
 				'linkicon' => 'fas fa-key mr-1',
 				'showLabel' => true,
 			];
-			if (true === $currentUserModel->isAdminUser()) {
+			if ($currentUserModel->isAdmin()) {
 				$detailViewLinks[] = [
 					'linktype' => 'DETAIL_VIEW_ADDITIONAL',
 					'linklabel' => 'BTN_RESET_PASSWORD',
@@ -72,13 +70,26 @@ class Users_DetailView_Model extends Vtiger_DetailView_Model
 				'linkicon' => 'yfi yfi-full-editing-view',
 				'showLabel' => true,
 			];
-			if ('PLL_PASSWORD_2FA' === $recordModel->get('login_method') && $recordModel->getId() === \App\User::getCurrentUserRealId() && 'TOTP_OFF' !== \App\Config::security('USER_AUTHY_MODE')) {
+			if (
+				('PLL_PASSWORD_2FA' === $recordModel->get('login_method') || 'PLL_LDAP_2FA' === $recordModel->get('login_method'))
+			 && $recordModel->getId() === \App\User::getCurrentUserRealId() && 'TOTP_OFF' !== \App\Config::security('USER_AUTHY_MODE')
+			) {
 				$detailViewActionLinks[] = [
 					'linktype' => 'DETAIL_VIEW_BASIC',
 					'linklabel' => 'LBL_2FA_TOTP_QR_CODE',
 					'linkdata' => ['url' => 'index.php?module=Users&view=TwoFactorAuthenticationModal&record=' . $recordId],
 					'linkclass' => 'showModal',
 					'linkicon' => 'fas fa-key',
+					'showLabel' => true,
+				];
+			}
+			if ($currentUserModel->getId() === $recordId && $currentUserModel->get('leader') && \App\Privilege::isPermitted('Users', 'LeaderCanManageGroupMembership')) {
+				$detailViewActionLinks[] = [
+					'linktype' => 'DETAIL_VIEW_BASIC',
+					'linklabel' => 'LBL_GROUP_MEMBERS_CHANGE_VIEW',
+					'linkdata' => ['url' => 'index.php?module=Users&view=Groups&record=' . $recordId],
+					'linkclass' => 'js-show-modal',
+					'linkicon' => 'yfi-groups',
 					'showLabel' => true,
 				];
 			}

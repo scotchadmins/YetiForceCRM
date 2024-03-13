@@ -5,8 +5,8 @@
  *
  * @package   Handler
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 /**
@@ -36,19 +36,21 @@ class Queue_Queue_Handler
 	{
 		$recordModel = \Vtiger_Record_Model::getInstanceById($recordId, 'Queue');
 		$data = \App\Json::decode($recordModel->get('changes')) ?: [];
-		$relatedRecordId = $data['record'];
-		$relatedModule = $data['module'];
-		$changes = $data['changes'] ?: [];
-		if (\App\Record::isExists($relatedRecordId, $relatedModule)) {
-			$relatedRecordModel = \Vtiger_Record_Model::getInstanceById($relatedRecordId, $relatedModule);
-			foreach ($changes as $fieldName => $value) {
-				$fieldModel = $relatedRecordModel->getField($fieldName);
-				if ($fieldModel && $fieldModel->isWritable()) {
-					$relatedRecordModel->set($fieldName, $value);
+		if ($data) {
+			$relatedRecordId = $data['record'];
+			$relatedModule = $data['module'];
+			$changes = $data['changes'] ?: [];
+			if (\App\Record::isExists($relatedRecordId, $relatedModule)) {
+				$relatedRecordModel = \Vtiger_Record_Model::getInstanceById($relatedRecordId, $relatedModule);
+				foreach ($changes as $fieldName => $value) {
+					$fieldModel = $relatedRecordModel->getField($fieldName);
+					if ($fieldModel && $fieldModel->isWritable()) {
+						$relatedRecordModel->set($fieldName, $value);
+					}
 				}
-			}
-			if ($relatedRecordModel->getPreviousValue()) {
-				$relatedRecordModel->save();
+				if ($relatedRecordModel->getPreviousValue()) {
+					$relatedRecordModel->save();
+				}
 			}
 		}
 		$recordModel->set('queue_status', 'PLL_COMPLETED')->save();

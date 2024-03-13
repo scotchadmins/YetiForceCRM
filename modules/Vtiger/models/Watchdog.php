@@ -5,8 +5,8 @@
  *
  * @package Model
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -62,7 +62,7 @@ class Vtiger_Watchdog_Model extends \App\Base
 		$modelClassName = Vtiger_Loader::getComponentClassName('Model', 'Watchdog', $moduleName);
 		$instance = new $modelClassName();
 		$instance->set('module', $moduleName);
-		$instance->set('moduleId', $moduleId ? $moduleId : \App\Module::getModuleId($moduleName));
+		$instance->set('moduleId', $moduleId ?: \App\Module::getModuleId($moduleName));
 		$instance->set('userId', $userId);
 		if (false === static::$cache) {
 			static::$cache = require static::$cacheFile;
@@ -410,7 +410,7 @@ class Vtiger_Watchdog_Model extends \App\Base
 				}
 				$row['type'] = $data[0];
 				$row['name'] = $name;
-				$row['exceptions'] = explode(',', $row['exceptions']);
+				$row['exceptions'] = explode(',', $row['exceptions'] ?? '');
 				$members[] = $row;
 			}
 		} else {
@@ -433,7 +433,7 @@ class Vtiger_Watchdog_Model extends \App\Base
 			->from('u_#__watchdog_module')
 			->where(['module' => \App\Module::getModuleId($this->get('module')), 'member' => $member])->scalar();
 
-		return explode(',', $exceptions);
+		return explode(',', $exceptions ?? '');
 	}
 
 	/**
@@ -445,7 +445,7 @@ class Vtiger_Watchdog_Model extends \App\Base
 		$dataReader = (new App\Db\Query())->from('u_#__watchdog_module')->createCommand()->query();
 		while ($row = $dataReader->read()) {
 			$type = explode(':', $row['member']);
-			$exceptions = explode(',', $row['exceptions']);
+			$exceptions = !empty($row['exceptions']) ? explode(',', $row['exceptions']) : [];
 			$users = \App\PrivilegeUtil::getUserByMember($row['member']);
 			if (!empty($exceptions)) {
 				$users = array_diff($users, $exceptions);
@@ -498,6 +498,6 @@ class Vtiger_Watchdog_Model extends \App\Base
 	 */
 	public static function getSupportedModules()
 	{
-		return Vtiger_Module_Model::getAll([0], ['SMSNotifier', 'Integration', 'Dashboard', 'ModComments', 'Notification'], true);
+		return Vtiger_Module_Model::getAll([0], ['Integration', 'Dashboard', 'ModComments', 'Notification'], true);
 	}
 }

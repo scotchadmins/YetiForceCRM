@@ -5,7 +5,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  *************************************************************************************/
 'use strict';
 
@@ -123,12 +123,14 @@ jQuery.Class(
 		},
 		createModule: function (currentTarget) {
 			var progressIndicatorElement = jQuery.progressIndicator();
-			app.showModalWindow(null, 'index.php?module=ModuleManager&parent=Settings&view=CreateModule', function (
-				wizardContainer
-			) {
-				progressIndicatorElement.progressIndicator({ mode: 'hide' });
-				Settings_Module_Manager_Js.registerModalCreateModule(wizardContainer);
-			});
+			app.showModalWindow(
+				null,
+				'index.php?module=ModuleManager&parent=Settings&view=CreateModule',
+				function (wizardContainer) {
+					progressIndicatorElement.progressIndicator({ mode: 'hide' });
+					Settings_Module_Manager_Js.registerModalCreateModule(wizardContainer);
+				}
+			);
 		},
 		//This will show the notification message using pnotify
 		showNotify: function (customParams) {
@@ -145,29 +147,30 @@ jQuery.Class(
 			const self = this;
 			container.on('click', '.deleteModule', function () {
 				let forModule = $(this).attr('name');
-				Vtiger_Helper_Js.showConfirmationBox({
-					message: app.vtranslate('JS_LBL_ARE_YOU_SURE_YOU_WANT_TO_DELETE')
-				}).done(function (e) {
-					self.frameProgress = $.progressIndicator({
-						position: 'html',
-						message: app.vtranslate('JS_FRAME_IN_PROGRESS'),
-						blockInfo: {
-							enabled: true
-						}
-					});
-					AppConnector.request({
-						module: app.getModuleName(),
-						action: 'Basic',
-						parent: app.getParentModuleName(),
-						mode: 'deleteModule',
-						forModule: forModule
-					}).done(function (data) {
-						app.showNotify({
-							title: app.vtranslate('JS_REMOVED_MODULE'),
-							type: 'info'
+				app.showConfirmModal({
+					title: app.vtranslate('JS_LBL_ARE_YOU_SURE_YOU_WANT_TO_DELETE'),
+					confirmedCallback: () => {
+						self.frameProgress = $.progressIndicator({
+							position: 'html',
+							message: app.vtranslate('JS_FRAME_IN_PROGRESS'),
+							blockInfo: {
+								enabled: true
+							}
 						});
-						app.openUrl('index.php?module=ModuleManager&parent=Settings&view=List');
-					});
+						AppConnector.request({
+							module: app.getModuleName(),
+							action: 'Basic',
+							parent: app.getParentModuleName(),
+							mode: 'deleteModule',
+							forModule: forModule
+						}).done(function (data) {
+							app.showNotify({
+								title: app.vtranslate('JS_REMOVED_MODULE'),
+								type: 'info'
+							});
+							app.openUrl('index.php?module=ModuleManager&parent=Settings&view=List');
+						});
+					}
 				});
 			});
 		},

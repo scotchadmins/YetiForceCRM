@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 require_once 'include/utils/CommonUtils.php';
 require_once 'include/fields/DateTimeField.php';
@@ -22,7 +22,10 @@ require_once 'include/Webservices/Utils.php';
 
 class DateTimeField
 {
+	/** @var string Date and time. */
 	protected $datetime;
+
+	/** @var array Cache for time and time zones. */
 	private static $cache = [];
 
 	/**
@@ -33,69 +36,7 @@ class DateTimeField
 		if (empty($value)) {
 			$value = date('Y-m-d H:i:s');
 		}
-		$this->date = null;
-		$this->time = null;
 		$this->datetime = $value;
-	}
-
-	/** Function to set date values compatible to database (YY_MM_DD)
-	 * @param $user -- value :: Type Users
-	 * @returns $insert_date -- insert_date :: Type string
-	 */
-	public function getDBInsertDateValue()
-	{
-		$value = explode(' ', $this->datetime, 2);
-		$insert_date = '';
-		if (!empty($value[1])) {
-			$date = self::convertToDBTimeZone($this->datetime);
-			$insert_date = $date->format('Y-m-d');
-		} else {
-			$insert_date = self::convertToDBFormat($value[0]);
-		}
-		return $insert_date;
-	}
-
-	/**
-	 * @param Users $user
-	 *
-	 * @return string
-	 */
-	public function getDBInsertDateTimeValue()
-	{
-		\App\Log::trace(__METHOD__);
-		return $this->getDBInsertDateValue() . ' ' . $this->getDBInsertTimeValue();
-	}
-
-	public function getDisplayDateTimeValue($user = null)
-	{
-		\App\Log::trace(__METHOD__);
-		return $this->getDisplayDate($user) . ' ' . $this->getDisplayTime($user);
-	}
-
-	public function getFullcalenderDateTimevalue($user = null)
-	{
-		return $this->getDisplayDate($user) . ' ' . $this->getFullcalenderTime($user);
-	}
-
-	/**
-	 * @param string    $date
-	 * @param \App\User $user
-	 *
-	 * @return string
-	 */
-	public static function convertToDBFormat($date, $user = null)
-	{
-		\App\Log::trace('Start ' . __METHOD__ . ' ' . serialize($date));
-		if (empty($user)) {
-			$user = \App\User::getCurrentUserModel();
-		}
-		$format = $user->getDetail('date_format');
-		if (empty($format)) {
-			$format = 'yyyy-mm-dd';
-		}
-		$return = self::__convertToDBFormat($date, $format);
-		\App\Log::trace('End ' . __METHOD__);
-		return $return;
 	}
 
 	/**
@@ -115,21 +56,6 @@ class DateTimeField
 			$format = 'yyyy-mm-dd';
 		}
 		return \App\Fields\Date::sanitizeDbFormat($date, $format);
-	}
-
-	/**
-	 * @param string $date
-	 * @param Users  $user
-	 *
-	 * @return string
-	 */
-	public static function convertToUserFormat($date)
-	{
-		$format = \App\User::getCurrentUserModel()->getDetail('date_format');
-		if (empty($format)) {
-			$format = 'yyyy-mm-dd';
-		}
-		return self::__convertToUserFormat($date, $format);
 	}
 
 	/**
@@ -195,6 +121,96 @@ class DateTimeField
 		return $userDate;
 	}
 
+	/** Function to set date values compatible to database (YY_MM_DD).
+	 * @param $user -- value :: Type Users
+	 *
+	 * @returns $insert_date -- insert_date :: Type string
+	 */
+	public function getDBInsertDateValue()
+	{
+		$value = explode(' ', $this->datetime, 2);
+		$insert_date = '';
+		if (!empty($value[1])) {
+			$date = self::convertToDBTimeZone($this->datetime);
+			$insert_date = $date->format('Y-m-d');
+		} else {
+			$insert_date = self::convertToDBFormat($value[0]);
+		}
+		return $insert_date;
+	}
+
+	/**
+	 * @param Users $user
+	 *
+	 * @return string
+	 */
+	public function getDBInsertDateTimeValue()
+	{
+		\App\Log::trace(__METHOD__);
+		return $this->getDBInsertDateValue() . ' ' . $this->getDBInsertTimeValue();
+	}
+
+	public function getDisplayDateTimeValue($user = null)
+	{
+		\App\Log::trace(__METHOD__);
+		return $this->getDisplayDate($user) . ' ' . $this->getDisplayTime($user);
+	}
+
+	/**
+	 * Get full datetime value (with seconds).
+	 *
+	 * @param App\User|null $user
+	 *
+	 * @return string
+	 */
+	public function getDisplayFullDateTimeValue($user = null): string
+	{
+		return $this->getDisplayDate($user) . ' ' . $this->getDisplayTime($user, true, true);
+	}
+
+	public function getFullcalenderDateTimevalue($user = null)
+	{
+		return $this->getDisplayDate($user) . ' ' . $this->getFullcalenderTime($user);
+	}
+
+	/**
+	 * @param string    $date
+	 * @param \App\User $user
+	 *
+	 * @return string
+	 */
+	public static function convertToDBFormat($date, $user = null)
+	{
+		\App\Log::trace('Start ' . __METHOD__ . ' ' . serialize($date));
+		if (empty($user)) {
+			$user = \App\User::getCurrentUserModel();
+		}
+		$format = $user->getDetail('date_format');
+		if (empty($format)) {
+			$format = 'yyyy-mm-dd';
+		}
+		$return = self::__convertToDBFormat($date, $format);
+		\App\Log::trace('End ' . __METHOD__);
+		return $return;
+	}
+
+	/**
+	 * @param string $date
+	 * @param Users  $user
+	 *
+	 * @return string
+	 */
+	public static function convertToUserFormat($date)
+	{
+		$userDate = '';
+		if (!empty($date)) {
+			$format = \App\User::getCurrentUserModel()->getDetail('date_format') ?: 'yyyy-mm-dd';
+			$userDate = self::__convertToUserFormat($date, $format);
+		}
+
+		return $userDate;
+	}
+
 	/**
 	 * @param string $value
 	 * @param Users  $user
@@ -206,7 +222,7 @@ class DateTimeField
 		if (empty($user)) {
 			$user = $current_user;
 		}
-		$timeZone = \is_object($user) ? $user->time_zone : App\Config::main('default_timezone');
+		$timeZone = \is_object($user) ? $user->get('time_zone') : App\Config::main('default_timezone');
 		$return = self::convertTimeZone($value, App\Fields\DateTime::getTimeZone(), $timeZone);
 		\App\Log::trace('End ' . __METHOD__);
 		return $return;
@@ -230,9 +246,9 @@ class DateTimeField
 	}
 
 	/**
-	 * @param type $time
-	 * @param type $sourceTimeZoneName
-	 * @param type $targetTimeZoneName
+	 * @param string $time
+	 * @param string $sourceTimeZoneName
+	 * @param string $targetTimeZoneName
 	 *
 	 * @return DateTime
 	 */
@@ -299,23 +315,23 @@ class DateTimeField
 	 *
 	 * @param \App\User|null $user
 	 * @param bool           $convertTimeZone
+	 * @param bool           $fullTime        (with seconds)
 	 *
 	 * @return string
 	 */
-	public function getDisplayTime($user = null, bool $convertTimeZone = true): string
+	public function getDisplayTime($user = null, bool $convertTimeZone = true, bool $fullTime = false): string
 	{
-		\App\Log::trace('Start ' . __METHOD__ . '(' . $this->datetime . ')');
 		if ($convertTimeZone) {
 			$date = self::convertToUserTimeZone($this->datetime, $user);
 		} else {
 			$date = new DateTime($this->datetime);
 		}
-		$time = $date->format('H:i');
-		//Convert time to user preferred value
+		$time = $fullTime ? $date->format('H:i:s') : $date->format('H:i');
+		// Convert time to user preferred value
 		if ('12' === \App\User::getCurrentUserModel()->getDetail('hour_format')) {
 			$time = Vtiger_Time_UIType::getTimeValueInAMorPM($time);
 		}
-		\App\Log::trace('End ' . __METHOD__);
+
 		return $time;
 	}
 
@@ -326,6 +342,11 @@ class DateTimeField
 		$time = $date->format('H:i:s');
 		\App\Log::trace('Exiting getDisplayTime method ...');
 		return $time;
+	}
+
+	public function getFullcalenderValue($user = null)
+	{
+		return self::convertToUserTimeZone($this->datetime, $user)->format('Y-m-d') . ' ' . $this->getFullcalenderTime($user);
 	}
 
 	/**

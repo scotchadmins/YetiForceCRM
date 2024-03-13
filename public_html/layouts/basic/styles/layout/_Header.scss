@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 
 .c-header {
 	background-color: $bg-navbar;
@@ -62,8 +62,7 @@
 	margin-bottom: 0;
 }
 
-.remindersNoticeContainer,
-.remindersNotificationContainer {
+.c-sidebar-right {
 	visibility: hidden;
 	position: fixed;
 	right: -380px;
@@ -85,8 +84,7 @@
 }
 
 .limited-footer--active {
-	.remindersNoticeContainer,
-	.remindersNotificationContainer,
+	.c-sidebar-right,
 	.modalRightSiteBar {
 		height: $h-main-viewport-limited-footer;
 	}
@@ -156,41 +154,8 @@
 .active {
 	font-weight: bold;
 }
-.active .table{
+.active .table {
 	font-weight: initial;
-}
-
-.o-chat-modal-window {
-	position: fixed;
-	top: 0;
-	right: 0;
-	bottom: 0;
-	z-index: 1040;
-	display: none;
-	max-width: 64%;
-}
-
-.o-chat-items {
-	max-height: calc(100vh - 14.125rem);
-	overflow: auto;
-}
-
-.c-chat-room-name {
-	max-width: 220px;
-}
-
-.chatModal {
-	@extend .col-12, .col-sm-8, .col-lg-3;
-
-	left: auto;
-
-	.modal-body {
-		padding: 5px 0;
-	}
-
-	.modal-footer {
-		background: #fff;
-	}
 }
 
 //navbar search
@@ -390,7 +355,6 @@
 					width: auto;
 					height: auto;
 					overflow: visible;
-					clip: auto;
 					white-space: normal;
 					clip-path: none;
 				}

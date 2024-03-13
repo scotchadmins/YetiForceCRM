@@ -3,8 +3,8 @@
 /**
  * Edit View Class for PDF Settings.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Maciej Stencel <m.stencel@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Rafal Pospiech <r.pospiech@yetiforce.com>
@@ -57,9 +57,7 @@ class Settings_PDF_Edit_View extends Settings_Vtiger_Index_View
 				break;
 			case 'step1':
 			default:
-				$allModules = Settings_PDF_Module_Model::getSupportedModules();
-				$viewer->assign('ALL_MODULES', $allModules);
-				$viewer->assign('WATERMARK_TEXT', \App\Pdf\YetiForcePDF::WATERMARK_TYPE_TEXT);
+				$viewer->assign('ALL_MODULES', Settings_PDF_Module_Model::getSupportedModules());
 				$viewer->view('Step1.tpl', $qualifiedModuleName);
 				break;
 		}
@@ -80,9 +78,7 @@ class Settings_PDF_Edit_View extends Settings_Vtiger_Index_View
 		]));
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getHeaderCss(App\Request $request)
 	{
 		return array_merge($this->checkAndConvertCssStyles([

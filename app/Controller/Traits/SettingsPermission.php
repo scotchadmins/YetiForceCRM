@@ -1,12 +1,12 @@
 <?php
 
 /**
- * Admin privilege basic trait.
+ * Admin privilege basic trait file.
  *
  * @package   Controller
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
@@ -34,7 +34,7 @@ trait SettingsPermission
 			\App\Process::addEvent([
 				'name' => 'showSuperUserVisitPurpose',
 				'type' => 'modal',
-				'url' => 'index.php?module=Users&view=VisitPurpose'
+				'url' => 'index.php?module=Users&view=VisitPurpose',
 			]);
 		}
 	}

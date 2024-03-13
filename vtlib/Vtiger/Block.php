@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * **************************************************************************** */
 
 namespace vtlib;
@@ -234,7 +234,7 @@ class Block
 				->all();
 			\App\Cache::save('BlocksForModule', $moduleInstance->id, $blocks);
 		}
-		$instances = false;
+		$instances = [];
 		foreach ($blocks as $row) {
 			$instance = new self();
 			$instance->initialize($row);

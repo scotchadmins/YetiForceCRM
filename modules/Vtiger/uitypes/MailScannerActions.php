@@ -4,8 +4,8 @@
  *
  * @package UIType
  *
- * @copyright YetiForce Sp. z o.o.
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -52,7 +52,7 @@ class Vtiger_MailScannerActions_UIType extends Vtiger_MultiListFields_UIType
 	/** {@inheritdoc} */
 	public function getEditViewDisplayValue($value, $recordModel = false)
 	{
-		return explode(',', \App\Purifier::encodeHtml(trim($value, ',')));
+		return $value ? explode(',', \App\Purifier::encodeHtml(trim($value, ','))) : [];
 	}
 
 	/** {@inheritdoc} */
@@ -67,7 +67,7 @@ class Vtiger_MailScannerActions_UIType extends Vtiger_MultiListFields_UIType
 		$value = [];
 		$mailActions = \App\Mail\ScannerAction::getActions();
 		foreach ($mailActions as $fieldValue) {
-			$value[$fieldValue] = App\Language::translate('LBL_' . strtoupper($fieldValue), 'MailIntegration');
+			$value[$fieldValue] = App\Language::translate('LBL_' . strtoupper($fieldValue), 'MailIntegration', false, false);
 		}
 		return $value;
 	}

@@ -1,29 +1,26 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
 	<!-- tpl-Base-Edit-InventorySummary -->
-	<div class="row mt-1 mb-1">
-		{if $INVENTORY_MODEL->isField('discount') && $INVENTORY_MODEL->isField('discountmode')}
+	<div class="row mb-2">
+		{assign var=DISCOUNT_FIELD value=$INVENTORY_MODEL->getField('discount')}
+		{if $DISCOUNT_FIELD && $DISCOUNT_FIELD->isSummaryEnabled() && $INVENTORY_MODEL->isField('discountmode')}
 			<div class="col-md-4">
 				<div class="card mb-3 mb-md-0 inventorySummaryContainer inventorySummaryDiscounts">
 					<div class="card-header">
 						<div class="form-row">
 							<div class="col-12 col-lg-9 mb-1 p-0 u-text-ellipsis">
-								 <span class="mr-1 small">
+								<span class="mr-1 small">
 									<span class="fas fa-long-arrow-alt-down"></span>
 									<span class="fas fa-percent"></span>
 								</span>
-								<strong>{\App\Language::translate('LBL_DISCOUNTS_SUMMARY',$MODULE)}</strong>
-							</div>
-							<div class="col-12 col-lg-3 p-0 groupDiscount changeDiscount  {if isset($INVENTORY_ROW['discountmode']) && $INVENTORY_ROW['discountmode'] === 1}d-none{/if}">
-								<button type="button"
-										class="btn btn-primary btn-sm c-btn-block-md-down float-right">{\App\Language::translate('LBL_SET_GLOBAL_DISCOUNT', $MODULE)}</button>
+								{\App\Language::translate('LBL_DISCOUNTS_SUMMARY',$MODULE)}
 							</div>
 						</div>
 					</div>
 					<div class="card-body js-panel__body m-0 p-0" data-js="value">
 						<div class="form-group p-1 m-0">
 							<div class="input-group">
-								<input type="text" class="form-control text-right" readonly="readonly"/>
+								<input type="text" class="form-control text-right" readonly="readonly" />
 								<div class="input-group-append">
 									{if $INVENTORY_MODEL->isField('currency')}
 										<div class="input-group-text currencySymbol">{$CURRENCY_SYMBOLAND['currency_symbol']}</div>
@@ -35,21 +32,22 @@
 				</div>
 			</div>
 		{/if}
-		{if ($INVENTORY_MODEL->isField('tax') || $INVENTORY_MODEL->isField('tax_percent')) && $INVENTORY_MODEL->isField('taxmode')}
+		{assign var=TAX_FIELD value=$INVENTORY_MODEL->getField('tax')}
+		{if !$TAX_FIELD}
+			{assign var=TAX_FIELD value=$INVENTORY_MODEL->getField('tax_percent')}
+		{/if}
+		{if $TAX_FIELD && $TAX_FIELD->getParamConfig('summary_enabled') !== 0 && $INVENTORY_MODEL->isField('taxmode')}
+			{assign var="TAX_DEFAULT" value=Vtiger_Inventory_Model::getDefaultGlobalTax()}
 			<div class="col-md-4">
 				<div class="card mb-3 mb-md-0 inventorySummaryContainer inventorySummaryTaxes">
 					<div class="card-header">
 						<div class="form-row">
 							<div class="col-12 col-lg-9 mb-1 p-0 u-text-ellipsis">
-								 <span class="mr-1 small">
+								<span class="mr-1 small">
 									<span class="fas fa-long-arrow-alt-up"></span>
 									<span class="fas fa-percent"></span>
 								</span>
-								<strong>{\App\Language::translate('LBL_TAX_SUMMARY',$MODULE)}</strong>
-							</div>
-							<div class="col-12 col-lg-3 p-0 groupTax changeTax {if isset($INVENTORY_ROW['taxmode']) && $INVENTORY_ROW['taxmode'] === 1}d-none{/if}">
-								<button type="button"
-										class="btn btn-primary btn-sm float-right c-btn-block-md-down">{\App\Language::translate('LBL_SET_GLOBAL_TAX', $MODULE)}</button>
+								{\App\Language::translate('LBL_TAX_SUMMARY',$MODULE)}
 							</div>
 						</div>
 					</div>
@@ -60,7 +58,7 @@
 								<div class="input-group-prepend">
 									<div class="input-group-text percent u-w-85px d-flex justify-content-center">{\App\Language::translate('LBL_AMOUNT', $MODULE)}</div>
 								</div>
-								<input type="text" class="form-control text-right" readonly="readonly"/>
+								<input type="text" class="form-control text-right" readonly="readonly" />
 								<div class="input-group-append">
 									{if $INVENTORY_MODEL->isField('currency')}
 										<div class="input-group-text currencySymbol">{$CURRENCY_SYMBOLAND['currency_symbol']}</div>
@@ -75,7 +73,7 @@
 								<div class="input-group-prepend">
 									<div class="input-group-text percent u-w-85px d-flex justify-content-center"></div>
 								</div>
-								<input type="text" class="form-control text-right" readonly="readonly"/>
+								<input type="text" class="form-control text-right" readonly="readonly" />
 								<div class="input-group-append">
 									{if $INVENTORY_MODEL->isField('currency')}
 										<div class="input-group-text currencySymbol">{$CURRENCY_SYMBOLAND['currency_symbol']}</div>
@@ -92,7 +90,7 @@
 						<span class="small mr-1">
 							<span class="fas fa-dollar-sign"></span>
 						</span>
-						<strong>{\App\Language::translate('LBL_CURRENCIES_SUMMARY',$MODULE)}</strong>
+						{\App\Language::translate('LBL_CURRENCIES_SUMMARY',$MODULE)}
 					</div>
 					<div class="card-body js-panel__body p-0 m-0"></div>
 					<div class="card-footer js-panel__footer p-1" data-js="value">
@@ -101,7 +99,7 @@
 								<div class="input-group-prepend">
 									<div class="input-group-text percent u-w-85px d-flex justify-content-center">{\App\Language::translate('LBL_AMOUNT', $MODULE)}</div>
 								</div>
-								<input type="text" class="form-control text-right" readonly="readonly"/>
+								<input type="text" class="form-control text-right" readonly="readonly" />
 								<div class="input-group-append">
 									{if $INVENTORY_MODEL->isField('currency')}
 										<div class="input-group-text">{$BASE_CURRENCY['currency_symbol']}</div>
@@ -114,11 +112,9 @@
 						<div class="form-group m-1">
 							<div class="input-group">
 								<div class="input-group-prepend">
-									<div class="input-group-text percent u-w-85px d-flex justify-content-center">
-
-									</div>
+									<div class="input-group-text percent u-w-85px d-flex justify-content-center"></div>
 								</div>
-								<input type="text" class="form-control text-right" readonly="readonly"/>
+								<input type="text" class="form-control text-right" readonly="readonly" />
 								<div class="input-group-append">
 									{if $INVENTORY_MODEL->isField('currency')}
 										<div class="input-group-text">{$BASE_CURRENCY['currency_symbol']}</div>

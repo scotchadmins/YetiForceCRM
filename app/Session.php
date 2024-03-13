@@ -7,8 +7,8 @@ namespace App;
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class Session
@@ -118,7 +118,7 @@ class Session
 	/**
 	 * Update the current session id with a newly generated one.
 	 *
-	 * @see http://php.net/manual/en/function.session-regenerate-id.php
+	 * @see https://php.net/manual/en/function.session-regenerate-id.php
 	 *
 	 * @param bool $deleteOldSession
 	 */
@@ -134,7 +134,7 @@ class Session
 	/**
 	 * Destroys all data registered to a session.
 	 *
-	 * @see http://php.net/manual/en/function.session-destroy.php
+	 * @see https://php.net/manual/en/function.session-destroy.php
 	 */
 	public static function destroy()
 	{

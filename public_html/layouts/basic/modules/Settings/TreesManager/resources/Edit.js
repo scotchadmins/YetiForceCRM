@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 jQuery.Class(
@@ -55,14 +55,14 @@ jQuery.Class(
 		},
 		createTree: function () {
 			const self = this;
-			if (this.jstreeInstance == false) {
+			if (!this.jstreeInstance) {
 				self.jstreeLastID = parseInt($('#treeLastID').val());
 				let treeValues = $('#treeValues').val(),
-					data = JSON.parse(treeValues);
+					dataTree = JSON.parse(treeValues);
 				self.jstreeInstance = $('#treeContents');
 				self.jstreeInstance.jstree({
 					core: {
-						data: data,
+						data: dataTree,
 						themes: {
 							name: 'proton',
 							responsive: true
@@ -105,11 +105,11 @@ jQuery.Class(
 								action: function (data) {
 									let treeInstance = $.jstree.reference(data.reference),
 										selectedNode = treeInstance.get_node(data.reference);
-									Settings_Vtiger_Index_Js.selectIcon().done(function (data) {
-										if (data['name'] == '-') {
-											self.jstreeInstance.jstree(true).set_icon(selectedNode.id, false);
-										} else {
-											self.jstreeInstance.jstree(true).set_icon(selectedNode.id, data['name']);
+									App.Components.Icons.modalView().done((media) => {
+										if (media.type === 'icon') {
+											self.jstreeInstance.jstree(true).set_icon(selectedNode.id, media.name);
+										} else if (media.type === 'image') {
+											self.jstreeInstance.jstree(true).set_icon(selectedNode.id, media.src);
 										}
 									});
 								}
@@ -120,7 +120,7 @@ jQuery.Class(
 									let treeInstance = $.jstree.reference(data.reference),
 										id = treeInstance.get_selected(),
 										status = true;
-									$.each(id, function (index, value) {
+									$.each(id, function (_index, value) {
 										let menu = treeInstance.get_node(value);
 										if (menu.children.length > 0) {
 											Settings_Vtiger_Index_Js.showMessage({
@@ -133,7 +133,7 @@ jQuery.Class(
 									if (status) {
 										self.deleteItemEvent(id, treeInstance).done(function (e) {
 											if (e.length > 0) {
-												$.each(id, function (index, value) {
+												$.each(id, function (_index, value) {
 													treeInstance.delete_node(value);
 												});
 											}
@@ -177,8 +177,8 @@ jQuery.Class(
 			let self = this,
 				aDeferred = jQuery.Deferred(),
 				data = inst.get_json();
-			$.each(id, function (index, id) {
-				data = self.checkChildren(id, data);
+			$.each(id, function (_index, e) {
+				data = self.checkChildren(e, data);
 			});
 			if (data.length == 0) {
 				Settings_Vtiger_Index_Js.showMessage({
@@ -188,54 +188,56 @@ jQuery.Class(
 				aDeferred.resolve();
 				return aDeferred.promise();
 			}
-			app.showModalWindow(null, 'index.php?module=TreesManager&parent=Settings&view=ReplaceTreeItem', function (
-				wizardContainer
-			) {
-				let jstreeInstanceReplace = wizardContainer.find('#treePopupContents');
-				jstreeInstanceReplace
-					.jstree({
-						core: {
-							data: data,
-							themes: {
-								name: 'proton',
-								responsive: true
+			app.showModalWindow(
+				null,
+				'index.php?module=TreesManager&parent=Settings&view=ReplaceTreeItem',
+				function (wizardContainer) {
+					let jstreeInstanceReplace = wizardContainer.find('#treePopupContents');
+					jstreeInstanceReplace
+						.jstree({
+							core: {
+								data: data,
+								themes: {
+									name: 'proton',
+									responsive: true
+								}
 							}
-						}
-					})
-					.on('loaded.jstree', function (event, data) {
-						$(this).jstree('open_all');
-					});
-				wizardContainer.find('.js-modal__save').on('click', () => {
-					let selected = jstreeInstanceReplace.jstree('get_selected'),
-						replaceIdsElement = $('#replaceIds'),
-						replaceIds = replaceIdsElement.val(),
-						data = [];
-					if (replaceIds !== '') {
-						data = JSON.parse(replaceIds);
-					}
-					if (!selected.length || selected.length > 1) {
-						let message = 'JS_ONLY_ONE_ITEM_SELECTED';
-						if (!selected.length) {
-							message = 'JS_NO_ITEM_SELECTED';
-						}
-						Settings_Vtiger_Index_Js.showMessage({
-							type: 'error',
-							text: app.vtranslate(message)
+						})
+						.on('loaded.jstree', function () {
+							$(this).jstree('open_all');
 						});
-						return false;
-					}
-					data = $.merge(data, [{ old: id, new: selected }]);
-					replaceIdsElement.val(JSON.stringify(data));
-					app.hideModalWindow();
-					aDeferred.resolve(selected);
-				});
-			});
+					wizardContainer.find('.js-modal__save').on('click', () => {
+						let selected = jstreeInstanceReplace.jstree('get_selected'),
+							replaceIdsElement = $('#replaceIds'),
+							replaceIds = replaceIdsElement.val(),
+							dataTree = [];
+						if (replaceIds !== '') {
+							dataTree = JSON.parse(replaceIds);
+						}
+						if (!selected.length || selected.length > 1) {
+							let message = 'JS_ONLY_ONE_ITEM_SELECTED';
+							if (!selected.length) {
+								message = 'JS_NO_ITEM_SELECTED';
+							}
+							Settings_Vtiger_Index_Js.showMessage({
+								type: 'error',
+								text: app.vtranslate(message)
+							});
+							return false;
+						}
+						dataTree = $.merge(dataTree, [{ old: id, new: selected }]);
+						replaceIdsElement.val(JSON.stringify(dataTree));
+						app.hideModalWindow();
+						aDeferred.resolve(selected);
+					});
+				}
+			);
 			return aDeferred.promise();
 		},
 		checkChildren: function (id, data) {
 			let self = this,
 				dataNew = [];
-			for (var key in data) {
+			for (let key in data) {
 				if (data[key].id != id) {
 					if (data[key].children.length) {
 						data[key].children = self.checkChildren(id, data[key].children);

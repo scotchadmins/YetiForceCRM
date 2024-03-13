@@ -4,9 +4,10 @@
  *
  * @package   View
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 /**
@@ -14,26 +15,18 @@
  */
 class MailIntegration_Iframe_View extends \App\Controller\Modal
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $showHeader = false;
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $showFooter = false;
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		return true;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$moduleName = $request->getModule();
@@ -55,9 +48,7 @@ class MailIntegration_Iframe_View extends \App\Controller\Modal
 		$viewer->view('Iframe/Container.tpl', $moduleName);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getModalScripts(App\Request $request)
 	{
 		return $this->checkAndConvertJsScripts([
@@ -79,12 +70,12 @@ class MailIntegration_Iframe_View extends \App\Controller\Modal
 		$modules = [];
 		$quickCreate = App\Config::module('MailIntegration', 'modulesListQuickCreate', []);
 		foreach (\App\Relation::getByModule('OSSMailView', true) as $relation) {
-			if (0 === $relation['presence'] && 'getRecordToMails' === $relation['name']) {
-				if (App\Privilege::isPermitted($relation['related_modulename'])) {
-					$modules[$relation['related_modulename']] = $quickCreate[$relation['related_modulename']] ?? Vtiger_Module_Model::getInstance($relation['related_modulename'])->isQuickCreateSupported();
-				}
+			if (0 === $relation['presence'] && 'getRecordToMails' === $relation['name'] && App\Privilege::isPermitted($relation['related_modulename'])) {
+				$quickCreateSupported = Vtiger_Module_Model::getInstance($relation['related_modulename'])->isQuickCreateSupported();
+				$modules[$relation['related_modulename']] = $quickCreateSupported && (!$quickCreate || \in_array($relation['related_modulename'], $quickCreate));
 			}
 		}
+
 		return $modules;
 	}
 }

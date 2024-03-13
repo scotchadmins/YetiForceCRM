@@ -3,8 +3,8 @@
 /**
  * Settings TreesManager ReplaceTreeItem view class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class Settings_TreesManager_ReplaceTreeItem_View extends \App\Controller\ModalSettings
 {
@@ -15,9 +15,7 @@ class Settings_TreesManager_ReplaceTreeItem_View extends \App\Controller\ModalSe
 	 */
 	public $qualifiedModuleName = '';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function preProcessAjax(App\Request $request)
 	{
 		$this->qualifiedModuleName = $request->getModule(false);
@@ -26,9 +24,7 @@ class Settings_TreesManager_ReplaceTreeItem_View extends \App\Controller\ModalSe
 		parent::preProcessAjax($request);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$viewer = $this->getViewer($request);

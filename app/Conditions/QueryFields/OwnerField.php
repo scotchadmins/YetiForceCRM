@@ -7,8 +7,8 @@ namespace App\Conditions\QueryFields;
  *
  * @package UIType
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -19,17 +19,14 @@ class OwnerField extends BaseField
 	 *
 	 * @return array
 	 */
-	public function operatorE()
+	public function operatorE(): array
 	{
 		if (!\is_array($this->value)) {
-			if (false === strpos($this->value, '##')) {
-				return [$this->getColumnName() => $this->value];
-			}
 			$this->value = explode('##', $this->value);
 		}
 		$condition = ['or'];
 		foreach ($this->value as $value) {
-			$condition[] = [$this->getColumnName() => $value];
+			$condition[] = [$this->getColumnName() => $this->getMemberValue($value)];
 		}
 		return $condition;
 	}
@@ -39,17 +36,46 @@ class OwnerField extends BaseField
 	 *
 	 * @return array
 	 */
-	public function operatorN()
+	public function operatorN(): array
 	{
-		if (false === strpos($this->value, '##')) {
-			return ['<>', $this->getColumnName(), $this->value];
+		if (!\is_array($this->value)) {
+			$this->value = explode('##', $this->value);
 		}
-		$values = explode('##', $this->value);
-		$condition = ['or'];
-		foreach ($values as $value) {
-			$condition[] = ['<>', $this->getColumnName(), $value];
+		$condition = ['and'];
+		foreach ($this->value as $value) {
+			$condition[] = ['not in', $this->getColumnName(), $this->getMemberValue($value)];
 		}
 		return $condition;
+	}
+
+	/**
+	 * Gets conditions for member.
+	 *
+	 * @param int|string $member
+	 *
+	 * @return \App\Db\Query|int
+	 */
+	public function getMemberValue($member)
+	{
+		if (is_numeric($member)) {
+			return $member;
+		}
+		[$type, $id] = explode(':', $member);
+		switch ($type) {
+			case \App\PrivilegeUtil::MEMBER_TYPE_GROUPS:
+				$value = (new \App\Db\Query())->select(['userid'])->from(["condition_{$type}_{$id}_" . \App\Layout::getUniqueId() => \App\PrivilegeUtil::getQueryToUsersByGroup((int) $id)]);
+				break;
+			case \App\PrivilegeUtil::MEMBER_TYPE_ROLES:
+				$value = \App\PrivilegeUtil::getQueryToUsersByRole($id);
+				break;
+			case \App\PrivilegeUtil::MEMBER_TYPE_ROLE_AND_SUBORDINATES:
+				$value = \App\PrivilegeUtil::getQueryToUsersByRoleAndSubordinate($id);
+				break;
+			default:
+				$value = -1;
+				break;
+		}
+		return $value;
 	}
 
 	/**
@@ -71,6 +97,25 @@ class OwnerField extends BaseField
 	{
 		$groups = \App\Fields\Owner::getInstance($this->getModuleName())->getGroups(false, 'private');
 		return [$this->getColumnName() => \array_keys($groups)];
+	}
+
+	/**
+	 * Users who belong to the same group as the currently logged in user.
+	 *
+	 * @return array
+	 */
+	public function operatorOgu(): array
+	{
+		$groups = \App\Fields\Owner::getInstance($this->getModuleName())->getGroups(false, 'private');
+		if ($groups) {
+			$condition = ['or'];
+			foreach (array_keys($groups)  as $idGroup) {
+				$condition[] = [$this->getColumnName() => (new \App\Db\Query())->select(['userid'])->from(["condition_groups_{$idGroup}_" . \App\Layout::getUniqueId() => \App\PrivilegeUtil::getQueryToUsersByGroup((int) $idGroup)])];
+			}
+		} else {
+			$condition = [$this->getColumnName() => (new \yii\db\Expression('0=1'))];
+		}
+		return $condition;
 	}
 
 	/**
@@ -120,7 +165,7 @@ class OwnerField extends BaseField
 	 *
 	 * @return array
 	 */
-	public function getOrderBy($order = false)
+	public function getOrderBy($order = false): array
 	{
 		$this->queryGenerator->addJoin(['LEFT JOIN', 'vtiger_users', 'vtiger_users.id = ' . $this->getColumnName()]);
 		$this->queryGenerator->addJoin(['LEFT JOIN', 'vtiger_groups', 'vtiger_groups.groupid = ' . $this->getColumnName()]);
@@ -135,7 +180,7 @@ class OwnerField extends BaseField
 	 *
 	 * @return array
 	 */
-	public function operatorNy()
+	public function operatorNy(): array
 	{
 		return ['and',
 			['not', [$this->getColumnName() => null]],
@@ -148,7 +193,7 @@ class OwnerField extends BaseField
 	 *
 	 * @return array
 	 */
-	public function operatorY()
+	public function operatorY(): array
 	{
 		return ['or',
 			[$this->getColumnName() => null],

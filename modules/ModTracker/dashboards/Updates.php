@@ -5,8 +5,8 @@
  *
  * @package Dashboard
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Adrian Kon <a.kon@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -16,9 +16,7 @@
  */
 class ModTracker_Updates_Dashboard extends Vtiger_IndexAjax_View
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		parent::checkPermission($request);
@@ -28,9 +26,7 @@ class ModTracker_Updates_Dashboard extends Vtiger_IndexAjax_View
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$viewer = $this->getViewer($request);
@@ -41,6 +37,7 @@ class ModTracker_Updates_Dashboard extends Vtiger_IndexAjax_View
 		$widget = \Vtiger_Widget_Model::getInstance($linkId, \App\User::getCurrentUserId());
 
 		if (empty($dateRange)) {
+			$dateRange = [];
 			$dateRange[0] = date('Y-m-d');
 			$dateRange[1] = date('Y-m-d');
 		}
@@ -67,9 +64,9 @@ class ModTracker_Updates_Dashboard extends Vtiger_IndexAjax_View
 		$accessibleUsers = \App\Fields\Owner::getInstance(false)->getAccessibleUsers();
 		$accessibleGroups = \App\Fields\Owner::getInstance(false)->getAccessibleGroups();
 		foreach (['owner' => false, 'historyOwner' => false] as $key => $defaultValue) {
-			if (empty($widgetData[$key]) ||
-				('all' !== $widgetData[$key] && !isset($accessibleUsers[$widgetData[$key]]) && !isset($accessibleGroups[$widgetData[$key]])) ||
-				('all' === $widgetData[$key] && !\in_array($widgetData[$key], $available))) {
+			if (empty($widgetData[$key])
+				|| ('all' !== $widgetData[$key] && !isset($accessibleUsers[$widgetData[$key]]) && !isset($accessibleGroups[$widgetData[$key]]))
+				|| ('all' === $widgetData[$key] && !\in_array($widgetData[$key], $available))) {
 				$defaultValue = Settings_WidgetsManagement_Module_Model::getDefaultUserId($widget, false, $defaultValue);
 				$widgetData[$key] = empty($defaultValue) ? \App\User::getCurrentUserId() : $defaultValue;
 			}

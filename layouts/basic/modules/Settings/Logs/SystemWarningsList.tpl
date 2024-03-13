@@ -1,6 +1,6 @@
 {strip}
-	{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
-	<table class="table table-bordered table-sm">
+	{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+	<table class="table table-bordered table-sm js-warning-table" data-js="datatable">
 		<thead>
 			<tr>
 				<th>{App\Language::translate('LBL_WARNINGS_TITLE', $MODULE)}</th>
@@ -31,36 +31,34 @@
 						{/foreach}
 					</td>
 					<td class="text-center">
-						{if $ITEM->getStatus() != 1 && $ITEM->getPriority() < 8}
-							<button class="btn btn-warning btn-sm setIgnore js-popover-tooltip" data-js="popover" data-placement="top" data-content="
+						<button class="btn btn-warning btn-sm setIgnore js-popover-tooltip" data-js="popover" data-placement="top" data-content="
 									{if $ITEM->getStatusValue() == 2}
 										{App\Language::translate('BTN_REMOVE_IGNORE','Settings:SystemWarnings')}
 									{else}
 										{App\Language::translate('BTN_SET_IGNORE','Settings:SystemWarnings')}
 									{/if}
 									">
-								{if $ITEM->getStatusValue() == 2}
-									<span class="fas fa-plus-circle"></span>
-								{else}
-									<span class="fas fa-minus-circle"></span>
-								{/if}
-							</button>
-						{/if}
+							{if $ITEM->getStatusValue() == 2}
+								<span class="fas fa-plus-circle text-green"></span>
+							{else}
+								<span class="fas fa-minus-circle text-red"></span>
+							{/if}
+						</button>
 						{if $ITEM->getLink()}
-							<a class="ml-1 btn btn-success btn-sm {if isset($ITEM->linkTitle)}js-popover-tooltip{/if}" data-js="popover" href="{$ITEM->getLink()}" {if isset($ITEM->linkTitle)}data-placement="top" data-content="{$ITEM->linkTitle}"{/if} target="_blank" rel="noreferrer noopener">
+							<a class="ml-1 btn btn-success btn-sm {if isset($ITEM->linkTitle)}js-popover-tooltip{/if}" data-js="popover" href="{$ITEM->getLink()}" {if isset($ITEM->linkTitle)}data-placement="top" data-content="{$ITEM->linkTitle}" {/if} target="_blank" rel="noreferrer noopener">
 								<span class="fas fa-link"></span>
 							</a>
 						{/if}
 						{if $ITEM->getDescription()}
-							<button class="ml-1 btn btn-primary btn-sm showDescription">
+							<button class="ml-1 btn btn-primary btn-sm js-show-description" data-js="click">
 								<span class="fas fa-info-circle"></span>
 							</button>
-							<span class="d-none showDescriptionContent">
+							<span class="d-none js-show-description-content" data-js="container">
 								<div class="modal fade">
-									<div class="modal-dialog">
+									<div class="modal-dialog modal-xl">
 										<div class="modal-content">
 											<div class="modal-header">
-												<h5 class="modal-title">{App\Language::translate($ITEM->getTitle(),'Settings:SystemWarnings')}</h5>
+												<h5 class="modal-title"><span class="fas fa-info-circle mr-2"></span>{App\Language::translate($ITEM->getTitle(),'Settings:SystemWarnings')}</h5>
 												<button type="button" class="close" data-dismiss="modal" aria-label="Close">
 													<span aria-hidden="true">&times;</span>
 												</button>

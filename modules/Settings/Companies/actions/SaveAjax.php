@@ -3,10 +3,11 @@
 /**
  * Companies SaveAjax action model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Adrian Koń <a.kon@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class Settings_Companies_SaveAjax_Action extends Settings_Vtiger_Basic_Action
 {
@@ -48,10 +49,10 @@ class Settings_Companies_SaveAjax_Action extends Settings_Vtiger_Basic_Action
 			$recordModel->save();
 			$response->setResult([
 				'success' => true,
-				'url' => $recordModel->getDetailViewUrl()
+				'url' => $recordModel->getDetailViewUrl(),
 			]);
 		} else {
-			$response->setResult(['success' => false, 'message' => \App\Language::translate('LBL_COMPANY_NAMES_EXIST', $request->getModule(false))]);
+			$response->setResult(['success' => false, 'message' => \App\Language::translate('LBL_ENTITY_NAMES_EXIST', $request->getModule(false))]);
 		}
 		$response->emit();
 	}

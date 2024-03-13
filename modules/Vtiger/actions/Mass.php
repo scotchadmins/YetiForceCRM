@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 abstract class Vtiger_Mass_Action extends \App\Controller\Action
@@ -26,7 +26,7 @@ abstract class Vtiger_Mass_Action extends \App\Controller\Action
 			$sourceModule = $request->getByType('sourceModule', 2);
 			$cvId = CustomView_Record_Model::getAllFilterByModule($sourceModule)->getId();
 		}
-		$customViewModel = CustomView_Record_Model::getInstanceById($cvId);
+		$customViewModel = CustomView_Record_Model::getInstanceById((int) $cvId);
 		if (!$customViewModel) {
 			return false;
 		}
@@ -50,6 +50,9 @@ abstract class Vtiger_Mass_Action extends \App\Controller\Action
 		}
 		$customViewModel->set('search_params', App\Condition::validSearchParams($moduleName, $request->getArray('search_params')));
 		$customViewModel->set('entityState', $request->getByType('entityState'));
+		if ($advancedConditions = $request->has('advancedConditions') ? $request->getArray('advancedConditions') : []) {
+			$customViewModel->set('advancedConditions', \App\Condition::validAdvancedConditions($advancedConditions));
+		}
 		return $customViewModel->getRecordsListQuery($request->getArray('excluded_ids', 2), $moduleName);
 	}
 
@@ -60,7 +63,7 @@ abstract class Vtiger_Mass_Action extends \App\Controller\Action
 	 *
 	 * @return int[]
 	 */
-	public static function getRecordsListFromRequest(App\Request $request)
+	public static function getRecordsListFromRequest(App\Request $request): array
 	{
 		$selectedIds = $request->getArray('selected_ids', 2);
 		if ($selectedIds && 'all' !== $selectedIds[0]) {

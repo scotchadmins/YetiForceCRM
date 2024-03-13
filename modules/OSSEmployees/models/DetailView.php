@@ -3,14 +3,13 @@
 /**
  * OSSEmployees DetailView model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class OSSEmployees_DetailView_Model extends Vtiger_DetailView_Model
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getDetailViewLinks(array $linkParams): array
 	{
 		$linkModelLists = parent::getDetailViewLinks($linkParams);
@@ -20,8 +19,8 @@ class OSSEmployees_DetailView_Model extends Vtiger_DetailView_Model
 				'linktype' => 'DETAIL_VIEW_BASIC',
 				'linkhint' => 'LBL_SHOW_EMPLOYEES_HIERARCHY',
 				'linkurl' => 'javascript:OSSEmployees_Detail_Js.triggerEmployeeHierarchy("' . $linkURL . '");',
-				'linkicon' => 'fas fa-user',
-				'linkclass' => 'btn-outline-dark btn-sm'
+				'linkicon' => 'yfi-hierarchy',
+				'linkclass' => 'btn-outline-dark btn-sm',
 			]);
 		}
 		return $linkModelLists;

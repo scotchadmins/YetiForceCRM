@@ -4,9 +4,10 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Dudek <a.dudek@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 namespace App\Utils;
@@ -49,22 +50,23 @@ class Backup
 				if (!empty($catalogToReadArray) && empty($returnStructure['manage'])) {
 					array_pop($catalogToReadArray);
 					$parentUrl = implode(\DIRECTORY_SEPARATOR, $catalogToReadArray);
-					$returnStructure['manage'] = "{$requestUrl}&catalog={$parentUrl}";
+					$returnStructure['manage'] = "{$requestUrl}&catalog=" . rawurlencode($parentUrl);
 				}
 			} else {
 				$record = [
-					'name' => $element->getBasename()
+					'name' => $element->getBasename(),
 				];
 				if ($element->isDir()) {
-					if ($element->isReadable()) {
-						$record['url'] = "{$requestUrl}&catalog={$urlDirectory}{$record['name']}";
-					}
-					$returnStructure['catalogs'][] = $record;
-				} else {
-					if (!$element->isReadable() || !\in_array($element->getExtension(), $allowedExtensions)) {
+					if (!$element->isReadable() || !\App\Validator::dirName($element->getBasename())) {
 						continue;
 					}
-					$record['url'] = "{$requestUrl}&action=DownloadFile&file={$urlDirectory}{$record['name']}";
+					$record['url'] = "{$requestUrl}&catalog=" . rawurlencode($urlDirectory . $record['name']);
+					$returnStructure['catalogs'][] = $record;
+				} else {
+					if (!$element->isReadable() || !\in_array($element->getExtension(), $allowedExtensions) || !\App\Validator::dirName($element->getBasename())) {
+						continue;
+					}
+					$record['url'] = "{$requestUrl}&action=DownloadFile&file=" . rawurlencode($urlDirectory . $record['name']);
 					$record['date'] = \App\Fields\DateTime::formatToDisplay(date('Y-m-d H:i:s', $element->getMTime()));
 					$record['size'] = \vtlib\Functions::showBytes($element->getSize());
 					$returnStructure['files'][] = $record;

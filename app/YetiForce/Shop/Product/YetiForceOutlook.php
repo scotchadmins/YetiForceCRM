@@ -4,8 +4,8 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -60,7 +60,7 @@ class YetiForceOutlook extends \App\YetiForce\Shop\AbstractBaseProduct
 		return [
 			'message' => \App\Language::translateArgs('LBL_FUNCTIONALITY_HAS_NOT_YET_BEEN_ACTIVATED', 'Settings:MailIntegration', 'Outlook'),
 			'type' => 'LBL_REQUIRES_INTERVENTION',
-			'href' => 'index.php?parent=Settings&module=MailIntegration&view=Index'
+			'href' => 'index.php?parent=Settings&module=MailIntegration&view=Index',
 		];
 	}
 
@@ -71,7 +71,7 @@ class YetiForceOutlook extends \App\YetiForce\Shop\AbstractBaseProduct
 			\Vtiger_Link_Model::getInstanceFromValues([
 				'linklabel' => 'Website',
 				'relatedModuleName' => '_Base',
-				'linkicon' => 'fas fa-globe',
+				'linkicon' => 'fas fa-globe mr-2',
 				'linkhref' => true,
 				'linkExternal' => true,
 				'linktarget' => '_blank',
@@ -92,5 +92,28 @@ class YetiForceOutlook extends \App\YetiForce\Shop\AbstractBaseProduct
 			]);
 		}
 		return $links;
+	}
+
+	/** {@inheritdoc} */
+	public function getSwitchButton(): ?\Vtiger_Link_Model
+	{
+		$link = null;
+		if (\App\Security\AdminAccess::isPermitted('MailIntegration')) {
+			$link = \Vtiger_Link_Model::getInstanceFromValues([
+				'linklabel' => \App\Language::translate('LBL_ACTIVATE_DEACTIVATE_SERVICE', 'Settings:YetiForce'),
+				'linkdata' => [
+					'url-on' => 'index.php?module=MailIntegration&parent=Settings&action=Activate&source=outlook&mode=activate',
+					'url-off' => 'index.php?module=MailIntegration&parent=Settings&action=Activate&source=outlook&mode=deactivate',
+					'confirm' => \App\Language::translate('LBL_ACTIVATE_DEACTIVATE_SERVICE_CONFIRM_DESC', 'Settings:YetiForce'),
+				],
+			]);
+		}
+		return $link;
+	}
+
+	/** {@inheritdoc} */
+	public function isActive(): bool
+	{
+		return \Settings_MailIntegration_Activate_Model::isActive('outlook');
 	}
 }

@@ -4,8 +4,8 @@
  *
  * @package   View
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -15,24 +15,17 @@
 class Vtiger_InterestsConflictModal_View extends \App\Controller\Modal
 {
 	use \App\Controller\ExposeMethod;
-	/**
-	 * {@inheritdoc}
-	 */
+
+	/** {@inheritdoc} */
 	public $modalSize = '';
-	/**
-	 * {@inheritdoc}
-	 */
+
+	/** {@inheritdoc} */
 	public $showFooter = false;
-	/**
-	 * Undocumented variable.
-	 *
-	 * @var array|null
-	 */
+
+	/** @var array|null Parent record id. */
 	public $parent;
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function __construct()
 	{
 		parent::__construct();
@@ -41,9 +34,7 @@ class Vtiger_InterestsConflictModal_View extends \App\Controller\Modal
 		$this->exposeMethod('users');
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		if ($request->isEmpty('record', true) || !\App\Privilege::isPermitted($request->getModule())) {
@@ -55,9 +46,7 @@ class Vtiger_InterestsConflictModal_View extends \App\Controller\Modal
 		$this->parent = \App\Components\InterestsConflict::getParent($request->getInteger('record'), $request->getModule());
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getPageTitle(App\Request $request)
 	{
 		$moduleName = $request->getModule();
@@ -140,27 +129,23 @@ class Vtiger_InterestsConflictModal_View extends \App\Controller\Modal
 		$viewer->view('Modals/InterestsConflictUsers.tpl', $request->getModule());
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getModalScripts(App\Request $request)
 	{
 		return array_merge(parent::getModalScripts($request), $this->checkAndConvertJsScripts([
 			'~libraries/datatables.net/js/jquery.dataTables.js',
 			'~libraries/datatables.net-bs4/js/dataTables.bootstrap4.js',
 			'~libraries/datatables.net-responsive/js/dataTables.responsive.js',
-			'~libraries/datatables.net-responsive-bs4/js/responsive.bootstrap4.js'
+			'~libraries/datatables.net-responsive-bs4/js/responsive.bootstrap4.js',
 		]));
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getModalCss(App\Request $request)
 	{
 		return array_merge(parent::getModalCss($request), $this->checkAndConvertCssStyles([
 			'~libraries/datatables.net-bs4/css/dataTables.bootstrap4.css',
-			'~libraries/datatables.net-responsive-bs4/css/responsive.bootstrap4.css'
+			'~libraries/datatables.net-responsive-bs4/css/responsive.bootstrap4.css',
 		]));
 	}
 }

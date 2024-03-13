@@ -3,8 +3,8 @@
 /**
  * Settings LangManagement index view class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class Settings_LangManagement_Index_View extends Settings_Vtiger_Index_View
 {
@@ -42,9 +42,9 @@ class Settings_LangManagement_Index_View extends Settings_Vtiger_Index_View
 			'~libraries/datatables.net-bs4/js/dataTables.bootstrap4.js',
 			'~libraries/datatables.net-responsive/js/dataTables.responsive.js',
 			'~libraries/datatables.net-responsive-bs4/js/responsive.bootstrap4.js',
+			'~libraries/echarts/dist/echarts.js',
 			'modules.Vtiger.resources.dashboards.Widget',
-			'~libraries/chart.js/dist/Chart.js',
-			'~libraries/chartjs-plugin-datalabels/dist/chartjs-plugin-datalabels.js'
+			'modules.Vtiger.resources.dashboards.Chart',
 		]));
 	}
 

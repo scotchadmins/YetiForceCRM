@@ -4,8 +4,8 @@
  *
  * @package View
  *
- * @copyright YetiForce Sp. z o.o.
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
@@ -14,14 +14,10 @@
  */
 class Users_MeetingModal_View extends Vtiger_MeetingModal_View
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	protected $pageTitle = 'LBL_VIDEO_CONFERENCE';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		$userId = \App\User::getCurrentUserRealId();
@@ -37,9 +33,7 @@ class Users_MeetingModal_View extends Vtiger_MeetingModal_View
 		$this->moderator = true;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getPageTitle(App\Request $request)
 	{
 		return \App\Language::translate($this->pageTitle, $request->getModule());

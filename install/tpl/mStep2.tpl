@@ -1,4 +1,4 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
 	<div id="progressIndicator" class="main-container d-none">
 		<div class="inner-container">
@@ -26,11 +26,13 @@
 							{\App\Language::translate('LBL_MIGRATION_DESC', 'Install')}
 						</p>
 						<div>
-							<input type="checkbox" id="checkBox1" name="checkBox1" required><div class="chkbox"></div> {\App\Language::translate('LBL_HAVE_BACKUP_DATABASE', 'Install')}</a>
+							<input type="checkbox" id="checkBox1" name="checkBox1" required>
+							<div class="chkbox"></div> {\App\Language::translate('LBL_HAVE_BACKUP_DATABASE', 'Install')}</a>
 						</div>
 						<br>
 						<div>
-							<input type="checkbox" id="checkBox2" name="checkBox2" required><div class="chkbox"></div> {\App\Language::translate('LBL_HAVE_BACKUP_FILES', 'Install')}</a>
+							<input type="checkbox" id="checkBox2" name="checkBox2" required>
+							<div class="chkbox"></div> {\App\Language::translate('LBL_HAVE_BACKUP_FILES', 'Install')}</a>
 						</div>
 						<br>
 						<div>

@@ -4,32 +4,26 @@
  *
  * @package Settings.View
  *
- * @copyright YetiForce Sp. z o.o.
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Rafal Pospiech <r.pospiech@yetiforce.com>
  */
 class Settings_BusinessHours_Edit_View extends Settings_Vtiger_Index_View
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getBreadcrumbTitle(App\Request $request)
 	{
 		return \App\Language::translate('LBL_BUSINESS_HOURS', $request->getModule());
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$this->initialize($request);
 		$this->getViewer($request)->view('EditView.tpl', $request->getModule(false));
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function initialize(App\Request $request)
 	{
 		$viewer = $this->getViewer($request);
@@ -49,9 +43,7 @@ class Settings_BusinessHours_Edit_View extends Settings_Vtiger_Index_View
 		$viewer->assign('MODULE', $request->getModule());
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getFooterScripts(App\Request $request)
 	{
 		return array_merge(parent::getFooterScripts($request), $this->checkAndConvertJsScripts([

@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Vtiger_CurrencyList_UIType extends Vtiger_Picklist_UIType
@@ -34,9 +34,7 @@ class Vtiger_CurrencyList_UIType extends Vtiger_Picklist_UIType
 	/** {@inheritdoc} */
 	public function getDisplayValue($value, $record = false, $recordModel = false, $rawText = false, $length = false)
 	{
-		$currencylist = $this->getPicklistValues();
-
-		return \App\Purifier::encodeHtml($currencylist[$value] ?? $value);
+		return $value ? \App\Purifier::encodeHtml($this->getPicklistValues()[$value] ?? $value) : '';
 	}
 
 	/** {@inheritdoc} */
@@ -71,6 +69,6 @@ class Vtiger_CurrencyList_UIType extends Vtiger_Picklist_UIType
 	/** {@inheritdoc} */
 	public function getQueryOperators()
 	{
-		return ['e', 'n', 'y', 'ny'];
+		return ['e', 'n', 'y', 'ny', 'ef', 'nf'];
 	}
 }

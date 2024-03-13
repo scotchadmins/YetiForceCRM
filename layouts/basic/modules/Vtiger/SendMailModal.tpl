@@ -1,4 +1,4 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
 	{assign var=DEFAULT_SMTP value=App\Mail::getDefaultSmtp()}
 	{assign var=IS_EMAIL value=false}
@@ -55,7 +55,9 @@
 								<option value="{$FIELD_MODEL->getName()}">{\App\Language::translate($FIELD_MODEL->getFieldLabel(), $FIELD_MODEL->getModuleName())}
 									&nbsp;({$EMAILS_BY_FIELD[$FIELD_MODEL->getName()]})
 								</option>
-								{assign var=IS_EMAIL value=true}
+								{if $EMAILS_BY_FIELD[$FIELD_MODEL->getName()] > 0}
+									{assign var=IS_EMAIL value=true}
+								{/if}
 							{/if}
 						{/foreach}
 					</select>
@@ -93,7 +95,7 @@
 					</span>
 				</label>
 				<div class="col-sm-8">
-					<textarea class="form-control js-editor js-editor--basic" name="mail_notes" id="mail_notes" data-toolbar="Micro" data-js="ckeditor"></textarea>
+					<textarea class="form-control js-editor js-editor--basic" name="mail_notes" id="mail_notes" data-toolbar="Micro" data-purify-mode="Html" data-js="ckeditor"></textarea>
 				</div>
 			</div>
 		</form>

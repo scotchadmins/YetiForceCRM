@@ -3,8 +3,8 @@
 /**
  * FInvoice Summation By Months Dashboard Class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -26,7 +26,7 @@ class FInvoice_SummationByMonths_Dashboard extends Vtiger_IndexAjax_View
 		if (!$request->has('owner')) {
 			$owner = Settings_WidgetsManagement_Module_Model::getDefaultUserId($widget);
 		} else {
-			$owner = $request->getByType('owner', 2);
+			$owner = $request->getByType('owner', \App\Purifier::TEXT);
 		}
 		$fields = $this->getFilterFields($moduleName);
 		foreach ($fields as $fieldModel) {
@@ -64,8 +64,8 @@ class FInvoice_SummationByMonths_Dashboard extends Vtiger_IndexAjax_View
 		if (!isset($this->filterFields)) {
 			$this->filterFields = [];
 			$moduleModel = Vtiger_Module_Model::getInstance($moduleName);
-			$fieldModel = $moduleModel->getField('sum_total');
-			$fieldModelGross = $moduleModel->getField('sum_gross');
+			$fieldModel = $moduleModel->getFieldByName('sum_total');
+			$fieldModelGross = $moduleModel->getFieldByName('sum_gross');
 			$field = new \Vtiger_Field_Model();
 			$field->set('name', 'sum_field')
 				->set('column', 'sum_field')
@@ -101,8 +101,10 @@ class FInvoice_SummationByMonths_Dashboard extends Vtiger_IndexAjax_View
 	 */
 	public function getWidgetData($moduleName, $owner)
 	{
-		$rawData = $data = $years = [];
-		$date = date('Y-m-01', strtotime('-23 month', strtotime(date('Y-m-d'))));
+		$rawData = $years = [];
+		$dateStart = ((int) date('Y') - 2) . '-01-01';
+		$dateEnd = date('Y-m-d', strtotime('last day of december'));
+		$date = "{$dateStart},{$dateEnd}";
 		$queryGenerator = new \App\QueryGenerator($moduleName);
 		$sumColumnName = $this->getFilterFields($moduleName)['sum_field']->get('fieldvalue') ?: 'sum_gross';
 		$y = new \yii\db\Expression('extract(year FROM saledate)');
@@ -110,7 +112,7 @@ class FInvoice_SummationByMonths_Dashboard extends Vtiger_IndexAjax_View
 		$s = new \yii\db\Expression("SUM({$sumColumnName})");
 		$fieldList = ['y' => $y, 'm' => $m, 's' => $s];
 		$queryGenerator->setCustomColumn($fieldList);
-		$queryGenerator->addCondition('saledate', $date, 'a');
+		$queryGenerator->addCondition('saledate', $date, 'bw');
 		if ('all' !== $owner) {
 			$queryGenerator->addCondition('assigned_user_id', $owner, 'e');
 		}
@@ -121,45 +123,35 @@ class FInvoice_SummationByMonths_Dashboard extends Vtiger_IndexAjax_View
 			$rawData[$row['y']][$row['m']] = [round((float) $row['s'], 2)];
 		}
 		$dataReader->close();
+
 		$chartData = [
-			'labels' => [],
-			'datasets' => [],
-			'show_chart' => false,
+			'dataset' => [],
+			'show_chart' => (bool) \count($rawData),
 		];
-		$this->conditions = ['condition' => ['>', 'saledate', $date]];
-		$yearsData = $tempData = [];
+		$this->conditions = ['condition' => ['between', 'saledate', $dateStart, $dateEnd]];
+		$yearsData = [];
 		$chartData['show_chart'] = (bool) \count($rawData);
 		$shortMonth = ['LBL_Jan', 'LBL_Feb', 'LBL_Mar', 'LBL_Apr', 'LBL_May', 'LBL_Jun',
-			'LBL_Jul', 'LBL_Aug', 'LBL_Sep', 'LBL_Oct', 'LBL_Nov', 'LBL_Dec'];
+			'LBL_Jul', 'LBL_Aug', 'LBL_Sep', 'LBL_Oct', 'LBL_Nov', 'LBL_Dec', ];
+
+		$chartData['dataset']['dimensions'][] = 'months';
 		for ($i = 0; $i < 12; ++$i) {
-			$chartData['labels'][] = App\Language::translate($shortMonth[$i]);
+			$chartData['dataset']['source'][$i] = ['months' => App\Language::translate($shortMonth[$i])];
 		}
 		foreach ($rawData as $y => $raw) {
 			$years[] = $y;
 			if (!isset($yearsData[$y])) {
-				$yearsData[$y] = [
-					'data' => [],
-					'label' => \App\Language::translate('LBL_YEAR', $moduleName) . ' ' . $y,
-					'backgroundColor' => [],
-				];
+				$chartData['dataset']['dimensions'][] = "{$y}";
+				$chartData['series'][] = ['type' => 'bar'];
 				for ($m = 0; $m < 12; ++$m) {
-					$tempData[$y][$m] = 0;
-					$yearsData[$y]['backgroundColor'][] = \App\Colors::getRandomColor($y * 10);
+					$chartData['dataset']['source'][$m]["{$y}"] = null;
 				}
 			}
 			foreach ($raw as $m => $value) {
-				$tempData[$y][$m - 1] = $value[0];
-				$yearsData[$y]['stack'] = (string) $y;
+				$chartData['dataset']['source'][$m - 1][$y] = $value[0];
 			}
 		}
-		foreach ($tempData as $year => $yearData) {
-			$yearsData[$year]['data'] = $yearData;
-		}
-		$years = array_values(array_unique($years));
-		$chartData['years'] = $years;
-		foreach ($yearsData as $data) {
-			$chartData['datasets'][] = $data;
-		}
+
 		return $chartData;
 	}
 }

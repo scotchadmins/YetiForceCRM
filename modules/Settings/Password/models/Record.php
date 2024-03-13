@@ -5,9 +5,10 @@
  *
  * @package Settings
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Settings_Password_Record_Model extends Vtiger_Record_Model
 {
@@ -93,20 +94,41 @@ class Settings_Password_Record_Model extends Vtiger_Record_Model
 		return false;
 	}
 
-	public static function getPasswordChangeDate()
-	{
-		$passConfig = static::getUserPassConfig();
-
-		return date('Y-m-d', strtotime("-{$passConfig['change_time']} day"));
-	}
-
 	/**
-	 * Checks if encrypt is active.
+	 * Get conditions for password modification.
 	 *
 	 * @return array
 	 */
-	public static function isRunEncrypt()
+	public static function getPasswordChangeDateCondition(): array
 	{
-		return (new \App\Db\Query())->select(['status'])->from('s_#__batchmethod')->where(['method' => '\App\Encryption::recalculatePasswords'])->scalar();
+		$conditions = [['force_password_change', 'e', '1']];
+		$date = null;
+		$passConfig = static::getUserPassConfig();
+		$delayDays = $passConfig['change_time'];
+		if (!empty($delayDays)) {
+			$date = date('Y-m-d', strtotime("-{$delayDays} day"));
+			$date = \App\Fields\Date::formatToDisplay($date);
+			$conditions[] = ['date_password_change', 'b', $date];
+		}
+
+		return [[[]], $conditions];
+	}
+
+	/**
+	 * Gets encryption modules.
+	 *
+	 * @return array
+	 */
+	public static function getEncryptionModules(): array
+	{
+		$modules = (new \App\Db\Query())->select(['vtiger_tab.tabid', 'vtiger_tab.name'])->from('vtiger_field')
+			->innerJoin('vtiger_tab', 'vtiger_field.tabid=vtiger_tab.tabid')
+			->where(['vtiger_tab.presence' => 0, 'vtiger_tab.isentitytype' => 1, 'vtiger_field.uitype' => 99, 'vtiger_field.presence' => [0, 2]])->createCommand()->queryAllByGroup(0);
+		foreach ($modules as $key => $moduleName) {
+			if (null === \App\Config::module($moduleName, 'encryptionMethod', null) || null === \App\Config::module($moduleName, 'encryptionPass', null)) {
+				unset($modules[$key]);
+			}
+		}
+		return $modules;
 	}
 }

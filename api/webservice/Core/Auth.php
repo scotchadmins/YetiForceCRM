@@ -1,26 +1,48 @@
 <?php
+/**
+ * API Authorization file.
+ *
+ * @package API
+ *
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ */
 
 namespace Api\Core;
 
 /**
  * API Authorization class.
- *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
- * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class Auth
 {
+	/**
+	 * Realm.
+	 *
+	 * @var string
+	 */
 	protected static $realm = 'YetiForceApi';
 
-	public static function init($self)
+	/**
+	 * Init.
+	 *
+	 * @param \Api\Controller $controller
+	 *
+	 * @return Auth\AbstractAuth
+	 */
+	public static function init(\Api\Controller $controller): Auth\AbstractAuth
 	{
 		$method = \App\Config::api('AUTH_METHOD');
-		$class = "Api\\Core\\Auth\\$method";
-		$intance = new $class();
-		$intance->setApi($self);
-		$intance->authenticate(static::$realm);
-
-		return $intance->getCurrentServer();
+		$container = $controller->request->getByType('_container', \App\Purifier::STANDARD);
+		$class = "Api\\{$container}\\Auth\\{$method}";
+		if (!class_exists($class)) {
+			$class = "Api\\Core\\Auth\\{$method}";
+		}
+		$self = new $class();
+		$self->setApi($controller);
+		$self->setServer();
+		$self->authenticate(static::$realm);
+		return $self;
 	}
 }

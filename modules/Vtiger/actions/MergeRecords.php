@@ -4,8 +4,8 @@
  *
  * @package Action
  *
- * @copyright YetiForce Sp. z o.o.
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
@@ -14,9 +14,7 @@
  */
 class Vtiger_MergeRecords_Action extends Vtiger_Mass_Action
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		if (!\App\Privilege::isPermitted($request->getModule(), 'Merge')) {
@@ -24,9 +22,7 @@ class Vtiger_MergeRecords_Action extends Vtiger_Mass_Action
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$moduleModel = Vtiger_Module_Model::getInstance($request->getModule());
@@ -48,7 +44,7 @@ class Vtiger_MergeRecords_Action extends Vtiger_Mass_Action
 			foreach (array_keys($migrate) as $recordId) {
 				$recordModel = \Vtiger_Record_Model::getInstanceById($recordId);
 				$recordModel->ext['modificationType'] = ModTracker_Record_Model::TRANSFER_DELETE;
-				$recordModel->changeState('Trash');
+				$recordModel->changeState(\App\Record::STATE_TRASH);
 			}
 			$result = true;
 		} catch (\Throwable $ex) {

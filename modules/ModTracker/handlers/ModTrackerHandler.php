@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 require_once __DIR__ . '/../ModTracker.php';
 
@@ -62,7 +62,7 @@ class ModTracker_ModTrackerHandler_Handler
 			'whodid' => App\User::getCurrentUserRealId(),
 			'changedon' => $recordModel->get('modifiedtime'),
 			'status' => $status,
-			'last_reviewed_users' => '#' . App\User::getCurrentUserRealId() . '#'
+			'last_reviewed_users' => '#' . App\User::getCurrentUserRealId() . '#',
 		])->execute();
 		$id = $db->getLastInsertID('vtiger_modtracker_basic_id_seq');
 		if (!$recordModel->isNew()) {
@@ -96,8 +96,11 @@ class ModTracker_ModTrackerHandler_Handler
 			if (!$fieldModel) {
 				\App\Log::warning($fieldName . ' field does not exist in the module ' . $eventHandler->getModuleName(), __METHOD__);
 			} elseif ('text' === $fieldModel->getFieldDataType()) {
-				$preValue = empty($preValue) ? $preValue : \App\TextParser::textTruncate($preValue, 65532);
-				$newValue = empty($newValue) ? $newValue : \App\TextParser::textTruncate($newValue, 65532);
+				$preValue = empty($preValue) ? $preValue : \App\TextUtils::textTruncate($preValue, 65532);
+				$newValue = empty($newValue) ? $newValue : \App\TextUtils::textTruncate($newValue, 65532);
+			}
+			if ($fieldModel && \in_array(\App\Anonymization::MODTRACKER_DB, $fieldModel->getAnonymizationTarget())) {
+				$preValue = $newValue = '****';
 			}
 			$insertedData[] = [$id, $fieldName, $preValue, $newValue];
 		}
@@ -117,7 +120,7 @@ class ModTracker_ModTrackerHandler_Handler
 	public function entityAfterLink(App\EventHandler $eventHandler)
 	{
 		$params = $eventHandler->getParams();
-		if (!ModTracker::isTrackingEnabledForModule($params['destinationModule'])) {
+		if (!ModTracker::isTrackingEnabledForModule($params['sourceModule'])) {
 			return false;
 		}
 		ModTracker::linkRelation($params['sourceModule'], $params['sourceRecordId'], $params['destinationModule'], $params['destinationRecordId']);
@@ -131,6 +134,27 @@ class ModTracker_ModTrackerHandler_Handler
 	}
 
 	/**
+	 * EntityAfterLinkForSource handler function.
+	 *
+	 * @param App\EventHandler $eventHandler
+	 */
+	public function entityAfterLinkForSource(App\EventHandler $eventHandler)
+	{
+		['sourceModule' => $sourceModule, 'sourceRecordId' => $sourceRecordId,'destinationModule' => $destinationModule,'destinationRecordId' => $destinationRecordId, 'relationId' => $relationId] = $eventHandler->getParams();
+		if (!ModTracker::isTrackingEnabledForModule($destinationModule) || Vtiger_Relation_Model::getInstanceById($relationId)->isDirectRelation()) {
+			return false;
+		}
+		ModTracker::linkRelation($destinationModule, $destinationRecordId, $sourceModule, $sourceRecordId);
+		if (\App\Config::module('ModTracker', 'WATCHDOG')) {
+			$watchdogTitle = 'LBL_ADDED';
+			$watchdogMessage = '<a href="index.php?module=' . $destinationModule . '&view=Detail&record=' . $destinationRecordId . '">' . vtlib\Functions::getCRMRecordLabel($destinationRecordId) . '</a>';
+			$watchdogMessage .= ' $(translate : LBL_WITH)$ ';
+			$watchdogMessage .= '<a href="index.php?module=' . $sourceModule . '&view=Detail&record=' . $sourceRecordId . '">$(record : RecordLabel)$</a>';
+			$this->addNotification($sourceModule, $sourceRecordId, $watchdogTitle, $watchdogMessage);
+		}
+	}
+
+	/**
 	 * EntityAfterUnLink handler function.
 	 *
 	 * @param App\EventHandler $eventHandler
@@ -138,19 +162,38 @@ class ModTracker_ModTrackerHandler_Handler
 	public function entityAfterUnLink(App\EventHandler $eventHandler)
 	{
 		$params = $eventHandler->getParams();
-		if (!ModTracker::isTrackingEnabledForModule($params['destinationModule'])) {
+		if (!ModTracker::isTrackingEnabledForModule($params['sourceModule'])) {
 			return false;
 		}
 		ModTracker::unLinkRelation($params['sourceModule'], $params['sourceRecordId'], $params['destinationModule'], $params['destinationRecordId']);
-		if ($params['relatedName'] && \in_array($params['relatedName'], ['getManyToMany', 'getRelatedList', 'getEmails'])) {
-			ModTracker::unLinkRelation($params['destinationModule'], $params['destinationRecordId'], $params['sourceModule'], $params['sourceRecordId']);
-		}
 		if (App\Config::module('ModTracker', 'WATCHDOG')) {
-			$watchdogTitle = 'LBL_REMOVED';
+			$watchdogTitle = 'LBL_UNLINK';
 			$watchdogMessage = '<a href="index.php?module=' . $params['sourceModule'] . '&view=Detail&record=' . $params['sourceRecordId'] . '">' . vtlib\Functions::getCRMRecordLabel($params['sourceRecordId']) . '</a>';
 			$watchdogMessage .= ' $(translate : LBL_WITH)$ ';
 			$watchdogMessage .= '<a href="index.php?module=' . $params['destinationModule'] . '&view=Detail&record=' . $params['destinationRecordId'] . '">$(record : RecordLabel)$</a>';
 			$this->addNotification($params['destinationModule'], $params['destinationRecordId'], $watchdogTitle, $watchdogMessage);
+		}
+	}
+
+	/**
+	 * EntityAfterUnLinkForSource handler function.
+	 *
+	 * @param App\EventHandler $eventHandler
+	 */
+	public function entityAfterUnLinkForSource(App\EventHandler $eventHandler)
+	{
+		['sourceModule' => $sourceModule, 'sourceRecordId' => $sourceRecordId,'destinationModule' => $destinationModule,'destinationRecordId' => $destinationRecordId, 'relationId' => $relationId] = $eventHandler->getParams();
+		if (!ModTracker::isTrackingEnabledForModule($destinationModule) || Vtiger_Relation_Model::getInstanceById($relationId)->isDirectRelation()) {
+			return false;
+		}
+
+		ModTracker::unLinkRelation($destinationModule, $destinationRecordId, $sourceModule, $sourceRecordId);
+		if (App\Config::module('ModTracker', 'WATCHDOG')) {
+			$watchdogTitle = 'LBL_UNLINK';
+			$watchdogMessage = '<a href="index.php?module=' . $destinationModule . '&view=Detail&record=' . $destinationRecordId . '">' . vtlib\Functions::getCRMRecordLabel($destinationRecordId) . '</a>';
+			$watchdogMessage .= ' $(translate : LBL_WITH)$ ';
+			$watchdogMessage .= '<a href="index.php?module=' . $sourceModule . '&view=Detail&record=' . $sourceRecordId . '">$(record : RecordLabel)$</a>';
+			$this->addNotification($sourceModule, $sourceRecordId, $watchdogTitle, $watchdogMessage);
 		}
 	}
 
@@ -164,7 +207,7 @@ class ModTracker_ModTrackerHandler_Handler
 	public function entityAfterTransferLink(App\EventHandler $eventHandler)
 	{
 		$params = $eventHandler->getParams();
-		if (!ModTracker::isTrackingEnabledForModule($params['destinationModule'])) {
+		if (!ModTracker::isTrackingEnabledForModule($eventHandler->getModuleName())) {
 			return false;
 		}
 		ModTracker::transferRelation($eventHandler->getModuleName(), $params['sourceRecordId'], $params['destinationModule'], $params['destinationRecordId'], ModTracker::$TRANSFER_LINK);
@@ -178,7 +221,7 @@ class ModTracker_ModTrackerHandler_Handler
 	public function entityAfterTransferUnLink(App\EventHandler $eventHandler)
 	{
 		$params = $eventHandler->getParams();
-		if (!ModTracker::isTrackingEnabledForModule($params['destinationModule'])) {
+		if (!ModTracker::isTrackingEnabledForModule($eventHandler->getModuleName())) {
 			return false;
 		}
 		ModTracker::transferRelation($eventHandler->getModuleName(), $params['sourceRecordId'], $params['destinationModule'], $params['destinationRecordId'], ModTracker::$TRANSFER_UNLINK);
@@ -194,9 +237,8 @@ class ModTracker_ModTrackerHandler_Handler
 		if (!ModTracker::isTrackingEnabledForModule($eventHandler->getModuleName())) {
 			return false;
 		}
-		$recordModel = $eventHandler->getRecordModel();
 		\App\Db::getInstance()->createCommand()->insert('vtiger_modtracker_basic', [
-			'crmid' => $recordModel->getId(),
+			'crmid' => $eventHandler->getRecordModel()->getId(),
 			'module' => $eventHandler->getModuleName(),
 			'whodid' => \App\User::getCurrentUserRealId(),
 			'changedon' => date('Y-m-d H:i:s'),
@@ -219,15 +261,15 @@ class ModTracker_ModTrackerHandler_Handler
 		$status = 0;
 		if (isset($recordModel->ext['modificationType'], ModTracker::getAllActionsTypes()[$recordModel->ext['modificationType']])) {
 			$status = $recordModel->ext['modificationType'];
-		} else {
-			switch ($recordModel->get('deleted')) {
-				case 'Active':
+		} elseif (is_numeric($state = $recordModel->get('deleted'))) {
+			switch ($state) {
+				case \App\Record::STATE_ACTIVE:
 					$status = ModTracker::$ACTIVE;
 					break;
-				case 'Trash':
+				case \App\Record::STATE_TRASH:
 					$status = ModTracker::$TRASH;
 					break;
-				case 'Archived':
+				case \App\Record::STATE_ARCHIVED:
 					$status = ModTracker::$ARCHIVED;
 					break;
 				default:
@@ -241,7 +283,7 @@ class ModTracker_ModTrackerHandler_Handler
 			'whodid' => \App\User::getCurrentUserRealId(),
 			'changedon' => date('Y-m-d H:i:s'),
 			'status' => $status,
-			'last_reviewed_users' => '#' . \App\User::getCurrentUserRealId() . '#'
+			'last_reviewed_users' => '#' . \App\User::getCurrentUserRealId() . '#',
 		])->execute();
 		$id = $db->getLastInsertID('vtiger_modtracker_basic_id_seq');
 		ModTracker_Record_Model::unsetReviewed($recordId, \App\User::getCurrentUserRealId(), $id);
@@ -250,6 +292,25 @@ class ModTracker_ModTrackerHandler_Handler
 			$db->createCommand()->update('vtiger_crmentity', ['was_read' => 0], ['crmid' => $recordId])->execute();
 		}
 		$this->addNotification($eventHandler->getModuleName(), $recordId, ModTracker_Record_Model::$statusLabel[$status]);
+	}
+
+	/**
+	 * EntityAfterDelete handler function.
+	 *
+	 * @param \App\EventHandler $eventHandler
+	 */
+	public function entityAfterDelete(App\EventHandler $eventHandler)
+	{
+		if (!ModTracker::isTrackingEnabledForModule($eventHandler->getModuleName())) {
+			return false;
+		}
+		\App\Db::getInstance()->createCommand()->insert('vtiger_modtracker_basic', [
+			'crmid' => $eventHandler->getRecordModel()->getId(),
+			'module' => $eventHandler->getModuleName(),
+			'whodid' => \App\User::getCurrentUserRealId(),
+			'changedon' => date('Y-m-d H:i:s'),
+			'status' => ModTracker::$DELETED,
+		])->execute();
 	}
 
 	/**
@@ -286,9 +347,8 @@ class ModTracker_ModTrackerHandler_Handler
 			$watchdog = Vtiger_Watchdog_Model::getInstanceById($recordId, $moduleName);
 			$users = $watchdog->getWatchingUsers([\App\User::getCurrentUserRealId()]);
 			if (!empty($users)) {
-				$currentUser = \App\User::getCurrentUserModel();
 				$watchdogTitle = '$(translate : ModTracker|' . $watchdogTitle . ')$ $(record : RecordLabel)$';
-				$watchdogTitle = $currentUser->getName() . ' ' . $watchdogTitle;
+				$watchdogTitle = \App\Fields\Owner::getUserLabel(\App\User::getCurrentUserId()) . ' ' . $watchdogTitle;
 				$relatedField = \App\ModuleHierarchy::getMappingRelatedField($moduleName);
 				if ($relatedField) {
 					$notification = Vtiger_Record_Model::getCleanInstance('Notification');

@@ -5,8 +5,8 @@
  *
  * @package   View
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Dudek <a.dudek@yetiforce.com>
  */
 
@@ -15,9 +15,7 @@
  */
 class RecycleBin_ListView_Model extends Vtiger_ListView_Model
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public static function getInstance($moduleName, $sourceModule = 0)
 	{
 		$modelClassName = Vtiger_Loader::getComponentClassName('Model', 'ListView', $moduleName);
@@ -26,7 +24,7 @@ class RecycleBin_ListView_Model extends Vtiger_ListView_Model
 		$queryGenerator = new \App\QueryGenerator($sourceModuleModel->getName());
 		$cvidObj = CustomView_Record_Model::getAllFilterByModule($sourceModuleModel->getName());
 		$viewId = $cvidObj->getId('cvid');
-		$queryGenerator->initForCustomViewById($viewId);
+		$queryGenerator->initForCustomViewById($viewId, true);
 		return $instance->set('entityState', 'Trash')->set('module', $sourceModuleModel)->set('query_generator', $queryGenerator);
 	}
 
@@ -49,9 +47,7 @@ class RecycleBin_ListView_Model extends Vtiger_ListView_Model
 		return $basicLinks;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getListViewMassActions($linkParams)
 	{
 		$massActionLinks = [];
@@ -78,9 +74,7 @@ class RecycleBin_ListView_Model extends Vtiger_ListView_Model
 		return $links;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getListViewLinks($linkParams)
 	{
 		$links = ['LISTVIEWBASIC' => []];

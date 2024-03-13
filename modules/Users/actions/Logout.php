@@ -10,17 +10,13 @@
 
 class Users_Logout_Action extends \App\Controller\Action
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		return true;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		//Track the logout History
@@ -37,13 +33,5 @@ class Users_Logout_Action extends \App\Controller\Action
 		App\Session::destroy();
 		//End
 		header('location: index.php');
-	}
-
-	/**
-	 * {@inheritdoc}
-	 */
-	public function validateRequest(App\Request $request)
-	{
-		$request->validateReadAccess();
 	}
 }

@@ -14,14 +14,11 @@ Reporting this type of issues publicly on GitHub might expose other users to att
 
 Thank you!
 
+
 PGP key:
-
-m.krzaczkowski@yetiforce.com
-http://hkps.pool.sks-keyservers.net/pks/lookup?search=m.krzaczkowski%40yetiforce.com&fingerprint=on&op=index
-https://keys.openpgp.org/search?q=m.krzaczkowski%40yetiforce.com
-
-security@yetiforce.com
-http://hkps.pool.sks-keyservers.net/pks/lookup?search=security%40yetiforce.com&fingerprint=on&op=index
-https://keys.openpgp.org/search?q=security%40yetiforce.com
+### security@yetiforce.com
+- https://keys.openpgp.org/search?q=security%40yetiforce.com
+- https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x0fecf61043925c9b9e16ef29bcaeb2432daf21e4
+- https://keyserver2.pgp.com/vkd/SubmitSearch.event?&&SearchCriteria=security%40yetiforce.com
 
 🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅🔅-->

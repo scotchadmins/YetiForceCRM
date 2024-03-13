@@ -6,35 +6,31 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class CustomView_EditAjax_View extends Vtiger_IndexAjax_View
 {
-	/**
-	 * Function to check permission.
-	 *
-	 * @param \App\Request $request
-	 *
-	 * @throws \App\Exceptions\NoPermitted
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
-		if (\App\User::getCurrentUserModel()->isAdmin()) {
-			return;
+		$sourceModule = $request->getByType('source_module', \App\Purifier::ALNUM);
+		$permissions = false;
+		if ($request->getBoolean('duplicate') || $request->isEmpty('record')) {
+			$permissions = \App\Privilege::isPermitted($sourceModule, 'CreateCustomFilter');
+		} else {
+			$permissions = CustomView_Record_Model::getInstanceById($request->getInteger('record'))->isEditable();
 		}
-		if (!$request->getBoolean('duplicate') && !$request->isEmpty('record') && !CustomView_Record_Model::getInstanceById($request->getInteger('record'))->isEditable()) {
+		if (!$permissions) {
 			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$viewer = $this->getViewer($request);
-		$sourceModuleName = $request->getByType('source_module', 2);
+		$sourceModuleName = $request->getByType('source_module', \App\Purifier::ALNUM);
 		$moduleName = $request->getModule();
 		$record = $request->getInteger('record');
 		if (is_numeric($sourceModuleName)) {
@@ -50,6 +46,15 @@ class CustomView_EditAjax_View extends Vtiger_IndexAjax_View
 				$recordStructureModulesField[$relatedModuleName][$referenceField->getFieldName()] = Vtiger_RecordStructure_Model::getInstanceForModule(Vtiger_Module_Model::getInstance($relatedModuleName))->getStructure();
 			}
 		}
+		$invFields = [];
+		if ($sourceModuleModel->isInventory()) {
+			foreach ($sourceModuleModel->getInventoryModel()->getFields() as $invField) {
+				if ($invField->isSearchable()) {
+					$invFields['LBL_ADVANCED_BLOCK'][$invField->getColumnName()] = $invField;
+				}
+			}
+		}
+
 		if (!empty($record)) {
 			$customViewModel = CustomView_Record_Model::getInstanceById($record);
 			$viewer->assign('MODE', 'edit');
@@ -63,6 +68,7 @@ class CustomView_EditAjax_View extends Vtiger_IndexAjax_View
 		$viewer->assign('CURRENTDATE', date('Y-n-j'));
 		$viewer->assign('RECORD_STRUCTURE_RELATED_MODULES', $recordStructureModulesField);
 		$viewer->assign('RECORD_STRUCTURE', Vtiger_RecordStructure_Model::getInstanceForModule($sourceModuleModel)->getStructure());
+		$viewer->assign('RECORD_STRUCTURE_INV', $invFields);
 		$viewer->assign('CUSTOMVIEW_MODEL', $customViewModel);
 		if (!$request->getBoolean('duplicate')) {
 			$viewer->assign('RECORD_ID', $record);
@@ -70,7 +76,7 @@ class CustomView_EditAjax_View extends Vtiger_IndexAjax_View
 		$viewer->assign('QUALIFIED_MODULE', $sourceModuleName);
 		$viewer->assign('SOURCE_MODULE', $sourceModuleName);
 		$viewer->assign('USER_MODEL', Users_Record_Model::getCurrentUserModel());
-		if ('All' === $customViewModel->get('viewname')) {
+		if (0 === $customViewModel->get('presence') && !$request->getBoolean('duplicate')) {
 			$viewer->assign('CV_PRIVATE_VALUE', App\CustomView::CV_STATUS_DEFAULT);
 		} else {
 			$viewer->assign('CV_PRIVATE_VALUE', App\CustomView::CV_STATUS_PRIVATE);
@@ -78,6 +84,9 @@ class CustomView_EditAjax_View extends Vtiger_IndexAjax_View
 		$viewer->assign('CV_PENDING_VALUE', App\CustomView::CV_STATUS_PENDING);
 		$viewer->assign('CV_PUBLIC_VALUE', App\CustomView::CV_STATUS_PUBLIC);
 		$viewer->assign('MODULE_MODEL', $sourceModuleModel);
+		$viewer->assign('MID', $request->has('mid') ? $request->getInteger('mid') : null);
+		$viewer->assign('RELATIONS', $sourceModuleModel->getRelations());
+		$viewer->assign('ADVANCED_CONDITIONS', \App\Condition::validAdvancedConditions($customViewModel->getAdvancedConditions()));
 		$viewer->view('EditView.tpl', $moduleName);
 	}
 }

@@ -3,8 +3,8 @@
 /**
  * RecycleBin class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Dudek <a.dudek@yetiforce.com>
  */
 
@@ -38,9 +38,7 @@ class RecycleBin extends Vtiger_CRMEntity
 	 */
 	public $default_sort_order = '';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function moduleHandler($moduleName, $eventType)
 	{
 		if ('module.postinstall' === $eventType) {

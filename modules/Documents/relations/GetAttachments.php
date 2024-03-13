@@ -4,20 +4,19 @@
  *
  * @package   Relation
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
-use App\Relation\RelationInterface;
 
 /**
  * Documents_GetAttachments_Relation class.
  */
-class Documents_GetAttachments_Relation implements RelationInterface
+class Documents_GetAttachments_Relation extends \App\Relation\RelationAbstraction
 {
 	/**
-	 * Name of the table that stores relations.
+	 * @var string Name of the table that stores relations.
 	 */
 	public const TABLE_NAME = 'vtiger_senotesrel';
 
@@ -27,9 +26,7 @@ class Documents_GetAttachments_Relation implements RelationInterface
 		return Vtiger_Relation_Model::RELATION_M2M;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getQuery()
 	{
 		$queryGenerator = $this->relationModel->getQueryGenerator();
@@ -42,8 +39,44 @@ class Documents_GetAttachments_Relation implements RelationInterface
 	}
 
 	/**
-	 * {@inheritdoc}
+	 * Load advanced conditions for filtering related records.
+	 *
+	 * @param App\QueryGenerator $queryGenerator QueryGenerator for the list of records to be tapered based on the relationship
+	 * @param array              $searchParam
+	 *
+	 * @return void
 	 */
+	public function loadAdvancedConditionsByRelationId(App\QueryGenerator $queryGenerator): void
+	{
+		$tableName = static::TABLE_NAME;
+		$advancedConditions = $queryGenerator->getAdvancedConditions();
+		$relationQueryGenerator = $this->relationModel->getQueryGenerator();
+		$relationQueryGenerator->setStateCondition($queryGenerator->getState());
+		$relationQueryGenerator->setFields(['id']);
+		if (!empty($advancedConditions['relationConditions'])) {
+			$relationQueryGenerator->setConditions(\App\Condition::getConditionsFromRequest($advancedConditions['relationConditions']));
+		}
+		$query = $relationQueryGenerator->createQuery();
+		$queryGenerator->addJoin(['INNER JOIN', $tableName, "{$tableName}.crmid = vtiger_crmentity.crmid"])
+			->addNativeCondition(["{$tableName}.notesid" => $query]);
+	}
+
+	/**
+	 * Load advanced conditions relationship by custom column.
+	 *
+	 * @param App\QueryGenerator $queryGenerator QueryGenerator for the list of records to be tapered based on the relationship
+	 * @param array              $searchParam    Related record for which we are filtering the list of records
+	 *
+	 * @return void
+	 */
+	public function loadAdvancedConditionsByColumns(App\QueryGenerator $queryGenerator, array $searchParam): void
+	{
+		$tableName = static::TABLE_NAME;
+		$queryGenerator->addJoin(['INNER JOIN', $tableName, "{$tableName}.crmid = vtiger_crmentity.crmid"])
+			->addNativeCondition(["{$tableName}.notesid" => $searchParam['value']]);
+	}
+
+	/** {@inheritdoc} */
 	public function delete(int $sourceRecordId, int $destinationRecordId): bool
 	{
 		$data = ['notesid' => $destinationRecordId, 'crmid' => $sourceRecordId];
@@ -54,9 +87,7 @@ class Documents_GetAttachments_Relation implements RelationInterface
 		return (bool) App\Db::getInstance()->createCommand()->delete(self::TABLE_NAME, $data)->execute();
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function create(int $sourceRecordId, int $destinationRecordId): bool
 	{
 		$result = false;
@@ -67,9 +98,7 @@ class Documents_GetAttachments_Relation implements RelationInterface
 		return (bool) $result;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function transfer(int $relatedRecordId, int $fromRecordId, int $toRecordId): bool
 	{
 		return (bool) \App\Db::getInstance()->createCommand()->update(self::TABLE_NAME,

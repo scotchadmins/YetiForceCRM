@@ -5,8 +5,8 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
@@ -68,7 +68,6 @@ class MeetingService extends Base
 			$result = (new \App\Db\Query())->from(self::TABLE_NAME)->orderBy(['status' => SORT_DESC])->indexBy('id')->all();
 			Cache::save($cacheName, '', $result, Cache::LONG);
 		}
-
 		return Cache::get($cacheName, '');
 	}
 
@@ -114,7 +113,7 @@ class MeetingService extends Base
 				'avatar' => '',
 				'name' => $userModel->getName(),
 				'email' => $userModel->getDetail('email1'),
-				'id' => $userId
+				'id' => $userId,
 			];
 		}
 		$data['room'] = $data['room'] ?? $this->generateRoomName();
@@ -141,7 +140,7 @@ class MeetingService extends Base
 			},
 			'/[\s]/' => function () {
 				return '';
-			}
+			},
 		], strtolower(\App\Utils::sanitizeSpecialChars($prefix, ' ')));
 		[$msec, $sec] = explode(' ', microtime());
 		return $prefix . 'ID' . str_replace('.', '', $sec . $msec) . random_int(0, 1000);
@@ -210,10 +209,9 @@ class MeetingService extends Base
 	{
 		$data['aud'] = $this->get('key');
 		$data['iss'] = $this->get('key');
-		$data['sub'] = $this->get('url');
+		$data['sub'] = parse_url($this->get('url'))['host'] ?? '';
 		$data['exp'] = $data['exp'] ?? strtotime("+{$this->get('duration')} minutes");
 		$jwt = new \Ahc\Jwt\JWT(\App\Encryption::getInstance()->decrypt($this->get('secret')));
-
 		return $jwt->encode($data);
 	}
 }

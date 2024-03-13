@@ -7,9 +7,10 @@ namespace App\Installer;
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Adrian Koń <a.kon@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Credits
 {
@@ -25,62 +26,61 @@ class Credits
 	 * @var array
 	 */
 	public static $licenses = [
-		'yetiforce/yetiforcepdf' => 'YetiForce Public License v3',
 		'bootstrap-tabdrop' => 'Apache-2.0',
-		'color-convert' => 'MIT',
 		'@fortawesome/fontawesome-free' => 'MIT',
-		'fontawesome-web' => 'MIT',
-		'jquery-ui-touch-punch' => 'MIT',
 		'ckeditor/ckeditor' => 'MPL-1.1+',
 		'block-ui' => 'MIT',
-		'jquery-slimscroll' => 'MIT',
 		'html5shiv' => 'MIT',
+		'jquery-slimscroll' => 'MIT',
 		'jquery-lazy' => 'MIT',
 		'nette/php-generator' => 'BSD-3-Clause',
 		'nette/utils' => 'BSD-3-Clause',
-		'@mdi/font' => 'MIT',
+		'@vue/compiler-sfc' => 'MIT',
 	];
+
 	/**
 	 * Information about forks CRM.
 	 *
-	 * @var array
+	 * @return array
 	 */
-	public static $libraries = [
-		'YetiForce' => [
-			'name' => 'Yetiforce',
-			'version' => '4.4',
-			'license' => 'YetiForce Public License v3',
-			'homepage' => 'https://yetiforce.com/en/yetiforce/license',
-			'notPackageFile' => true,
-			'showLicenseModal' => true
-		],
-		'Vtiger' => [
-			'name' => 'Vtiger',
-			'version' => '6.4.0 rev. 14548',
-			'license' => 'VPL 1.1', 'homepage' => 'https://www.vtiger.com/',
-			'notPackageFile' => true,
-			'showLicenseModal' => true,
-			'description' => 'LBL_VTIGER_DESCRIPTION'
-		],
-		'Sugar' => [
-			'name' => 'Sugar CRM',
-			'version' => '',
-			'license' => 'SPL-1.1.2',
-			'homepage' => 'https://www.sugarcrm.com/',
-			'notPackageFile' => true,
-			'showLicenseModal' => true,
-			'description' => 'LBL_SUGAR_DESCRIPTION'
-		],
-		'ChatSound' => [
-			'name' => 'Notification Sounds - Time Is Now',
-			'version' => '',
-			'license' => 'CC-BY-4.0',
-			'homepage' => 'https://notificationsounds.com/notification-sounds/time-is-now-585',
-			'notPackageFile' => true,
-			'showLicenseModal' => false,
-			'description' => 'LBL_CHAT_SOUND_DESCRIPTION'
-		],
-	];
+	public static function getBasicLibraries(): array
+	{
+		return [
+			'YetiForce' => [
+				'name' => 'YetiForce',
+				'version' => \App\Version::get(),
+				'license' => 'YetiForce Public License 5.0',
+				'homepage' => 'https://yetiforce.com/en/yetiforce/license',
+				'notPackageFile' => true,
+				'showLicenseModal' => true,
+			],
+			'Vtiger' => [
+				'name' => 'Vtiger',
+				'version' => '6.4.0 rev. 14548',
+				'license' => 'VPL 1.1', 'homepage' => 'https://www.vtiger.com/',
+				'notPackageFile' => true,
+				'showLicenseModal' => true,
+				'description' => 'LBL_VTIGER_DESCRIPTION',
+			],
+			'Sugar' => [
+				'name' => 'Sugar CRM',
+				'version' => '',
+				'license' => 'SPL-1.1.2',
+				'homepage' => 'https://www.sugarcrm.com/',
+				'notPackageFile' => true,
+				'showLicenseModal' => true,
+				'description' => 'LBL_SUGAR_DESCRIPTION',
+			],
+			'ChatSound' => [
+				'name' => 'Notification Sounds - Time Is Now',
+				'version' => '',
+				'license' => 'CC-BY-4.0',
+				'homepage' => 'https://notificationsounds.com/notification-sounds/time-is-now-585',
+				'notPackageFile' => true,
+				'showLicenseModal' => false,
+				'description' => 'LBL_CHAT_SOUND_DESCRIPTION',
+			], ];
+	}
 
 	/**
 	 * Function gets libraries from vendor.
@@ -201,7 +201,7 @@ class Credits
 	 *
 	 * @return array
 	 */
-	public static function getLibraryValues($name, $dir): array
+	public static function getLibraryValues(string $name, string $dir): array
 	{
 		$library = ['name' => $name, 'version' => '', 'license' => '', 'homepage' => ''];
 		$existJsonFiles = true;
@@ -239,7 +239,7 @@ class Credits
 	 *
 	 * @return array
 	 */
-	public static function getLicenseInformation($dir, $libraryName)
+	public static function getLicenseInformation(string $dir, string $libraryName): array
 	{
 		$licenseError = false;
 		$returnLicense = '';
@@ -270,23 +270,23 @@ class Credits
 						$returnLicense = static::$licenses[$libraryName] . " [{$returnLicense}]";
 						$licenseToDisplay = static::$licenses[$libraryName];
 						$licenseError = false;
-						$showLicenseModal = file_exists($dir . '..' . \DIRECTORY_SEPARATOR . 'licenses' . \DIRECTORY_SEPARATOR . $licenseToDisplay . '.txt');
+						$showLicenseModal = self::checkIfLicenseFileExists($licenseToDisplay);
 						break;
 					}
 					if ($returnLicense) {
-						$showLicenseModal = file_exists($dir . '..' . \DIRECTORY_SEPARATOR . 'licenses' . \DIRECTORY_SEPARATOR . $returnLicense . '.txt');
+						$showLicenseModal = self::checkIfLicenseFileExists($returnLicense);
 						break;
 					}
 				} else {
 					if (isset(static::$licenses[$libraryName])) {
 						$returnLicense = static::$licenses[$libraryName];
-						$showLicenseModal = file_exists($dir . '..' . \DIRECTORY_SEPARATOR . 'licenses' . \DIRECTORY_SEPARATOR . $returnLicense . '.txt');
+						$showLicenseModal = self::checkIfLicenseFileExists($returnLicense);
 					}
 				}
 			} else {
 				if (isset(static::$licenses[$libraryName])) {
 					$returnLicense = static::$licenses[$libraryName];
-					$showLicenseModal = file_exists($dir . '..' . \DIRECTORY_SEPARATOR . 'licenses' . \DIRECTORY_SEPARATOR . $returnLicense . '.txt');
+					$showLicenseModal = self::checkIfLicenseFileExists($returnLicense);
 				}
 			}
 		}
@@ -300,7 +300,7 @@ class Credits
 	 *
 	 * @return bool
 	 */
-	public static function validateLicenseName($license)
+	public static function validateLicenseName($license): bool
 	{
 		if (!$license) {
 			return true;
@@ -324,7 +324,7 @@ class Credits
 	 *
 	 * @return bool
 	 */
-	public static function checkIfLicenseFileExists($license)
+	public static function checkIfLicenseFileExists(string $license): bool
 	{
 		$filePath = ROOT_DIRECTORY . \DIRECTORY_SEPARATOR . 'licenses' . \DIRECTORY_SEPARATOR . $license . '.txt';
 		return file_exists($filePath);
@@ -337,8 +337,8 @@ class Credits
 	 *
 	 * @return array
 	 */
-	public static function getCredits()
+	public static function getCredits(): array
 	{
-		return ['static' => static::$libraries, 'vendor' => self::getVendorLibraries(), 'public' => self::getPublicLibraries(), 'vue' => self::getVueLibs()];
+		return ['static' => self::getBasicLibraries(), 'vendor' => self::getVendorLibraries(), 'public' => self::getPublicLibraries(), 'vue' => self::getVueLibs()];
 	}
 }

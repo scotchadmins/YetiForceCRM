@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 $.Class(
@@ -27,6 +27,9 @@ $.Class(
 	},
 	{
 		form: false,
+		discount: false,
+		tax: false,
+		container: false,
 		inventoryContainer: false,
 		inventoryHeadContainer: false,
 		summaryTaxesContainer: false,
@@ -39,7 +42,8 @@ $.Class(
 			'groupCheckbox',
 			'groupDiscount',
 			'individualDiscount',
-			'individualDiscountType'
+			'individualDiscountType',
+			'additionalDiscount'
 		],
 		taxModalFields: ['aggregationType', 'globalTax', 'groupCheckbox', 'groupTax', 'individualTax', 'regionalTax'],
 		/**
@@ -49,16 +53,29 @@ $.Class(
 		getForm() {
 			return this.form;
 		},
+		/**
+		 * Get current form element
+		 * @returns {jQuery}
+		 */
+		loadConfig() {
+			let discontConfig = this.form.find('.js-discount-config');
+			let taxConfig = this.form.find('.js-tax-config');
 
+			this.discount = discontConfig.length ? JSON.parse(discontConfig.val()) : {};
+			this.tax = taxConfig.length ? JSON.parse(taxConfig.val()) : {};
+		},
 		/**
 		 * Function that is used to get the line item container
 		 * @return : jQuery object
 		 */
-		getInventoryItemsContainer: function () {
-			if (this.inventoryContainer === false) {
-				this.inventoryContainer = $('.inventoryItems');
+		getContainer: function () {
+			if (this.container === false) {
+				this.container = $('.js-inv-container');
 			}
-			return this.inventoryContainer;
+			return this.container;
+		},
+		getInventoryItemsContainer: function () {
+			return this.getContainer().find('.inventoryItems');
 		},
 		getInventoryHeadContainer: function () {
 			if (this.inventoryHeadContainer === false) {
@@ -137,24 +154,23 @@ $.Class(
 			}
 		},
 		isIndividualTaxMode: function (row) {
-			let taxModeElement = this.getTaxModeSelectElement(row);
-			let selectedOption = taxModeElement.find('option:selected');
-			return selectedOption.val() == '1';
+			let selectedOption = this.getTaxModeSelectElement(row).find('option:selected');
+			if (selectedOption.length !== 0) {
+				return selectedOption.val() == 1;
+			}
+			return this.tax.default_mode == 1;
 		},
 		isGroupTaxMode: function () {
-			let taxTypeElement = this.getTaxModeSelectElement();
-			if (taxTypeElement) {
-				let selectedOption = taxTypeElement.find('option:selected');
-				if (selectedOption.val() == '0') {
-					return true;
-				}
+			let selectedOption = this.getTaxModeSelectElement();
+			if (selectedOption && (selectedOption = selectedOption.find('option:selected')) && selectedOption.length !== 0) {
+				return selectedOption.val() == 0;
 			}
-			return false;
+			return this.tax.default_mode == 0;
 		},
-		showIndividualTax: function (row) {
+		showIndividualTax: function () {
 			let thisInstance = this;
-			let groupTax = thisInstance.getInventorySummaryTaxesContainer().find('.groupTax');
-			let items = thisInstance.getInventoryItemsContainer();
+			let groupTax = thisInstance.getInventoryItemsContainer().find('.js-inv-tax_global');
+			let items = thisInstance.getInventoryItemsContainer().find('.js-inventory-items-body');
 			let newRow = $('#blackIthemTable').find('tbody');
 			if (thisInstance.isIndividualTaxMode()) {
 				groupTax.addClass('d-none');
@@ -172,14 +188,14 @@ $.Class(
 				thisInstance.setTax(items, 0);
 				thisInstance.setTaxPercent(items, 0);
 				thisInstance.setTaxParam(items, []);
-				thisInstance.setDefaultGlobalTax(row);
+				thisInstance.setDefaultGlobalTax();
 				groupTax.removeClass('d-none');
 				items.find('.changeTax').addClass('d-none');
 				newRow.find('.changeTax').addClass('d-none');
 			}
 			thisInstance.rowsCalculations();
 		},
-		setDefaultGlobalTax: function (row) {
+		setDefaultGlobalTax: function () {
 			let thisInstance = this;
 			let parentRow = thisInstance.getInventoryItemsContainer();
 			let taxDefaultValue = thisInstance
@@ -208,45 +224,33 @@ $.Class(
 				parentRow.closest('.inventoryItems').data('taxParam', '[]');
 			}
 		},
-		getDiscountModeSelectElement: function (row) {
-			let items = this.getInventoryHeadContainer();
-			if (items.find('thead .js-discountmode').length > 0) {
-				return $('.js-discountmode');
-			}
-			return row.find('.js-discountmode');
-		},
-		isIndividualDiscountMode: function (row) {
-			let discountModeElement = this.getDiscountModeSelectElement(row);
-			let selectedOption = discountModeElement.find('option:selected');
-			return selectedOption.val() == '1';
-		},
-		showIndividualDiscount: function (row) {
-			let thisInstance = this;
-			let groupDiscount = thisInstance.getInventorySummaryDiscountContainer().find('.groupDiscount');
-			let items = thisInstance.getInventoryItemsContainer();
-			let newRow = $('#blackIthemTable').find('tbody');
-			if (thisInstance.isIndividualDiscountMode(row)) {
-				groupDiscount.addClass('d-none');
-				items.find('.changeDiscount').removeClass('d-none');
-				newRow.find('.changeDiscount').removeClass('d-none');
-			} else {
-				groupDiscount.removeClass('d-none');
-				items.find('.changeDiscount').addClass('d-none');
-				newRow.find('.changeDiscount').addClass('d-none');
-			}
-			thisInstance.setDiscount(items, 0);
-			thisInstance.setDiscountParam(items, []);
-			thisInstance.rowsCalculations();
+		/**
+		 * Get discount mode
+		 * @returns {int}
+		 */
+		getDiscountMode: function () {
+			let selectedOption = this.getContainer().find('.js-discountmode option:selected');
+			return selectedOption.length ? selectedOption.val() : this.discount.default_mode;
 		},
 		getCurrency: function () {
-			let currency = $('.js-currency', this.getInventoryHeadContainer());
-			return currency.find('option:selected').val();
+			return $('.js-currency', this.getInventoryHeadContainer()).find('option:selected').val();
+		},
+		/**
+		 * Get discount aggregation
+		 * @returns {int}
+		 */
+		getDiscountAggregation: function () {
+			const element = $('.js-discount_aggreg', this.getInventoryHeadContainer()).find('option:selected');
+			if (element.length) {
+				return parseInt(element.val());
+			}
+			return parseInt(this.discount.aggregation);
 		},
 		getTax: function (row) {
+			const self = this;
 			let taxParams = row.find('.taxParam').val();
 			if (taxParams == '' || taxParams == '[]' || taxParams == undefined) return 0;
 			taxParams = JSON.parse(taxParams);
-			let aggregationType = $('.aggregationTypeTax').val();
 			let valuePrices = this.getNetPrice(row);
 			let taxRate = 0;
 			let types = taxParams.aggregationType;
@@ -271,7 +275,7 @@ $.Class(
 							break;
 					}
 					taxRate += valuePrices * (taxValue / 100);
-					if (aggregationType == '2') {
+					if (self.tax.aggregation == 2) {
 						valuePrices = valuePrices + taxRate;
 					}
 				});
@@ -303,45 +307,52 @@ $.Class(
 		},
 		getDiscount: function (row) {
 			let discountParams = row.find('.discountParam').val();
-			let aggregationType = $('.aggregationTypeDiscount').val();
 			if (discountParams == '' || discountParams == 'null' || discountParams == '[]' || discountParams == undefined) {
 				return 0;
 			}
+			const aggregation = this.getDiscountAggregation();
 			discountParams = JSON.parse(discountParams);
-			let valuePrices = this.getTotalPrice(row);
-			let discountRate = 0;
-			let types = discountParams.aggregationType;
+			let valuePrices = this.getTotalPrice(row),
+				discountRate = 0,
+				types = discountParams.aggregationType;
 			if (typeof types == 'string') {
 				types = [types];
 			}
 			if (types) {
-				types.forEach(function (entry) {
-					let discountValue;
-					if (entry == 'individual') {
-						discountValue = discountParams.individualDiscount;
-						let discountType = discountParams.individualDiscountType;
-						if (discountType == 'percentage') {
-							discountRate += valuePrices * (discountValue / 100);
-						} else {
-							discountRate += discountValue;
-						}
+				types.forEach((entry) => {
+					switch (entry) {
+						case 'global':
+							discountRate += valuePrices * (discountParams.globalDiscount / 100);
+							break;
+						case 'group':
+							discountRate += valuePrices * ((discountParams.groupDiscount ? discountParams.groupDiscount : 0) / 100);
+							break;
+						case 'individual':
+							if (discountParams.individualDiscountType === 'percentage') {
+								discountRate += valuePrices * (discountParams.individualDiscount / 100);
+							} else {
+								discountRate += discountParams.individualDiscount;
+							}
+							break;
+						case 'additional':
+							discountRate += valuePrices * (discountParams.additionalDiscount / 100);
+							break;
 					}
-					if (entry == 'global') {
-						discountRate += valuePrices * (discountParams.globalDiscount / 100);
-					}
-					if (entry == 'group') {
-						let groupDiscount = discountParams.groupDiscount ? discountParams.groupDiscount : 0;
-						discountRate += valuePrices * (groupDiscount / 100);
-					}
-					if (aggregationType == '2') {
-						valuePrices = valuePrices - discountRate;
+					if (aggregation == this.AGGREGATION_CASCADE) {
+						valuePrices = valuePrices - (discountParams.type === 'markup' ? -discountRate : discountRate);
 					}
 				});
 			}
 			return discountRate;
 		},
 		getNetPrice: function (row) {
-			return this.getTotalPrice(row) - this.getDiscount(row);
+			let discount = this.getDiscount(row);
+			let discountParams = row.find('.discountParam').val();
+			if (discount && discountParams && JSON.parse(discountParams).type === 'markup') {
+				discount = -discount;
+			}
+
+			return this.getTotalPrice(row) - discount;
 		},
 		getTotalPrice: function (row) {
 			return this.getQuantityValue(row) * this.getUnitPriceValue(row);
@@ -363,7 +374,7 @@ $.Class(
 			let price = 0;
 			this.getInventoryItemsContainer()
 				.find(thisInstance.rowClass)
-				.each(function (index) {
+				.each(function () {
 					price += thisInstance.getGrossPrice($(this));
 				});
 			return App.Fields.Double.formatToDb(price);
@@ -445,53 +456,108 @@ $.Class(
 				.find('[numrowex=' + row.attr('numrow') + '] .comment')
 				.val(val);
 		},
+		/**
+		 * Set inventory row unit price
+		 * @param {jQuery} row
+		 * @param {string} val
+		 */
 		setUnitPrice: function (row, val) {
 			val = App.Fields.Double.formatToDisplay(val);
 			row.find('.unitPrice').val(val).attr('title', val);
 			return this;
 		},
+		/**
+		 * Set inventory row purchase
+		 * @param {jQuery} row
+		 * @param {string} val
+		 */
 		setPurchase: function (row, val) {
-			val = App.Fields.Double.formatToDisplay(val);
-			row.find('.purchase').val(val);
+			row.find('.purchase').val(App.Fields.Double.formatToDisplay(val));
 			return this;
 		},
+		/**
+		 * Set inventory row net price
+		 * @param {jQuery} row
+		 * @param {string} val
+		 */
 		setNetPrice: function (row, val) {
 			val = App.Fields.Double.formatToDisplay(val);
 			$('.netPriceText', row).text(val);
 			$('.netPrice', row).val(val);
 		},
+		/**
+		 * Set inventory row gross price
+		 * @param {jQuery} row
+		 * @param {string} val
+		 */
 		setGrossPrice: function (row, val) {
 			val = App.Fields.Double.formatToDisplay(val);
 			$('.grossPriceText', row).text(val);
 			$('.grossPrice', row).val(val);
 		},
+		/**
+		 * Set inventory row total price
+		 * @param {jQuery} row
+		 * @param {string} val
+		 */
 		setTotalPrice: function (row, val) {
 			val = App.Fields.Double.formatToDisplay(val);
 			$('.totalPriceText', row).text(val);
 			$('.totalPrice', row).val(val);
 		},
+		/**
+		 * Set inventory row margin
+		 * @param {jQuery} row
+		 * @param {string} val
+		 */
 		setMargin: function (row, val) {
-			val = App.Fields.Double.formatToDisplay(val);
-			$('.margin', row).val(val);
+			$('.margin', row).val(App.Fields.Double.formatToDisplay(val));
 		},
+		/**
+		 * Set inventory row margin percent
+		 * @param {jQuery} row
+		 * @param {string} val
+		 */
 		setMarginP: function (row, val) {
-			val = App.Fields.Double.formatToDisplay(val);
-			$('.marginp', row).val(val);
+			$('.marginp', row).val(App.Fields.Double.formatToDisplay(val));
 		},
+		/**
+		 * Set inventory row discount
+		 * @param {jQuery} row
+		 * @param {string} val
+		 */
 		setDiscount: function (row, val) {
-			val = App.Fields.Double.formatToDisplay(val);
-			$('.discount', row).val(val);
+			$('.discount', row).val(App.Fields.Double.formatToDisplay(val));
 		},
+		/**
+		 * Set inventory row discount param
+		 * @param {jQuery} row
+		 * @param {string} val
+		 */
 		setDiscountParam: function (row, val) {
 			$('.discountParam', row).val(JSON.stringify(val));
 		},
+		/**
+		 * Set inventory row tax
+		 * @param {jQuery} row
+		 * @param {string} val
+		 */
 		setTax: function (row, val) {
 			$('.tax', row).val(App.Fields.Double.formatToDisplay(val));
 		},
+		/**
+		 * Set inventory row tax percent
+		 * @param {jQuery} row
+		 * @param {string} val
+		 */
 		setTaxPercent: function (row, val) {
-			val = App.Fields.Double.formatToDisplay(val);
-			$('.js-tax-percent', row).val(val);
+			$('.js-tax-percent', row).val(App.Fields.Double.formatToDisplay(val));
 		},
+		/**
+		 * Set inventory row tax param
+		 * @param {jQuery} row
+		 * @param {string} val
+		 */
 		setTaxParam: function (row, val) {
 			$('.taxParam', row).val(JSON.stringify(val));
 		},
@@ -506,17 +572,18 @@ $.Class(
 			this.calculateTaxes(row);
 			this.calculateGrossPrice(row);
 			this.calculateMargin(row);
+			app.event.trigger('Inventory.RowCalculations', this, row);
 		},
 		rowsCalculations: function () {
-			let thisInstance = this;
+			const self = this;
 			this.getInventoryItemsContainer()
-				.find(thisInstance.rowClass)
-				.each(function (index) {
+				.find(self.rowClass)
+				.each(function () {
 					let row = $(this);
-					thisInstance.syncHeaderData(row);
-					thisInstance.quantityChangeActions(row);
+					self.syncHeaderData(row);
+					self.quantityChangeActions(row);
 				});
-			thisInstance.calculateItemNumbers();
+			self.calculateItemNumbers();
 		},
 		calculateDiscounts: function (row) {
 			this.setDiscount(row, this.getDiscount(row));
@@ -526,57 +593,112 @@ $.Class(
 			this.setTaxPercent(row, this.getTaxPercent(row));
 		},
 		summaryCalculations: function () {
-			let thisInstance = this;
-			thisInstance
-				.getInventoryItemsContainer()
+			this.getInventoryItemsContainer()
 				.find('tfoot .wisableTd')
-				.each(function (index) {
-					thisInstance.calculatSummary($(this), $(this).data('sumfield'));
+				.each((_n, e) => {
+					this.calculateSummary($(e));
 				});
-			thisInstance.calculatDiscountSummary();
-			thisInstance.calculatTaxSummary();
-			thisInstance.calculatCurrenciesSummary();
-			thisInstance.calculatMarginPSummary();
+			this.calculateDiscountSummary();
+			this.calculateTaxSummary();
+			this.calculateCurrenciesSummary();
+			this.calculateMarginPSummary();
+			this.summaryGroupCalculations();
 		},
-		calculatSummary: function (element, field) {
+		/**
+		 * Get Items
+		 * @returns {jQuery} Items
+		 */
+		getItems: function () {
+			return this.getInventoryItemsContainer().find('.inventoryRow');
+		},
+		/**
+		 * Get groups
+		 * @returns {jQuery} Group rows
+		 */
+		getGroups: function () {
+			return this.getInventoryItemsContainer().find('.inventoryRowGroup');
+		},
+		/**
+		 * Get group items
+		 * @param {jQuery} groupRow
+		 * @returns {jQuery} Items
+		 */
+		getGroupItems: function (groupRow) {
+			return groupRow.nextUntil('tr.inventoryRowGroup').filter('tr.inventoryRow');
+		},
+		/**
+		 * Get item group
+		 * @param {jQuery} row
+		 * @returns {jQuery} group row
+		 */
+		getGroupFromItem: function (row) {
+			let classElement = 'inventoryRowGroup';
+			while (row.is('tr') && !row.hasClass(classElement)) {
+				row = row.prev();
+			}
+
+			return row.hasClass(classElement) ? row : null;
+		},
+		summaryGroupCalculations: function () {
+			this.getGroups().each((_n, e) => {
+				let groupRow = $(e);
+				let items = this.getGroupItems(groupRow);
+				groupRow.find('.js-inv-container-group-summary').each((_n, e) => {
+					this.calculateSummary($(e), items);
+				});
+				this.calculateMarginPSummary(groupRow);
+			});
+		},
+		calculateSummary: function (element, rows) {
 			let thisInstance = this;
 			let sum = 0;
-			this.getInventoryItemsContainer()
-				.find(thisInstance.rowClass)
-				.each(function (index) {
-					let element = $(this).find('.' + field);
-					if (element.length > 0) {
-						sum += App.Fields.Double.formatToDb(element.val());
-					}
-				});
-			element.text(App.Fields.Double.formatToDisplay(sum));
+			let fieldName = typeof element === 'string' ? element : element.data('sumfield');
+			if (!rows) {
+				rows = this.getInventoryItemsContainer().find(thisInstance.rowClass);
+			}
+			rows.each(function () {
+				let e = $(this).find('.' + fieldName);
+				if (e.length > 0) {
+					sum += App.Fields.Double.formatToDb(e.val());
+				}
+			});
+			if (typeof element === 'object') {
+				element.get(0).innerText = App.Fields.Double.formatToDisplay(sum);
+			}
+
+			return sum;
 		},
-		calculatMarginPSummary: function () {
-			let sumRow = this.getInventoryItemsContainer().find('tfoot'),
-				totalPriceField =
+		calculateMarginPSummary: function (sumRow) {
+			if (!sumRow) {
+				sumRow = this.getInventoryItemsContainer().find('tfoot');
+			}
+			let totalPriceField =
 					sumRow.find('[data-sumfield="netPrice"]').length > 0
 						? sumRow.find('[data-sumfield="netPrice"]')
 						: sumRow.find('[data-sumfield="totalPrice"]'),
 				sumPrice = totalPriceField.getNumberFromText(),
 				purchase = 0,
 				marginp = 0;
-			this.getInventoryItemsContainer()
-				.find(this.rowClass)
-				.each(function (index) {
-					let qty = $(this).find('.qty').getNumberFromValue(),
-						purchasePrice = $(this).find('.purchase').getNumberFromValue();
-					if (qty > 0 && purchasePrice > 0) {
-						purchase += qty * purchasePrice;
-					}
-				});
+
+			let rows = sumRow.hasClass('inventoryRowGroup')
+				? this.getGroupItems(sumRow)
+				: this.getInventoryItemsContainer().find(this.rowClass);
+
+			rows.each(function () {
+				let qty = $(this).find('.qty').getNumberFromValue(),
+					purchasePrice = $(this).find('.purchase').getNumberFromValue();
+				if (qty > 0 && purchasePrice > 0) {
+					purchase += qty * purchasePrice;
+				}
+			});
 
 			let subtraction = sumPrice - purchase;
 			if (purchase !== 0 && sumPrice !== 0) {
-				marginp = (subtraction / sumPrice) * 100;
+				marginp = (subtraction * 100) / purchase;
 			}
 			sumRow.find('[data-sumfield="marginP"]').text(App.Fields.Double.formatToDisplay(marginp) + '%');
 		},
-		calculatDiscountSummary: function () {
+		calculateDiscountSummary: function () {
 			let thisInstance = this;
 			let discount = thisInstance.getAllDiscount();
 			let container = thisInstance.getInventorySummaryDiscountContainer();
@@ -593,7 +715,7 @@ $.Class(
 				});
 			return discount;
 		},
-		calculatCurrenciesSummary: function () {
+		calculateCurrenciesSummary: function () {
 			let container = this.getInventorySummaryCurrenciesContainer(),
 				selected = $('.js-currency option:selected', this.getInventoryHeadContainer()),
 				base = $('.js-currency option[data-base-currency="1"]', this.getInventoryHeadContainer()),
@@ -620,7 +742,7 @@ $.Class(
 			});
 			container.find('.js-panel__footer input').val(App.Fields.Double.formatToDisplay(sum));
 		},
-		calculatTaxSummary: function () {
+		calculateTaxSummary: function () {
 			let thisInstance = this;
 			let taxes = thisInstance.getAllTaxes();
 			let container = thisInstance.getInventorySummaryTaxesContainer();
@@ -641,7 +763,7 @@ $.Class(
 			let typeSummary = $('.aggregationTypeTax').val();
 			this.getInventoryItemsContainer()
 				.find(thisInstance.rowClass)
-				.each(function (index) {
+				.each(function () {
 					let row = $(this);
 					let netPrice = thisInstance.getNetPrice(row);
 					let params = row.find('.taxParam').val();
@@ -651,7 +773,7 @@ $.Class(
 							param.aggregationType = [param.aggregationType];
 						}
 						if (param.aggregationType)
-							$.each(param.aggregationType, function (index, name) {
+							$.each(param.aggregationType, function (_, name) {
 								name = name + 'Tax';
 								if (param[name] == undefined) {
 									return;
@@ -700,64 +822,62 @@ $.Class(
 			}
 			this.setMarginP(row, marginp);
 		},
-		calculateDiscount: function (row, modal) {
-			let netPriceBeforeDiscount = App.Fields.Double.formatToDb(modal.find('.valueTotalPrice').text()),
-				valuePrices = netPriceBeforeDiscount,
-				globalDiscount = 0,
-				groupDiscount = 0,
-				individualDiscount = 0,
-				valueDiscount = 0;
+		AGGREGATION_CANNOT_BE_COMBINED: 0,
+		AGGREGATION_IN_TOTAL: 1,
+		AGGREGATION_CASCADE: 2,
+		calculateDiscount: function (_row, modal) {
+			const netPriceBeforeDiscount = App.Fields.Double.formatToDb(modal.find('.valueTotalPrice').text()),
+				aggregationType = modal.find('.aggregationType').val(),
+				isMarkup = modal.find('.js-inv--discount-type.markup:checked').length === 1;
+			let valuePrices = netPriceBeforeDiscount;
 
-			let discountsType = modal.find('.discountsType').val();
-
-			if (discountsType == '0' || discountsType == '1') {
-				if (modal.find('.js-active .globalDiscount').length > 0) {
-					globalDiscount = App.Fields.Double.formatToDb(modal.find('.js-active .globalDiscount').val());
+			let getValue = function (type, netPrice, isMarkup) {
+				let value = 0;
+				let element = modal.find(`.js-active .${type}`);
+				let customCheckTrue = true;
+				if (type === 'groupValue' && modal.find('.js-active .groupCheckbox').prop('checked') !== true) {
+					customCheckTrue = false;
 				}
-				if (modal.find('.js-active .individualDiscountType').length > 0) {
-					let individualTypeDiscount = modal.find('.js-active .individualDiscountType:checked').val();
-					let value = App.Fields.Double.formatToDb(modal.find('.js-active .individualDiscountValue').val());
-					if (individualTypeDiscount == 'percentage') {
-						individualDiscount = netPriceBeforeDiscount * (value / 100);
-					} else {
-						individualDiscount = value;
-					}
+				if (element.length > 0 && customCheckTrue) {
+					value = App.Fields.Double.formatToDb(element.val());
 				}
 				if (
-					modal.find('.js-active .groupCheckbox').length > 0 &&
-					modal.find('.js-active .groupCheckbox').prop('checked') == true
+					type === 'individualDiscountValue' &&
+					modal.find('.js-active .individualDiscountType:checked').val() == 'percentage'
 				) {
-					groupDiscount = App.Fields.Double.formatToDb(modal.find('.groupValue').val());
-					groupDiscount = netPriceBeforeDiscount * (groupDiscount / 100);
+					value = netPrice * (value / 100);
 				}
 
+				return value && isMarkup ? -value : value;
+			};
+
+			let globalDiscount, accountDiscount, individualDiscount, additionalDiscount;
+			if (aggregationType == this.AGGREGATION_CANNOT_BE_COMBINED || aggregationType == this.AGGREGATION_IN_TOTAL) {
+				globalDiscount = getValue('globalDiscount', netPriceBeforeDiscount, isMarkup); // percentage
+				accountDiscount = getValue('groupValue', netPriceBeforeDiscount, isMarkup); // percentage
+				individualDiscount = getValue('individualDiscountValue', netPriceBeforeDiscount, isMarkup); // amount
+				additionalDiscount = getValue('additionalDiscountValue', netPriceBeforeDiscount, isMarkup); // percentage
+
+				valuePrices -= netPriceBeforeDiscount * (globalDiscount / 100);
+				valuePrices -= netPriceBeforeDiscount * (additionalDiscount / 100);
+				valuePrices -= individualDiscount;
+				valuePrices -= netPriceBeforeDiscount * (accountDiscount / 100);
+			} else if (aggregationType == this.AGGREGATION_CASCADE) {
+				globalDiscount = getValue('globalDiscount', valuePrices, isMarkup); // percentage
 				valuePrices = valuePrices * ((100 - globalDiscount) / 100);
+				accountDiscount = getValue('groupValue', valuePrices, isMarkup); // percentage
+				valuePrices = valuePrices * ((100 - accountDiscount) / 100);
+				individualDiscount = getValue('individualDiscountValue', valuePrices, isMarkup); // amount
 				valuePrices = valuePrices - individualDiscount;
-				valuePrices = valuePrices - groupDiscount;
-			} else if (discountsType == '2') {
-				modal.find('.js-active').each(function (index) {
-					let panel = $(this);
-					if (panel.find('.globalDiscount').length > 0) {
-						let globalDiscount = App.Fields.Double.formatToDb(panel.find('.globalDiscount').val());
-						valuePrices = valuePrices * ((100 - globalDiscount) / 100);
-					} else if (panel.find('.groupCheckbox').length > 0 && panel.find('.groupCheckbox').prop('checked') == true) {
-						let groupDiscount = App.Fields.Double.formatToDb(panel.find('.groupValue').val());
-						valuePrices = valuePrices * ((100 - groupDiscount) / 100);
-					} else if (panel.find('.individualDiscountType').length > 0) {
-						let value = App.Fields.Double.formatToDb(panel.find('.individualDiscountValue').val());
-						if (panel.find('.individualDiscountType[name="individualDiscountType"]:checked').val() == 'percentage') {
-							valuePrices = valuePrices * ((100 - value) / 100);
-						} else {
-							valuePrices = valuePrices - value;
-						}
-					}
-				});
+				additionalDiscount = getValue('additionalDiscountValue', valuePrices, isMarkup); // percentage
+				valuePrices = valuePrices * ((100 - additionalDiscount) / 100);
 			}
 
+			let discountValue = netPriceBeforeDiscount - valuePrices;
 			modal.find('.valuePrices').text(App.Fields.Double.formatToDisplay(valuePrices));
-			modal.find('.valueDiscount').text(App.Fields.Double.formatToDisplay(netPriceBeforeDiscount - valuePrices));
+			modal.find('.valueDiscount').text(App.Fields.Double.formatToDisplay(isMarkup ? -discountValue : discountValue));
 		},
-		calculateTax: function (row, modal) {
+		calculateTax: function (_row, modal) {
 			let netPriceWithoutTax = App.Fields.Double.formatToDb(modal.find('.valueNetPrice').text()),
 				valuePrices = netPriceWithoutTax,
 				globalTax = 0,
@@ -788,20 +908,17 @@ $.Class(
 				valuePrices = valuePrices + groupTax;
 				valuePrices = valuePrices + regionalTax;
 			} else if (taxType == '2') {
-				modal.find('.js-active').each(function (index) {
+				modal.find('.js-active').each(function () {
 					let panel = $(this);
 					if (panel.find('.globalTax').length > 0) {
-						let globalTax = App.Fields.Double.formatToDb(panel.find('.globalTax').val());
-						valuePrices = valuePrices * ((100 + globalTax) / 100);
+						valuePrices = valuePrices * ((100 + App.Fields.Double.formatToDb(panel.find('.globalTax').val())) / 100);
 					} else if (panel.find('.groupTax').length > 0) {
-						let groupTax = App.Fields.Double.formatToDb(panel.find('.groupTax').val());
-						valuePrices = valuePrices * ((100 + groupTax) / 100);
+						valuePrices = valuePrices * ((100 + App.Fields.Double.formatToDb(panel.find('.groupTax').val())) / 100);
 					} else if (panel.find('.regionalTax').length > 0) {
-						let regionalTax = App.Fields.Double.formatToDb(panel.find('.regionalTax').val());
-						valuePrices = valuePrices * ((100 + regionalTax) / 100);
+						valuePrices = valuePrices * ((100 + App.Fields.Double.formatToDb(panel.find('.regionalTax').val())) / 100);
 					} else if (panel.find('.individualTaxValue').length > 0) {
-						let value = App.Fields.Double.formatToDb(panel.find('.individualTaxValue').val());
-						valuePrices = ((value + 100) / 100) * valuePrices;
+						valuePrices =
+							((App.Fields.Double.formatToDb(panel.find('.individualTaxValue').val()) + 100) / 100) * valuePrices;
 					}
 				});
 			}
@@ -821,51 +938,85 @@ $.Class(
 			});
 		},
 		registerInventorySaveData: function () {
-			const thisInstance = this;
-			thisInstance.form.on(Vtiger_Edit_Js.recordPreSave, function (e, data) {
-				thisInstance.syncHeaderData();
-				if (!thisInstance.checkLimits(thisInstance.form)) {
+			app.event.on('EditView.preValidation', (_e, _view) => {
+				this.showAllItems();
+			});
+			this.form.on(Vtiger_Edit_Js.recordPreSave, () => {
+				this.syncHeaderData();
+				if (!this.checkLimits(this.form)) {
 					return false;
 				}
 			});
 		},
 		syncHeaderData(container) {
+			this.renumberHeaderItems();
 			let header = this.getInventoryHeadContainer();
 			if (typeof container === 'undefined') {
-				container = this.getInventoryItemsContainer();
+				container = this.getContainer();
 			}
-			container.find('.js-sync').each(function () {
-				let element = $(this);
-				element.val(header.find('.js-' + element.data('syncId')).val());
+			container.find('.js-sync').each((_, e) => {
+				let element = $(e);
+				let value;
+				let name = element.data('syncId');
+				let classElement = '.js-' + element.data('syncId');
+				if (name === 'grouplabel' || name === 'groupid') {
+					let row = element.closest(this.rowClass);
+					while (row.is('tr') && row.prev().find(classElement).length < 1) {
+						row = row.prev();
+					}
+					value = row.prev().find(classElement);
+				} else {
+					value = header.find(classElement);
+				}
+				element.val(value.length ? value.val() : element.data('default'));
 			});
+		},
+		/**
+		 * Renumber header items
+		 */
+		renumberHeaderItems() {
+			this.getContainer()
+				.find('.js-inv-container-content .js-groupid')
+				.each((n, e) => {
+					e.value = n + 1;
+				});
 		},
 		/**
 		 * Function which will be used to handle price book popup
 		 * @params :  element - popup image element
 		 */
 		pricebooksModalHandler: function (element) {
-			const thisInstance = this;
 			let lineItemRow = element.closest(this.rowClass);
 			let rowName = lineItemRow.find('.rowName');
+			let currencyId = this.getCurrency() || CONFIG.defaultCurrencyId;
 			app.showRecordsList(
 				{
 					module: 'PriceBooks',
 					src_module: $('[name="popupReferenceModule"]', rowName).val(),
 					src_record: $('.sourceField', rowName).val(),
 					src_field: $('[name="popupReferenceModule"]', rowName).data('field'),
-					currency_id: thisInstance.getCurrency() || CONFIG.defaultCurrencyId
+					search_params: JSON.stringify([
+						[
+							['currency_id', 'e', currencyId],
+							['active', 'e', 1]
+						]
+					]),
+					lockedFields: ['currency_id', 'active'],
+					cvEnabled: false,
+					currency_id: currencyId,
+					additionalData: { currency_id: currencyId }
 				},
-				(modal, instance) => {
+				(_modal, instance) => {
 					instance.setSelectEvent((responseData) => {
 						AppConnector.request({
 							module: 'PriceBooks',
 							action: 'ProductListPrice',
 							record: responseData.id,
 							src_record: $('.sourceField', rowName).val()
-						}).done(function (data) {
+						}).done((data) => {
 							if (data.result) {
-								thisInstance.setUnitPrice(lineItemRow, data.result);
-								thisInstance.quantityChangeActions(lineItemRow);
+								this.setUnitPrice(lineItemRow, data.result);
+								this.quantityChangeActions(lineItemRow);
 							} else {
 								app.errorLog('Incorrect data', responseData);
 							}
@@ -878,7 +1029,7 @@ $.Class(
 		loadSubProducts: function (parentRow, indicator) {
 			let thisInstance = this;
 			let progressInstace;
-			let recordId = $('input.sourceField', parentRow).val();
+			let recordId = $('input.sourceField.js-name', parentRow).val();
 			let recordModule = parentRow.find('.rowName input[name="popupReferenceModule"]').val();
 			thisInstance.removeSubProducts(parentRow);
 			if (recordId == '0' || recordId == '' || $.inArray(recordModule, ['Products', 'Services']) < 0) {
@@ -905,7 +1056,7 @@ $.Class(
 						progressInstace.hide();
 					}
 				})
-				.fail(function (error, err) {
+				.fail(function () {
 					if (progressInstace) {
 						progressInstace.hide();
 					}
@@ -918,13 +1069,11 @@ $.Class(
 		addSubProducts: function (parentRow, responseData) {
 			let subProductsContainer = $('.subProductsContainer ul', parentRow);
 			for (let id in responseData) {
-				let priductText = $('<li>').text(responseData[id]);
-				subProductsContainer.append(priductText);
+				subProductsContainer.append($('<li>').text(responseData[id]));
 			}
 		},
 		mapResultsToFields: function (referenceModule, parentRow, responseData) {
 			let unit,
-				unitPrice,
 				taxParam = [];
 			let thisInstance = this;
 			let isGroupTax = thisInstance.isGroupTaxMode();
@@ -950,9 +1099,16 @@ $.Class(
 				thisInstance.setTaxParam(parentRow, taxParam);
 				thisInstance.setTax(parentRow, 0);
 				thisInstance.setTaxPercent(parentRow, 0);
-				// Load auto fields
+
 				for (let field in recordData['autoFields']) {
-					parentRow.find('input.' + field).val(recordData['autoFields'][field]);
+					let inputField = parentRow.find(`input.${field},select.${field}`);
+					if (inputField.attr('type') === 'checkbox') {
+						inputField.prop('checked', recordData['autoFields'][field]);
+					} else if (inputField.is('select')) {
+						inputField.val(recordData['autoFields'][field]).trigger('change');
+					} else {
+						inputField.val(recordData['autoFields'][field]);
+					}
 					if (recordData['autoFields'][field + 'Text']) {
 						parentRow.find('.' + field + 'Text').text(recordData['autoFields'][field + 'Text']);
 					}
@@ -973,6 +1129,7 @@ $.Class(
 				if (typeof recordData['autoFields']['unit'] !== 'undefined') {
 					unit = recordData['autoFields']['unit'];
 				}
+				app.event.trigger('Inventory.SelectionItem', thisInstance, parentRow, recordData, referenceModule);
 				this.triggerQtyParam(unit, recordData.qtyPerUnit, parentRow);
 			}
 			if (referenceModule === 'Products') {
@@ -1006,12 +1163,11 @@ $.Class(
 			$('input.qty', parentRow).attr('data-validation-engine', validationEngine);
 		},
 		saveDiscountsParameters: function (parentRow, modal) {
-			let thisInstance = this;
+			const typeName = 'aggregationType',
+				panels = modal.find('[name="' + typeName + '"]:checked');
 			let info = {};
-			let typeName = 'aggregationType';
-			let panels = modal.find('[name="' + typeName + '"]:checked');
 			info[typeName] = [];
-			panels.each(function (i) {
+			panels.each(function () {
 				let type = $(this).val(),
 					container = $(this).closest('.js-panel');
 				if (panels.length > 1) {
@@ -1022,29 +1178,43 @@ $.Class(
 				container.find('[name="' + type + 'Discount"]').each(function () {
 					let param = type + 'Discount';
 					let element = $(this);
-					if ('global' === type) {
-						info[param] = App.Fields.Double.formatToDb(element.val());
-					} else if ('group' === type && element.closest('.input-group').find('.groupCheckbox').prop('checked')) {
-						info[param] = App.Fields.Double.formatToDb(element.val());
-					} else if ('individual' === type) {
-						let name = 'individualDiscountType';
-						info[name] = container.find('[name="' + name + '"]:checked').val();
-						info[param] = App.Fields.Double.formatToDb(element.val());
+					switch (type) {
+						case 'group':
+							if (element.closest('.input-group').find('.groupCheckbox').prop('checked')) {
+								info[param] = App.Fields.Double.formatToDb(element.val());
+							}
+							break;
+						case 'individual':
+							let name = 'individualDiscountType';
+							info[name] = container.find('[name="' + name + '"]:checked').val();
+							info[param] = App.Fields.Double.formatToDb(element.val());
+							break;
+						case 'global':
+						case 'additional':
+							info[param] = App.Fields.Double.formatToDb(element.val());
+							break;
 					}
 				});
 			});
-			thisInstance.setDiscountParam($('#blackIthemTable'), info);
-			thisInstance.setDiscountParam(parentRow, info);
+			if (modal.find('.js-inv--discount-type.markup:checked').length) {
+				info['type'] = 'markup';
+			}
+			let discoutMode = modal.find('.discountMode').val();
+			if (discoutMode == this.DISCOUNT_MODE_GROUP) {
+				this.setDiscountParam(this.getGroupItems(parentRow), info);
+			} else if (discoutMode == this.DISCOUNT_MODE_GLOBAL) {
+				this.setDiscountParam($('#blackIthemTable'), info);
+			}
+			this.setDiscountParam(parentRow, info);
 		},
 		saveTaxsParameters: function (parentRow, modal) {
-			let thisInstance = this;
 			let info = {};
-			let extend = ['aggregationType', 'groupCheckbox', 'individualTaxType'];
-			$.each(thisInstance.taxModalFields, function (index, param) {
+			const extend = ['aggregationType', 'groupCheckbox', 'individualTaxType'];
+			$.each(this.taxModalFields, function (_, param) {
 				if ($.inArray(param, extend) >= 0) {
 					if (modal.find('[name="' + param + '"]:checked').length > 1) {
 						info[param] = [];
-						modal.find('[name="' + param + '"]:checked').each(function (index) {
+						modal.find('[name="' + param + '"]:checked').each(function () {
 							info[param].push($(this).val());
 						});
 					} else {
@@ -1055,65 +1225,42 @@ $.Class(
 				}
 			});
 			parentRow.data('taxParam', JSON.stringify(info));
-			thisInstance.setTaxParam(parentRow, info);
-			thisInstance.setTaxParam($('#blackIthemTable'), info);
+			this.setTaxParam(parentRow, info);
+			this.setTaxParam($('#blackIthemTable'), info);
 		},
 		showExpandedRow: function (row) {
-			let thisInstance = this;
-			let items = thisInstance.getInventoryItemsContainer();
-			let inventoryRowExpanded = items.find('[numrowex="' + row.attr('numrow') + '"]');
-			let element = row.find('.toggleVisibility');
+			const inventoryRowExpanded = this.getInventoryItemsContainer().find('[numrowex="' + row.attr('numrow') + '"]');
+			const element = row.find('.toggleVisibility');
 			element.data('status', '1');
+			element.removeClass(element.data('off')).addClass(element.data('on'));
 			inventoryRowExpanded.removeClass('d-none');
+			this.markCommentBtn(row);
 		},
 		hideExpandedRow: function (row) {
-			let thisInstance = this;
-			let items = thisInstance.getInventoryItemsContainer();
-			let inventoryRowExpanded = items.find('[numrowex="' + row.attr('numrow') + '"]');
-			let element = row.find('.toggleVisibility');
+			const inventoryRowExpanded = this.getInventoryItemsContainer().find('[numrowex="' + row.attr('numrow') + '"]');
+			const element = row.find('.toggleVisibility');
 			element.data('status', '0');
+			element.removeClass(element.data('on')).addClass(element.data('off'));
 			inventoryRowExpanded.addClass('d-none');
+			this.markCommentBtn(row);
 		},
-		initDiscountsParameters: function (parentRow, modal) {
-			let thisInstance = this;
-			let parameters = parentRow.find('.discountParam').val();
-			if (parameters == '' || parameters == undefined) {
-				return;
+		/**
+		 * Mark button for extended fields
+		 * @param {jQuery} row
+		 */
+		markCommentBtn: function (row) {
+			let rowExpanded = this.getInventoryItemsContainer().find('[numrowex="' + row.attr('numrow') + '"]');
+			let value = rowExpanded.find('.js-inventory-item-comment').val();
+			const element = row.find('.js-inv-item-btn-icon');
+			let removeClass = element.data('active');
+			let addClass = element.data('inactive');
+			if (value) {
+				removeClass = addClass;
+				addClass = element.data('active');
 			}
-			parameters = JSON.parse(parameters);
-			$.each(thisInstance.discountModalFields, function (index, param) {
-				let parameter = parameters[param];
-				let field = modal.find('[name="' + param + '"]');
-				if (field.attr('type') == 'checkbox' || field.attr('type') == 'radio') {
-					if ('groupCheckbox' === param && parameters['groupDiscount'] !== undefined) {
-						field.prop('checked', true);
-						return true;
-					}
-					let array = parameter;
-					if (!$.isArray(array)) {
-						array = [array];
-					}
-					$.each(array, function (index, arrayValue) {
-						let value = field.filter('[value="' + arrayValue + '"]').prop('checked', true);
-						if (param == 'aggregationType') {
-							value.closest('.js-panel').find('.js-panel__body').removeClass('d-none');
-							value.closest('.js-panel').addClass('js-active');
-						}
-					});
-				} else if (field.prop('tagName') == 'SELECT') {
-					field
-						.find('option[value="' + parameter + '"]')
-						.prop('selected', 'selected')
-						.change();
-				} else if (!field.prop('readonly')) {
-					field.val(parameter);
-				}
-			});
-
-			thisInstance.calculateDiscount(parentRow, modal);
+			element.removeClass(removeClass).addClass(addClass);
 		},
 		initTaxParameters: function (parentRow, modal) {
-			const thisInstance = this;
 			let parameters;
 			if (parentRow.data('taxParam')) {
 				parameters = parentRow.data('taxParam');
@@ -1124,7 +1271,7 @@ $.Class(
 				return;
 			}
 			parameters = JSON.parse(parameters.toString());
-			$.each(thisInstance.taxModalFields, function (index, param) {
+			$.each(this.taxModalFields, function (_, param) {
 				let parameter = parameters[param],
 					field = modal.find('[name="' + param + '"]');
 
@@ -1134,7 +1281,7 @@ $.Class(
 					if (!$.isArray(array)) {
 						array = [array];
 					}
-					$.each(array, function (index, arrayValue) {
+					$.each(array, function (_, arrayValue) {
 						value = field.filter('[value="' + arrayValue + '"]').prop('checked', true);
 						if (param === 'aggregationType') {
 							value.closest('.js-panel').find('.js-panel__body').removeClass('d-none');
@@ -1154,40 +1301,37 @@ $.Class(
 					}
 				}
 			});
-			thisInstance.calculateTax(parentRow, modal);
+			this.calculateTax(parentRow, modal);
 		},
 		limitEnableSave: false,
 		checkLimits: function () {
-			let thisInstance = this;
-			let account = thisInstance.getAccountId();
-			let limit = parseInt(app.getMainParams('inventoryLimit'));
+			const account = this.getAccountId(),
+				limit = parseInt(app.getMainParams('inventoryLimit'));
 			let response = true;
-
-			if (account == '' || thisInstance.limitEnableSave || !limit) {
+			if (account == '' || this.limitEnableSave || !limit) {
 				return response;
 			}
-
-			let params = {};
-			params.data = {
-				module: app.getModuleName(),
-				action: 'Inventory',
-				mode: 'checkLimits',
-				record: account,
-				currency: thisInstance.getCurrency(),
-				price: thisInstance.getSummaryGrossPrice()
-			};
-			params.async = false;
-			params.dataType = 'json';
 			let progressInstace = $.progressIndicator();
-			AppConnector.request(params)
+			AppConnector.request({
+				async: false,
+				dataType: 'json',
+				data: {
+					module: app.getModuleName(),
+					action: 'Inventory',
+					mode: 'checkLimits',
+					record: account,
+					currency: this.getCurrency(),
+					price: thisInthisstance.getSummaryGrossPrice()
+				}
+			})
 				.done(function (data) {
 					progressInstace.hide();
 					if (data.result.status == false) {
-						app.showModalWindow(data.result.html, function (data) {});
+						app.showModalWindow(data.result.html, function () {});
 						response = false;
 					}
 				})
-				.fail(function (error, err) {
+				.fail(function () {
 					progressInstace.hide();
 				});
 			return response;
@@ -1225,7 +1369,7 @@ $.Class(
 					modal.find('.currencyDate').text(currencyParam[option.val()]['date']);
 				}
 				modal
-					.on('click', 'button[type="submit"]', function (e) {
+					.on('click', 'button[type="submit"]', function () {
 						let rate = modal.find('.currencyRate').val();
 						let value = App.Fields.Double.formatToDb(rate);
 						let conversionRate = 1 / App.Fields.Double.formatToDb(rate);
@@ -1250,25 +1394,21 @@ $.Class(
 			});
 		},
 		currencyConvertValues: function (select, selected) {
-			let thisInstance = this;
-
+			const self = this;
 			let previous = select.find('option[value="' + select.data('oldValue') + '"]');
 			let conversionRate = selected.data('conversionRate');
 			let prevConversionRate = previous.data('conversionRate');
 			conversionRate = parseFloat(conversionRate) / parseFloat(prevConversionRate);
-
 			this.getInventoryItemsContainer()
-				.find(thisInstance.rowClass)
-				.each(function (index) {
+				.find(self.rowClass)
+				.each(function (_) {
 					let row = $(this);
-					thisInstance.syncHeaderData(row);
-					thisInstance.setUnitPrice(
-						row,
-						App.Fields.Double.formatToDb(thisInstance.getUnitPriceValue(row) * conversionRate)
-					);
-					thisInstance.setDiscount(row, App.Fields.Double.formatToDb(thisInstance.getDiscount(row) * conversionRate));
-					thisInstance.setTax(row, App.Fields.Double.formatToDb(thisInstance.getTax(row) * conversionRate));
-					thisInstance.quantityChangeActions(row);
+					self.syncHeaderData(row);
+					self.setUnitPrice(row, self.getUnitPriceValue(row) * conversionRate);
+					self.setDiscount(row, self.getDiscount(row) * conversionRate);
+					self.setTax(row, self.getTax(row) * conversionRate);
+					self.setPurchase(row, self.getPurchase(row) * conversionRate);
+					self.quantityChangeActions(row);
 				});
 		},
 		/**
@@ -1278,22 +1418,24 @@ $.Class(
 		 */
 		setRowData(row, rowData) {
 			this.setName(row, rowData.name, rowData.info.name);
-			this.setQuantity(row, App.Fields.Double.formatToDisplay(rowData.qty));
+			this.setQuantity(
+				row,
+				App.Fields.Double.formatToDisplay(rowData.qty, App.Fields.Double.FORMAT_TRUNCATE_TRAILING_ZEROS)
+			);
 			this.setUnit(row, rowData.info.autoFields.unit, rowData.info.autoFields.unitText);
 			if (typeof rowData.info.autoFields !== 'undefined' && typeof rowData.info.autoFields.subunit !== 'undefined') {
 				this.setSubUnit(row, rowData.info.autoFields.subunit, rowData.info.autoFields.subunitText);
 			}
 			this.setComment(row, rowData.comment1);
-			this.setUnitPrice(row, App.Fields.Double.formatToDisplay(rowData.price));
-			this.setNetPrice(row, App.Fields.Double.formatToDisplay(rowData.net));
-			this.setGrossPrice(row, App.Fields.Double.formatToDisplay(rowData.gross));
-			this.setTotalPrice(row, App.Fields.Double.formatToDisplay(rowData.total));
-			let discountParam = rowData.discountparam || null;
-			this.setDiscountParam(row, JSON.parse(discountParam));
-			this.setDiscount(row, App.Fields.Double.formatToDisplay(rowData.discount));
-			this.setTaxParam(row, JSON.parse(rowData.taxparam));
-			this.setTax(row, App.Fields.Double.formatToDisplay(rowData.tax));
-			this.setTaxPercent(row, App.Fields.Double.formatToDisplay(rowData.tax_percent));
+			this.setUnitPrice(row, rowData.price);
+			this.setNetPrice(row, rowData.net);
+			this.setGrossPrice(row, rowData.gross);
+			this.setTotalPrice(row, rowData.total);
+			this.setDiscountParam(row, rowData.discountparam ? JSON.parse(rowData.discountparam) : []);
+			this.setDiscount(row, rowData.discount);
+			this.setTaxParam(row, rowData.taxparam ? JSON.parse(rowData.taxparam) : []);
+			this.setTax(row, rowData.tax);
+			this.setTaxPercent(row, rowData.tax_percent);
 		},
 		/**
 		 * Add new row to inventory list
@@ -1306,15 +1448,15 @@ $.Class(
 			let newRow = this.getBasicRow();
 			const sequenceNumber = this.getNextLineItemRowNumber();
 			const replaced = newRow.html().replace(/\_NUM_/g, sequenceNumber);
-			const moduleLbls = newRow.data('moduleLbls');
+			const moduleLabels = newRow.data('moduleLbls');
 			newRow.html(replaced);
-			newRow = newRow.children().appendTo(items.find('.js-inventory-items-body'));
+			newRow = newRow.find('tr.inventoryRow, tr.inventoryRowExpanded').appendTo(items.find('.js-inventory-items-body'));
 			newRow.find('.rowName input[name="popupReferenceModule"]').val(module).data('field', baseTableId);
 			newRow.find('.js-module-icon').removeClass().addClass(`yfm-${module}`);
-			newRow.find('.rowName span.input-group-text').attr('data-content', moduleLbls[module]);
-			newRow.find('.colPicklistField select').each(function (index, select) {
+			newRow.find('.rowName span.input-group-text').attr('data-content', moduleLabels[module]);
+			newRow.find('.colPicklistField select').each(function (_, select) {
 				select = $(select);
-				select.find('option').each(function (index, option) {
+				select.find('option').each(function (_, option) {
 					option = $(option);
 					if (option.data('module') !== module) {
 						option.remove();
@@ -1326,91 +1468,170 @@ $.Class(
 			if (rowData) {
 				this.setRowData(newRow, rowData);
 				this.quantityChangeActions(newRow);
+			} else {
+				this.itemChangeEvent(newRow);
 			}
 			return newRow;
+		},
+		/**
+		 * Item change post event
+		 * @param {jQuery} row
+		 */
+		itemChangeEvent: function (row) {
+			if (row.hasClass('inventoryRowGroup')) {
+				this.getItems().each((_, e) => {
+					this.itemChangeEvent($(e));
+				});
+			} else if (this.getDiscountMode() == this.DISCOUNT_MODE_GROUP) {
+				let parentRow = this.getGroupFromItem(row);
+				let params = parentRow ? parentRow.find('.discountParam').val() : null;
+				this.setDiscountParam(row, params ? JSON.parse(params) : []);
+				this.rowCalculations(row);
+			}
+		},
+		/**
+		 * Add header(group) item
+		 * @returns
+		 */
+		addHeaderItem(data = {}) {
+			const items = this.getInventoryItemsContainer();
+			let newRow = this.getBasicRow();
+			if (data['grouplabel']) {
+				let value = data['grouplabel'];
+				let el = newRow.find('.js-grouplabel');
+				if (
+					el.is('select') &&
+					![...el.get(0).options]
+						.map((o) => o.value)
+						.filter((e) => e !== '')
+						.includes(value)
+				) {
+					let newOption = new Option(value, value, true, true);
+					el.append(newOption);
+				}
+				el.val(value);
+			}
+			newRow = newRow.find('tr.inventoryRowGroup').appendTo(items.find('.js-inventory-items-body'));
+			this.initItem(newRow);
+
+			return newRow;
+		},
+		/**
+		 * Get next block ID
+		 * @returns int
+		 */
+		getNextBlockId() {
+			let data = [...this.getContainer().find('.js-groupid')].map((o) => parseInt(o.value));
+			return Math.max(...data) + 1;
 		},
 
 		/**
 		 * Register add item button click
-		 * @param {jQuery} container
 		 */
 		registerAddItem() {
-			const thisInstance = this;
-			const itemsHeader = thisInstance.getInventoryHeadContainer();
-			itemsHeader.find('.js-inv-add-item').on('click', function (e) {
-				const btn = $(this);
-				thisInstance.addItem(btn.data('module'), btn.data('field'));
-			});
+			this.getContainer()
+				.find('.js-inv-add-item')
+				.on('click', (e) => {
+					this.addItem(e.currentTarget.dataset.module, e.currentTarget.dataset.field, false);
+				});
+		},
+		/**
+		 * Register add header row
+		 */
+		registerAddHeaderItem() {
+			this.getContainer()
+				.find('.js-inv-add-group')
+				.on('click', () => {
+					this.addHeaderItem();
+				});
 		},
 		registerSortableItems: function () {
 			let thisInstance = this;
-			let items = thisInstance.getInventoryItemsContainer();
+			let items = thisInstance.getContainer();
 			items.sortable({
 				handle: '.dragHandle',
-				items: thisInstance.rowClass,
+				items: thisInstance.rowClass + ',.inventoryRowGroup',
 				revert: true,
 				tolerance: 'pointer',
 				placeholder: 'ui-state-highlight',
-				helper: function (e, ui) {
-					ui.children().each(function (index, element) {
+				helper: function (_e, ui) {
+					ui.children().each(function (_, element) {
 						element = $(element);
 						element.width(element.width());
 					});
 					return ui;
 				},
-				start: function (event, ui) {
-					items.find(thisInstance.rowClass).each(function (index, element) {
+				start: function (_, ui) {
+					items.find(thisInstance.rowClass).each(function (_, element) {
 						let row = $(element);
 						thisInstance.hideExpandedRow(row);
 					});
+					let num = $(ui.item).attr('numrow');
+					items.find('[numrowex="' + num + '"] .js-inventory-item-comment').each(function () {
+						App.Fields.Text.destroyEditor($(this));
+					});
 					ui.item.startPos = ui.item.index();
 				},
-				stop: function (event, ui) {
+				stop: function (_, ui) {
 					let numrow = $(ui.item).attr('numrow');
-					let child = items
-						.find('.numRow' + numrow)
-						.remove()
-						.clone();
+					let child = items.find('.numRow' + numrow);
 					items.find('[numrow="' + numrow + '"]').after(child);
-					if (ui.item.startPos < ui.item.index()) {
-						child = items
-							.find('.numRow' + numrow)
-							.next()
-							.remove()
-							.clone();
-						items.find('[numrow="' + numrow + '"]').before(child);
-					}
+					App.Fields.Text.Editor.register(child);
 					thisInstance.updateRowSequence();
+					thisInstance.itemChangeEvent(ui.item);
+					thisInstance.summaryGroupCalculations();
 				}
 			});
 		},
 		registerShowHideExpanded: function () {
-			const thisInstance = this;
-			thisInstance.form.on('click', '.toggleVisibility', function (e) {
+			this.getInventoryItemsContainer().on('click', '.toggleVisibility', (e) => {
 				let element = $(e.currentTarget);
-				let row = thisInstance.getClosestRow(element);
+				let row = this.getClosestRow(element);
 				if (element.data('status') == 0) {
-					thisInstance.showExpandedRow(row);
+					this.showExpandedRow(row);
 				} else {
-					thisInstance.hideExpandedRow(row);
+					this.hideExpandedRow(row);
 				}
 			});
 		},
-		registerPriceBookModal: function (container) {
-			let thisInstance = this;
-			container.find('.js-price-book-modal').on('click', function (e) {
-				let element = $(e.currentTarget);
-				let response = thisInstance.isRecordSelected(element);
-				if (response == true) {
-					return;
+		/**
+		 * Show/Hide group items
+		 */
+		registerShowHideExpandedGroup: function () {
+			this.getInventoryItemsContainer().on('click', '.js-inv-group-collapse-btn', (e) => {
+				let btn = $(e.currentTarget);
+				let icon = btn.find('.js-toggle-icon');
+				let row = btn.closest('tr.inventoryRowGroup');
+				let items = this.getGroupItems(row);
+				if (icon.hasClass(icon.data('active'))) {
+					items.find(`.toggleVisibility.active`).closest('.toggleVisibility').trigger('click');
+					items.addClass('d-none');
+					btn.removeClass('js-inv-group-collapse-btn__active');
+				} else {
+					items.removeClass('d-none');
+					btn.addClass('js-inv-group-collapse-btn__active');
 				}
-				thisInstance.pricebooksModalHandler(element);
+			});
+		},
+		showAllItems: function () {
+			this.getGroups().find('.js-inv-group-collapse-btn:not(.js-inv-group-collapse-btn__active)').trigger('click');
+		},
+		registerPriceBookModal: function (container) {
+			container.find('.js-price-book-modal').on('click', (e) => {
+				let element = $(e.currentTarget);
+				let response = this.isRecordSelected(element);
+				if (!response) {
+					this.pricebooksModalHandler(element);
+				}
 			});
 		},
 		registerRowChangeEvent: function (container) {
+			container.on('focusout', '.js-inv-format_number', (e) => {
+				$(e.currentTarget).formatNumber(e.currentTarget.dataset.format);
+			});
 			container.on('focusout', '.qty', (e) => {
 				let element = $(e.currentTarget);
-				element.formatNumber();
+				element.formatNumber(App.Fields.Double.FORMAT_TRUNCATE_TRAILING_ZEROS);
 				this.quantityChangeActions(this.getClosestRow(element));
 			});
 			container.on('focusout', '.unitPrice', (e) => {
@@ -1424,20 +1645,24 @@ $.Class(
 				this.quantityChangeActions(this.getClosestRow(element));
 			});
 			let headContainer = this.getInventoryHeadContainer();
-			headContainer.on('change', '.js-taxmode', (e) => {
-				let element = $(e.currentTarget);
-				this.showIndividualTax(this.getClosestRow(element));
-				this.rowsCalculations();
+			headContainer.on('change', '.js-taxmode', () => {
+				this.showIndividualTax();
 			});
 			headContainer.on('change', '.js-discountmode', (e) => {
 				let element = $(e.currentTarget);
-				this.showIndividualDiscount(this.getClosestRow(element));
+				let mode = parseInt(element.val());
+				this.getContainer().find(`.js-change-discount:not([data-mode="${mode}"])`).addClass('d-none');
+				this.getContainer().find(`.js-change-discount[data-mode="${mode}"]`).removeClass('d-none');
+				let items = this.getInventoryItemsContainer().find('.js-inventory-items-body');
+
+				this.setDiscount(items, 0);
+				this.setDiscountParam(items, []);
 				this.rowsCalculations();
 			});
 		},
 		registerSubProducts: function () {
 			const thisInstance = this;
-			thisInstance.form.find('.inventoryItems ' + thisInstance.rowClass).each(function (index) {
+			thisInstance.form.find('.inventoryItems ' + thisInstance.rowClass).each(function () {
 				thisInstance.loadSubProducts($(this), false);
 			});
 		},
@@ -1472,6 +1697,11 @@ $.Class(
 				let num = this.getClosestRow($(e.currentTarget)).attr('numrow');
 				this.deleteLineItem(num);
 			});
+			container.on('click', '.js-delete-header-item', (e) => {
+				$(e.currentTarget).closest('tr').remove();
+				this.syncHeaderData();
+				this.rowsCalculations();
+			});
 		},
 		deleteLineItem: function (num) {
 			this.getInventoryItemsContainer()
@@ -1489,48 +1719,56 @@ $.Class(
 			}
 			this.updateRowSequence();
 		},
+		DISCOUNT_MODE_GLOBAL: 0,
+		DISCOUNT_MODE_INDIVIDUAL: 1,
+		DISCOUNT_MODE_GROUP: 2,
 		registerChangeDiscount: function () {
-			let thisInstance = this;
-			thisInstance.form.on('click', '.changeDiscount', function (e) {
+			this.form.on('click', '.js-change-discount', (e) => {
 				let parentRow;
-				let element = $(e.currentTarget);
+				const element = $(e.currentTarget);
 				let params = {
 					module: app.getModuleName(),
 					view: 'Inventory',
 					mode: 'showDiscounts',
-					currency: thisInstance.getCurrency(),
-					relatedRecord: thisInstance.getAccountId()
+					currency: this.getCurrency(),
+					discountAggregation: this.getDiscountAggregation(),
+					relatedRecord: this.getAccountId(),
+					discountMode: e.currentTarget.dataset.mode
 				};
-				if (element.hasClass('groupDiscount')) {
-					parentRow = thisInstance.getInventoryItemsContainer();
-					if (parentRow.find('tfoot .colTotalPrice').length != 0) {
+				if (e.currentTarget.dataset.mode == this.DISCOUNT_MODE_GLOBAL) {
+					parentRow = this.getInventoryItemsContainer();
+					if (parentRow.find('tfoot .colTotalPrice:not(.hideTd)').length != 0) {
 						params.totalPrice = App.Fields.Double.formatToDb(parentRow.find('tfoot .colTotalPrice').text());
 					} else {
-						params.totalPrice = 0;
+						params.totalPrice = this.calculateSummary('totalPrice');
 					}
-					params.discountType = 1;
+				} else if (e.currentTarget.dataset.mode == this.DISCOUNT_MODE_GROUP) {
+					parentRow = element.closest('tr.inventoryRowGroup');
+					params.totalPrice = this.calculateSummary('totalPrice', this.getGroupItems(parentRow));
 				} else {
-					parentRow = element.closest(thisInstance.rowClass);
-					params.totalPrice = thisInstance.getTotalPrice(parentRow);
-					params.discountType = 0;
+					parentRow = element.closest(this.rowClass);
+					params.totalPrice = this.getTotalPrice(parentRow);
 				}
-
+				params.discountParam = parentRow.find('.discountParam').val();
 				let progressInstace = $.progressIndicator();
+
 				AppConnector.request(params)
-					.done(function (data) {
-						app.showModalWindow(data, function (data) {
-							thisInstance.initDiscountsParameters(parentRow, $(data));
-							thisInstance.registerChangeDiscountModal(data, parentRow, params);
+					.done((data) => {
+						app.showModalWindow(data, (data) => {
+							this.registerChangeDiscountModal(data, parentRow, params);
+							this.calculateDiscount(parentRow, data);
 						});
 						progressInstace.hide();
 					})
-					.fail(function (error, err) {
+					.fail(function () {
 						progressInstace.hide();
 					});
 			});
 		},
 		registerChangeDiscountModal: function (modal, parentRow, params) {
 			let thisInstance = this;
+			let form = modal.find('form');
+			form.validationEngine(app.validationEngineOptions);
 			modal.on('change', '.individualDiscountType', function (e) {
 				let element = $(e.currentTarget);
 				modal.find('.individualDiscountContainer .input-group-text').text(element.data('symbol'));
@@ -1553,21 +1791,32 @@ $.Class(
 			});
 			modal.on(
 				'change',
-				'.activeCheckbox, .globalDiscount,.individualDiscountValue,.individualDiscountType,.groupCheckbox',
-				function (e) {
+				'.activeCheckbox, .globalDiscount,.individualDiscountValue,.individualDiscountType,.groupCheckbox,.additionalDiscountValue,.js-inv--discount-type',
+				function () {
 					thisInstance.calculateDiscount(parentRow, modal);
 				}
 			);
-			modal.on('click', '.saveDiscount', function (e) {
+			modal.on('click', '.js-save-discount', function () {
+				if (form.validationEngine('validate') === false) {
+					return;
+				}
 				thisInstance.saveDiscountsParameters(parentRow, modal);
-				if (params.discountType == 0) {
+				if (params.discountMode == thisInstance.DISCOUNT_MODE_INDIVIDUAL) {
 					thisInstance.setDiscount(parentRow, App.Fields.Double.formatToDb(modal.find('.valueDiscount').text()));
 					thisInstance.quantityChangeActions(parentRow);
+				} else if (params.discountMode == thisInstance.DISCOUNT_MODE_GROUP) {
+					let rate =
+						App.Fields.Double.formatToDb(modal.find('.valueDiscount').text()) /
+						App.Fields.Double.formatToDb(modal.find('.valueTotalPrice').text());
+					thisInstance.getGroupItems(parentRow).each(function () {
+						thisInstance.setDiscount($(this), thisInstance.getTotalPrice($(this)) * rate);
+						thisInstance.quantityChangeActions($(this));
+					});
 				} else {
 					let rate =
 						App.Fields.Double.formatToDb(modal.find('.valueDiscount').text()) /
 						App.Fields.Double.formatToDb(modal.find('.valueTotalPrice').text());
-					parentRow.find(thisInstance.rowClass).each(function (index) {
+					parentRow.find(thisInstance.rowClass).each(function () {
 						thisInstance.setDiscount($(this), thisInstance.getTotalPrice($(this)) * rate);
 						thisInstance.quantityChangeActions($(this));
 					});
@@ -1585,9 +1834,9 @@ $.Class(
 					view: 'Inventory',
 					mode: 'showTaxes',
 					currency: thisInstance.getCurrency(),
-					sourceRecord: app.getRecordId()
+					relatedRecord: thisInstance.getAccountId()
 				};
-				if (element.hasClass('groupTax')) {
+				if (element.hasClass('js-inv-tax_global')) {
 					parentRow = thisInstance.getInventoryItemsContainer();
 					let totalPrice = 0;
 					if (parentRow.find('tfoot .colNetPrice').length > 0) {
@@ -1616,7 +1865,7 @@ $.Class(
 						});
 						progressInstace.hide();
 					})
-					.fail(function (error, err) {
+					.fail(function () {
 						progressInstace.hide();
 					});
 			});
@@ -1630,15 +1879,21 @@ $.Class(
 				this.form.find('.currencySymbol').text(symbol);
 			});
 		},
+		registerChangeDiscountAggregation() {
+			this.getInventoryHeadContainer().on('change', '.js-discount_aggreg', (e) => {
+				this.rowsCalculations();
+			});
+		},
 		registerChangeTaxModal: function (modal, parentRow, params) {
 			let thisInstance = this;
+			let form = modal.find('form');
+			form.validationEngine(app.validationEngineOptions);
 			modal.on('change', '.individualTaxType', function (e) {
 				let element = $(e.currentTarget);
 				modal.find('.individualTaxContainer .input-group-text').text(element.data('symbol'));
 			});
 			modal.on('change', '.activeCheckbox[name="aggregationType"]', function (e) {
 				let element = $(e.currentTarget);
-
 				if (element.attr('type') == 'checkbox' && this.checked) {
 					element.closest('.js-panel').find('.js-panel__body').removeClass('d-none');
 					element.closest('.js-panel').addClass('js-active');
@@ -1652,10 +1907,13 @@ $.Class(
 					element.closest('.js-panel').removeClass('js-active');
 				}
 			});
-			modal.on('change', '.activeCheckbox, .globalTax, .individualTaxValue, .groupTax, .regionalTax', function (e) {
+			modal.on('change', '.activeCheckbox, .globalTax, .individualTaxValue, .groupTax, .regionalTax', function () {
 				thisInstance.calculateTax(parentRow, modal);
 			});
-			modal.on('click', '.saveTaxs', function (e) {
+			modal.on('click', '.js-save-taxs', function () {
+				if (form.validationEngine('validate') === false) {
+					return;
+				}
 				thisInstance.saveTaxsParameters(parentRow, modal);
 				if (params.taxType == '0') {
 					thisInstance.setTax(parentRow, App.Fields.Double.formatToDb(modal.find('.valueTax').text()));
@@ -1665,7 +1923,7 @@ $.Class(
 					let rate =
 						App.Fields.Double.formatToDb(modal.find('.valueTax').text()) /
 						App.Fields.Double.formatToDb(modal.find('.valueNetPrice').text());
-					parentRow.find(thisInstance.rowClass).each(function (index) {
+					parentRow.find(thisInstance.rowClass).each(function () {
 						let totalPrice;
 						if ($('.netPrice', $(this)).length > 0) {
 							totalPrice = thisInstance.getNetPrice($(this));
@@ -1683,22 +1941,23 @@ $.Class(
 		registerRowAutoComplete: function (container) {
 			const thisInstance = this;
 			let sourceFieldElement = container.find('.sourceField.js-name');
-			sourceFieldElement.on(Vtiger_Edit_Js.referenceSelectionEvent, function (e, params) {
+			sourceFieldElement.on(Vtiger_Edit_Js.referenceSelectionEvent, (e, params) => {
 				let record = params.record;
 				let element = $(e.currentTarget);
 				let parentRow = element.closest(thisInstance.rowClass);
 				let selectedModule = parentRow.find('.rowName [name="popupReferenceModule"]').val();
-				let dataUrl =
-					'index.php?module=' +
-					app.getModuleName() +
-					'&action=Inventory&mode=getDetails&record=' +
-					record +
-					'&fieldname=' +
-					element.data('columnname');
-				if (thisInstance.getCurrency()) {
-					dataUrl += '&currency_id=' + thisInstance.getCurrency();
+				let formParam = {
+					module: app.getModuleName(),
+					action: 'Inventory',
+					mode: 'getDetails',
+					record: record,
+					fieldname: element.data('columnname')
+				};
+				if (this.getCurrency()) {
+					formParam.currency_id = this.getCurrency();
+					formParam.currencyParams = this.getInventoryHeadContainer().find('.js-currencyparam').val();
 				}
-				AppConnector.request(dataUrl).done(function (data) {
+				AppConnector.request(formParam).done(function (data) {
 					for (let id in data) {
 						if (typeof data[id] == 'object') {
 							let recordData = data[id];
@@ -1720,8 +1979,8 @@ $.Class(
 				app.showRecordsList(url, (_, instance) => {
 					instance.setSelectEvent((data) => {
 						for (let i in data) {
-							let parentElem = this.addItem(moduleName);
-							Vtiger_Edit_Js.getInstance().setReferenceFieldValue(parentElem, {
+							let parentElem = this.addItem(moduleName, '', false, currentTarget.closest('.js-inv-container-content'));
+							Vtiger_Edit_Js.getInstance().setReferenceFieldValue(parentElem.find('.rowName'), {
 								name: data[i],
 								id: i
 							});
@@ -1735,7 +1994,7 @@ $.Class(
 			let thisInstance = this;
 			let items = this.getInventoryItemsContainer();
 			let i = 1;
-			items.find(thisInstance.rowClass).each(function (index) {
+			items.find(thisInstance.rowClass).each(function () {
 				$(this).find('.itemNumberText').text(i);
 				i++;
 			});
@@ -1779,9 +2038,9 @@ $.Class(
 				})
 					.done((response) => {
 						let activeModules = [];
-						this.getInventoryHeadContainer()
+						this.getContainer()
 							.find('.js-inv-add-item')
-							.each((index, addBtn) => {
+							.each((_, addBtn) => {
 								activeModules.push($(addBtn).data('module'));
 							});
 						progressLoader.progressIndicator({ mode: 'hide' });
@@ -1797,12 +2056,16 @@ $.Class(
 						this.setTaxMode(first.taxmode);
 						this.currencyChangeActions = oldCurrencyChangeAction;
 						this.clearInventory();
-						$.each(response.result, (index, row) => {
+						$.each(response.result, (_, row) => {
 							if (activeModules.indexOf(row.moduleName) !== -1) {
+								if (row.groupid && row.add_header) {
+									this.addHeaderItem(row);
+								}
 								this.addItem(row.moduleName, row.basetableid, row);
 							} else {
 								Vtiger_Helper_Js.showMessage({
 									type: 'error',
+									textTrusted: false,
 									text: app
 										.vtranslate('JS_INVENTORY_ITEM_MODULE_NOT_FOUND')
 										.replace('${sourceModule}', row.moduleName)
@@ -1830,10 +2093,56 @@ $.Class(
 		 */
 		clearInventory: function () {
 			this.getInventoryItemsContainer()
-				.find('.inventoryRow')
+				.find('.deleteRow,.js-delete-header-item')
 				.each((_, e) => {
-					let num = $(e).attr('numrow');
-					this.deleteLineItem(num);
+					$(e).trigger('click');
+				});
+		},
+		/**
+		 * Register currency converter
+		 */
+		registerCurrencyConverter() {
+			this.form.on('click', '.js-currency-converter-event', (e) => {
+				let row = $(e.currentTarget).closest(this.rowClass);
+				let unitPrice = this.getUnitPriceValue(row) || 0;
+				let currencyId = this.getCurrency();
+				App.Components.CurrencyConverter.modalView({
+					currencyId: currencyId,
+					amount: App.Fields.Double.formatToDisplay(unitPrice),
+					currencyParam: this.form.find('.js-currencyparam').val()
+				}).done((data) => {
+					let value;
+					if (currencyId === data.currency_target_id) {
+						value = data.currency_target_value;
+					} else if (currencyId === data.currency_base_id) {
+						value = data.currency_base_value;
+					}
+					if (value) {
+						this.setUnitPrice(row, App.Fields.Double.formatToDb(value));
+						this.quantityChangeActions(row);
+					}
+				});
+			});
+		},
+		/**
+		 * Register head element events
+		 */
+		registerHeadEvents() {
+			this.getInventoryHeadContainer()
+				.find('.js-inv-cuurency_reset')
+				.on('click', (e) => {
+					app.showConfirmModal({
+						textTrusted: false,
+						text: e.currentTarget.dataset.confirmation,
+						confirmedCallback: () => {
+							AppConnector.request(e.currentTarget.dataset.url).done((response) => {
+								if (response.result && Object.keys(response.result).length) {
+									this.setCurrencyParam(JSON.stringify(response.result));
+									this.syncHeaderData();
+								}
+							});
+						}
+					});
 				});
 		},
 		/**
@@ -1841,8 +2150,10 @@ $.Class(
 		 */
 		registerEvents: function (container) {
 			this.form = container;
+			this.loadConfig();
 			this.registerInventorySaveData();
 			this.registerAddItem();
+			this.registerAddHeaderItem();
 			this.registerMassAddItem();
 			this.initItem();
 			this.registerSortableItems();
@@ -1852,7 +2163,12 @@ $.Class(
 			this.registerClearReferenceSelection();
 			this.registerShowHideExpanded();
 			this.registerChangeCurrency();
+			this.registerChangeDiscountAggregation();
 			this.setDefaultGlobalTax(container);
+			this.registerShowHideExpandedGroup();
+			app.registerBlockToggleEvent(container);
+			this.registerCurrencyConverter();
+			this.registerHeadEvents();
 		}
 	}
 );

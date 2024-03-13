@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com.
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Home_Module_Model extends Vtiger_Module_Model
@@ -87,31 +87,26 @@ class Home_Module_Model extends Vtiger_Module_Model
 		if (!$user) {
 			$user = \App\User::getCurrentUserId();
 		}
-
-		$orderBy = $pagingModel->getForSql('orderby');
-		$sortOrder = $pagingModel->getForSql('sortorder');
-
-		if (empty($sortOrder) || !\in_array(strtolower($sortOrder), ['asc', 'desc'])) {
-			$sortOrder = 'ASC';
+		$queryGenerator = new App\QueryGenerator('Calendar');
+		if (isset($paramsMore['filterId'])) {
+			$queryGenerator->initForCustomViewById($paramsMore['filterId']);
 		}
-		if (empty($orderBy)) {
-			$orderBy = "due_date $sortOrder, time_end $sortOrder";
-		} else {
-			$orderBy .= ' ' . $sortOrder;
-		}
-		$query->select(['vtiger_crmentity.crmid', 'vtiger_crmentity.smownerid', 'vtiger_crmentity.setype', 'vtiger_activity.*'])
-			->from('vtiger_activity')
-			->innerJoin('vtiger_crmentity', 'vtiger_crmentity.crmid = vtiger_activity.activityid')
-			->where(['vtiger_crmentity.deleted' => 0]);
-		\App\PrivilegeQuery::getConditions($query, 'Calendar');
+		$moduleFields = array_keys($queryGenerator->getModuleFields());
+		$moduleFields[] = 'id';
+		$queryGenerator->setFields($moduleFields);
+		$queryGenerator->setCustomColumn(['smownerid' => 'vtiger_crmentity.smownerid', 'setype' => 'vtiger_crmentity.setype']);
 		if ('upcoming' === $mode || 'overdue' === $mode) {
-			$query->andWhere(['or', ['vtiger_activity.status' => null], ['vtiger_activity.status' => $paramsMore['status']]]);
+			$queryGenerator->addNativeCondition(['or', ['vtiger_activity.status' => null], ['vtiger_activity.status' => $paramsMore['status']]]);
 		} elseif ('createdByMeButNotMine' === $mode || 'createdByMeButNotMineOverdue' === $mode) {
-			$query->andWhere(['or', ['vtiger_activity.status' => null], ['vtiger_activity.status' => $paramsMore['status']]]);
-			$query->andWhere(['and', ['vtiger_crmentity.smcreatorid' => $paramsMore['user']], ['NOT IN', 'vtiger_crmentity.smownerid', $paramsMore['user']]]);
+			$queryGenerator->addNativeCondition(['or', ['vtiger_activity.status' => null], ['vtiger_activity.status' => $paramsMore['status']]]);
+			$queryGenerator->addCondition('created_user_id', $paramsMore['user'], 'e');
+			$queryGenerator->addCondition('assigned_user_id', $paramsMore['user'], 'n');
 		}
 		if (isset($paramsMore['activitytype'])) {
-			$query->andWhere(['vtiger_activity.activitytype' => $paramsMore['activitytype']]);
+			$queryGenerator->addCondition('activitytype', $paramsMore['activitytype'], 'e');
+		}
+		if (isset($paramsMore['taskpriority'])) {
+			$queryGenerator->addCondition('taskpriority', $paramsMore['taskpriority'], 'e');
 		}
 		if ('all' !== $user && !empty($user)) {
 			$userId = (int) $user;
@@ -122,17 +117,18 @@ class Home_Module_Model extends Vtiger_Module_Model
 			$userAndGroups[] = $userId;
 			$subQuery = (new \App\Db\Query())->select(['crmid'])->from('u_#__crmentity_showners')->innerJoin('vtiger_activity', 'u_#__crmentity_showners.crmid=vtiger_activity.activityid')->where(['userid' => $userAndGroups])->distinct('crmid');
 			$query->andWhere(['or', ['vtiger_crmentity.smownerid' => $userAndGroups], ['vtiger_crmentity.crmid' => $subQuery]]);
+			$queryGenerator->addNativeCondition(['or', ['vtiger_crmentity.smownerid' => $userAndGroups], ['vtiger_crmentity.crmid' => $subQuery]]);
 		}
-
-		$query->orderBy($orderBy)
-			->limit($pagingModel->getPageLimit() + 1)
-			->offset($pagingModel->getStartIndex());
-
+		foreach ($pagingModel->get('orderby') as $fieldName => $order) {
+			$queryGenerator->setOrder($fieldName, $order);
+		}
+		$queryGenerator->setLimit($pagingModel->getPageLimit() + 1)->setOffset($pagingModel->getStartIndex());
+		$query = $queryGenerator->createQuery();
 		$dataReader = $query->createCommand()->query();
 		while ($row = $dataReader->read()) {
 			$model = Vtiger_Record_Model::getCleanInstance('Calendar');
 			$model->setData($row);
-			$model->setId($row['crmid']);
+			$model->setId($row['id']);
 			if (!empty($row['parent_id']) && \App\Record::isExists($row['parent_id'])) {
 				$record = Vtiger_Record_Model::getInstanceById($row['parent_id']);
 				if ('Accounts' === $record->getModuleName()) {
@@ -164,7 +160,6 @@ class Home_Module_Model extends Vtiger_Module_Model
 			$pagingModel->set('nextPageExists', false);
 		}
 		$dataReader->close();
-
 		return $activities;
 	}
 

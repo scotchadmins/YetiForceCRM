@@ -6,14 +6,12 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Calendar_Detail_View extends Vtiger_Detail_View
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function preProcess(App\Request $request, $display = true)
 	{
 		$viewer = $this->getViewer($request);
@@ -21,9 +19,7 @@ class Calendar_Detail_View extends Vtiger_Detail_View
 		parent::preProcess($request);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function showModuleDetailView(App\Request $request)
 	{
 		$recordModel = $this->record->getRecord();
@@ -36,9 +32,7 @@ class Calendar_Detail_View extends Vtiger_Detail_View
 		return parent::showModuleDetailView($request);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function showModuleBasicView(App\Request $request)
 	{
 		return $this->showModuleDetailView($request);

@@ -5,8 +5,8 @@
  *
  * @package   Settings.Model
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class Settings_Widgets_Module_Model extends Settings_Vtiger_Module_Model
@@ -347,7 +347,7 @@ class Settings_Widgets_Module_Model extends Settings_Vtiger_Module_Model
 					[
 						'type' => 1,
 						'label' => \App\Language::translate('LBL_HEADERSWITCH_OPEN_CLOSED', $moduleName),
-						'value' => [$fieldName => $statuses]
+						'value' => [$fieldName => $statuses],
 					],
 				];
 			}
@@ -355,7 +355,7 @@ class Settings_Widgets_Module_Model extends Settings_Vtiger_Module_Model
 		if (empty($index)) {
 			return $data;
 		}
-		if ($data[$index[0]]) {
+		if (isset($data[$index[0]][$index[1]])) {
 			return $data[$index[0]][$index[1]];
 		}
 		return [];

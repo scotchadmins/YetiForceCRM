@@ -7,7 +7,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 /**
@@ -15,6 +15,10 @@
  */
 class Documents_Record_Model extends Vtiger_Record_Model
 {
+	/** @var string[] Data files. */
+	public $file;
+	/** @var string[] File details. */
+	public $fileDetails;
 	/** @var string[] Types included in the preview of the file. */
 	public $filePreview = [
 		'application/pdf', 'image/png', 'image/jpeg', 'image/jpeg', 'image/jpeg', 'image/gif', 'image/bmp', 'image/vnd.microsoft.icon', 'image/tiff', 'image/tiff'
@@ -27,12 +31,27 @@ class Documents_Record_Model extends Vtiger_Record_Model
 	 */
 	public function getDownloadFileURL()
 	{
-		if ('I' == $this->getValueByField('filelocationtype')) {
-			$fileDetails = $this->getFileDetails();
-
+		if ('I' === $this->getValueByField('filelocationtype') && ($fileDetails = $this->getFileDetails())) {
 			return 'file.php?module=' . $this->getModuleName() . '&action=DownloadFile&record=' . $this->getId() . '&fileid=' . $fileDetails['attachmentsid'];
 		}
 		return $this->get('filename');
+	}
+
+	/** {@inheritdoc} */
+	public function getRecordListViewLinksLeftSide()
+	{
+		$links = [];
+		if (!$this->isReadOnly() && \in_array($this->getValueByField('filetype'), $this->filePreview)) {
+			$links['LBL_PREVIEW_FILE'] = Vtiger_Link_Model::getInstanceFromValues([
+				'linklabel' => 'LBL_PREVIEW_FILE',
+				'linkhref' => true,
+				'linkurl' => $this->getDownloadFileURL() . '&show=1',
+				'linkicon' => 'fas fa-binoculars',
+				'linkclass' => 'btn-sm btn-light',
+				'linktarget' => '_blank',
+			]);
+		}
+		return array_merge($links, parent::getRecordListViewLinksLeftSide());
 	}
 
 	/** {@inheritdoc} */
@@ -100,42 +119,57 @@ class Documents_Record_Model extends Vtiger_Record_Model
 	public function downloadFile()
 	{
 		$fileContent = false;
-		if ($fileDetails = $this->getFileDetails()) {
-			$filePath = ROOT_DIRECTORY . DIRECTORY_SEPARATOR . $fileDetails['path'];
-			$fileName = $fileDetails['name'];
-			if ('I' === $this->get('filelocationtype')) {
-				$fileName = html_entity_decode($fileName, ENT_QUOTES, \App\Config::main('default_charset'));
-				if (file_exists($filePath . $fileDetails['attachmentsid'])) {
-					$savedFile = $fileDetails['attachmentsid'];
+		if ($path = $this->getFilePath()) {
+			$fileDetails = $this->getFileDetails();
+			$filePath = ROOT_DIRECTORY . DIRECTORY_SEPARATOR . $path;
+			if ($this->get('return')) {
+				return \App\Fields\File::loadFromInfo([
+					'path' => $filePath,
+					'name' => $fileDetails['name'],
+					'mimeType' => $fileDetails['type'],
+				]);
+			}
+			$fileSize = filesize($filePath);
+			$fileSize = $fileSize + ($fileSize % 1024);
+			if (fopen($filePath, 'r')) {
+				$fileContent = fread(fopen($filePath, 'r'), $fileSize);
+				$fileName = $this->get('filename');
+				header('content-type: ' . $fileDetails['type']);
+				header('pragma: public');
+				header('cache-control: private');
+				if ($this->get('show')) {
+					header('content-disposition: inline');
 				} else {
-					$savedFile = $fileDetails['attachmentsid'] . '_' . $fileName;
-				}
-				if (file_exists($filePath . $savedFile)) {
-					if ($this->get('return')) {
-						return \App\Fields\File::loadFromInfo([
-							'path' => $filePath . $savedFile,
-							'name' => $fileDetails['name'],
-							'mimeType' => $fileDetails['type'],
-						]);
-					}
-					$fileSize = filesize($filePath . $savedFile);
-					$fileSize = $fileSize + ($fileSize % 1024);
-					if (fopen($filePath . $savedFile, 'r')) {
-						$fileContent = fread(fopen($filePath . $savedFile, 'r'), $fileSize);
-						$fileName = $this->get('filename');
-						header('content-type: ' . $fileDetails['type']);
-						header('pragma: public');
-						header('cache-control: private');
-						if ($this->get('show')) {
-							header('content-disposition: inline');
-						} else {
-							header("content-disposition: attachment; filename=\"$fileName\"");
-						}
-					}
+					header("content-disposition: attachment; filename=\"$fileName\"");
 				}
 			}
 		}
 		echo $fileContent;
+	}
+
+	/**
+	 * Get file path.
+	 *
+	 * @return string
+	 */
+	public function getFilePath(): string
+	{
+		$path = '';
+		if ($fileDetails = $this->getFileDetails()) {
+			$fileName = $fileDetails['name'];
+			if ('I' === $this->get('filelocationtype')) {
+				$fileName = html_entity_decode($fileName, ENT_QUOTES, \App\Config::main('default_charset'));
+				if (file_exists(ROOT_DIRECTORY . DIRECTORY_SEPARATOR . $fileDetails['path'] . $fileDetails['attachmentsid'])) {
+					$savedFile = $fileDetails['attachmentsid'];
+				} else {
+					$savedFile = $fileDetails['attachmentsid'] . '_' . $fileName;
+				}
+				if (file_exists(ROOT_DIRECTORY . DIRECTORY_SEPARATOR . $fileDetails['path'] . $savedFile)) {
+					$path = $fileDetails['path'] . $savedFile;
+				}
+			}
+		}
+		return $path;
 	}
 
 	/**
@@ -228,9 +262,7 @@ class Documents_Record_Model extends Vtiger_Record_Model
 		return \App\Layout\Icon::getIconByFileType($fileType);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function isMandatorySave()
 	{
 		return parent::isMandatorySave() || $_FILES;
@@ -297,7 +329,9 @@ class Documents_Record_Model extends Vtiger_Record_Model
 		if ('I' === $this->get('filelocationtype')) {
 			if ($file) {
 				$file['original_name'] = \App\Request::_get('0_hidden');
-				$this->uploadAndSaveFile($file);
+				if ($this->uploadAndSaveFile($file) && isset($this->file)) {
+					$this->file = [];
+				}
 			}
 		} else {
 			$db->createCommand()->delete('vtiger_seattachmentsrel', ['crmid' => $this->getId()])->execute();
@@ -327,7 +361,12 @@ class Documents_Record_Model extends Vtiger_Record_Model
 			'path' => $uploadFilePath
 		])->execute();
 		$currentId = $db->getLastInsertID('vtiger_attachments_attachmentsid_seq');
-		if ($fileInstance->moveFile(ROOT_DIRECTORY . DIRECTORY_SEPARATOR . $uploadFilePath . $currentId)) {
+		if (\App\Config::module($this->getModuleName(), 'storagePath')) {
+			$destinyFilePath = $uploadFilePath . $currentId;
+		} else {
+			$destinyFilePath = ROOT_DIRECTORY . DIRECTORY_SEPARATOR . $uploadFilePath . $currentId;
+		}
+		if ($fileInstance->moveFile($destinyFilePath)) {
 			$db->createCommand()->delete('vtiger_seattachmentsrel', ['crmid' => $id])->execute();
 			$db->createCommand()->insert('vtiger_seattachmentsrel', ['crmid' => $id, 'attachmentsid' => $currentId])->execute();
 			$this->ext['attachmentsId'] = $currentId;
@@ -335,13 +374,11 @@ class Documents_Record_Model extends Vtiger_Record_Model
 		} else {
 			$db->createCommand()->delete('vtiger_attachments', ['attachmentsid' => $currentId])->execute();
 		}
-		\App\Log::trace('Skip the uploadAndSaveFile process.');
+		\App\Log::trace('Exiting uploadAndSaveFile');
 		return $result;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function delete()
 	{
 		parent::delete();

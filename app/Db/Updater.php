@@ -4,9 +4,10 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 namespace App\Db;
@@ -116,13 +117,9 @@ class Updater
 		$s = 0;
 		foreach ($rows as $row) {
 			try {
-				$s += $dbCommand->update($row[0], $row[1], $row[2])->execute();
+				$s += $dbCommand->update($row[0], $row[1], $row[2] ?? '')->execute();
 			} catch (\Throwable $th) {
-				throw new \App\Exceptions\DbException(\App\Utils::varExport([
-					'tableName' => $row[0],
-					'columns' => $row[1],
-					'conditions' => $row[2] ?? null,
-				]) . PHP_EOL . $th->__toString(), $th->getCode());
+				throw new \App\Exceptions\DbException(\App\Utils::varExport(['tableName' => $row[0], 'columns' => $row[1], 'conditions' => $row[2] ?? null]) . PHP_EOL . $th->__toString(), $th->getCode());
 			}
 		}
 		return ['affected' => $s, 'all' => \count($rows)];
@@ -152,11 +149,7 @@ class Updater
 					++$s;
 				}
 			} catch (\Throwable $th) {
-				throw new \App\Exceptions\DbException(\App\Utils::varExport([
-					'tableName' => $row[0],
-					'columns' => $row[1],
-					'conditions' => $row[2] ?? null,
-				]) . PHP_EOL . $th->__toString(), $th->getCode());
+				throw new \App\Exceptions\DbException(\App\Utils::varExport(['tableName' => $row[0], 'columns' => $row[1], 'conditions' => $row[2] ?? null]) . PHP_EOL . $th->__toString(), $th->getCode());
 			}
 		}
 		return ['affected' => $s, 'all' => \count($rows)];
@@ -183,10 +176,7 @@ class Updater
 			try {
 				$s += $dbCommand->delete($row[0], $row[1])->execute();
 			} catch (\Throwable $th) {
-				throw new \App\Exceptions\DbException(\App\Utils::varExport([
-					'tableName' => $row[0],
-					'conditions' => $row[1] ?? null,
-				]) . PHP_EOL . $th->__toString(), $th->getCode());
+				throw new \App\Exceptions\DbException(\App\Utils::varExport(['tableName' => $row[0], 'conditions' => $row[1] ?? null]) . PHP_EOL . $th->__toString(), $th->getCode());
 			}
 		}
 		return ['affected' => $s, 'all' => \count($rows)];

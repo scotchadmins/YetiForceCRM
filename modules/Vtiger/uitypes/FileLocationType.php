@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Vtiger_FileLocationType_UIType extends Vtiger_Picklist_UIType
@@ -18,10 +18,9 @@ class Vtiger_FileLocationType_UIType extends Vtiger_Picklist_UIType
 			return;
 		}
 		parent::validate($value, $isUserFormat);
-		$this->validate = false;
 		$allowedPicklist = $this->getPicklistValues();
 		if (!isset($allowedPicklist[$value])) {
-			throw new \App\Exceptions\Security('ERR_ILLEGAL_FIELD_VALUE||' . $this->getFieldModel()->getFieldName() . '||' . $this->getFieldModel()->getModuleName() . '||' . $value, 406);
+			throw new \App\Exceptions\Security('ERR_ILLEGAL_FIELD_VALUE||' . $this->getFieldModel()->getName() . '||' . $this->getFieldModel()->getModuleName() . '||' . $value, 406);
 		}
 		$this->validate[$value] = true;
 	}
@@ -30,7 +29,6 @@ class Vtiger_FileLocationType_UIType extends Vtiger_Picklist_UIType
 	public function getDisplayValue($value, $record = false, $recordModel = false, $rawText = false, $length = false)
 	{
 		$values = $this->getPicklistValues();
-
 		return \App\Purifier::encodeHtml($values[$value] ?? $value);
 	}
 
@@ -42,8 +40,10 @@ class Vtiger_FileLocationType_UIType extends Vtiger_Picklist_UIType
 	public function getPicklistValues()
 	{
 		$moduleName = $this->getFieldModel()->getModuleName();
-
-		return ['I' => \App\Language::translate('LBL_INTERNAL', $moduleName), 'E' => \App\Language::translate('LBL_EXTERNAL', $moduleName)];
+		return [
+			'I' => \App\Language::translate('LBL_INTERNAL', $moduleName, false, false),
+			'E' => \App\Language::translate('LBL_EXTERNAL', $moduleName, false, false),
+		];
 	}
 
 	/**

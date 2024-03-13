@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 jQuery.Class(
@@ -27,12 +27,14 @@ jQuery.Class(
 									var inst = $.jstree.reference(data.reference);
 									var id = inst.get_selected();
 									var progress = jQuery.progressIndicator();
-									app.showModalWindow(null, 'index.php?module=Menu&parent=Settings&view=EditMenu&id=' + id, function (
-										container
-									) {
-										thisInstance.registerEditMenu(container);
-										progress.progressIndicator({ mode: 'hide' });
-									});
+									app.showModalWindow(
+										null,
+										'index.php?module=Menu&parent=Settings&view=EditMenu&id=' + id,
+										function (container) {
+											thisInstance.registerEditMenu(container);
+											progress.progressIndicator({ mode: 'hide' });
+										}
+									);
 								}
 							},
 							remove: {
@@ -126,12 +128,14 @@ jQuery.Class(
 			var thisInstance = this;
 			$('.addMenu').on('click', function (e) {
 				var progress = jQuery.progressIndicator();
-				app.showModalWindow(null, 'index.php?module=Menu&parent=Settings&view=CreateMenu&mode=step1', function (
-					container
-				) {
-					thisInstance.registerStep1(container);
-					progress.progressIndicator({ mode: 'hide' });
-				});
+				app.showModalWindow(
+					null,
+					'index.php?module=Menu&parent=Settings&view=CreateMenu&mode=step1',
+					function (container) {
+						thisInstance.registerStep1(container);
+						progress.progressIndicator({ mode: 'hide' });
+					}
+				);
 			});
 		},
 		loadContent: function () {
@@ -270,10 +274,10 @@ jQuery.Class(
 		},
 		registerHiddenInput: function (container) {
 			if (container.find('#menuType').val() == 'CustomFilter') {
-				var tabid = container.find('select[name="dataurl"] option:selected').data('tabid');
+				var tabid = container.find('select[name="filterId"] option:selected').data('tabid');
 				container.find('[name="module"]').val(tabid);
-				container.on('change', 'select[name="dataurl"]', function (e) {
-					var tabid = container.find('select[name="dataurl"] option:selected').data('tabid');
+				container.on('change', 'select[name="filterId"]', function (e) {
+					var tabid = container.find('select[name="filterId"] option:selected').data('tabid');
 					container.find('[name="module"]').val(tabid);
 				});
 			}

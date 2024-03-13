@@ -5,7 +5,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  *************************************************************************************/
 'use strict';
 
@@ -22,13 +22,13 @@ $.Class(
 			}
 			app.showNotify(params);
 		},
-		selectIcon: function () {
+		selectIcon: function (params = {}) {
 			var aDeferred = $.Deferred();
 			app.showModalWindow({
 				id: 'iconsModal',
 				url: 'index.php?module=Vtiger&view=IconsModal&parent=Settings',
 				cb: (container) => {
-					this.registerIconsSelect(container);
+					this.registerIconsSelect(container, params);
 					container.find('[name="saveButton"]').on('click', function (e) {
 						aDeferred.resolve({
 							type: container.find('#iconType').val(),
@@ -40,13 +40,17 @@ $.Class(
 			});
 			return aDeferred.promise();
 		},
-		registerIconsSelect(container) {
-			const params = {
-				module: app.getModuleName(),
-				parent: app.getParentModuleName(),
-				action: 'Icons'
-			};
-			AppConnector.request(params).done(({ result }) => {
+		registerIconsSelect(container, params) {
+			AppConnector.request(
+				$.extend(
+					{
+						module: app.getModuleName(),
+						parent: app.getParentModuleName(),
+						action: 'Icons'
+					},
+					params
+				)
+			).done(({ result }) => {
 				let id = 0;
 				const data = Object.keys(result).map((key) => {
 					let resultData = result[id];
@@ -65,7 +69,7 @@ $.Class(
 							return $(`<span class="${data.text}" aria-hidden="true"></span><span> - ${data.text}</span>`);
 						} else if (data.type === 'image') {
 							container.find('.iconName').text(data.text);
-							container.find('#iconName').val(data.url);
+							container.find('#iconName').val(data.text);
 							container.find('.iconExample').html(`<img width="24px" src="${data.url}"/>`);
 						}
 						return data.text;
@@ -268,15 +272,6 @@ $.Class(
 		loadEditorElement: function () {
 			App.Fields.Text.Editor.register($('.js-editor'), {});
 		},
-		reloadContent: function () {
-			$('.js-tabs li .active').trigger('click');
-		},
-		registerTabEvents: function () {
-			var thisInstance = this;
-			$('.js-tabs li').on('click', function () {
-				thisInstance.loadContent($(this).data('mode'), false, $(this).data('params'));
-			});
-		},
 		registerWarningsAlert: function () {
 			const alertsContainer = $('#systemWarningAletrs');
 			if (alertsContainer.length) {
@@ -348,61 +343,8 @@ $.Class(
 				});
 			}
 		},
-		getSelectedFolders: function () {
-			var selected = [];
-			$.each($('#jstreeContainer').jstree('get_selected', true), function (index, value) {
-				selected.push(value.original.subPath);
-			});
-			return selected;
-		},
-		loadContent: function (mode, page, modeParams) {
-			const thisInstance = this;
-			let container = $('.indexContainer');
-			let state = container.find('.js-switch--state');
-			let author = container.find('.js-switch--author');
-			let params = {
-				mode: mode,
-				module: app.getModuleName(),
-				parent: app.getParentModuleName(),
-				view: app.getViewName()
-			};
-			if (page) {
-				params.page = page;
-			}
-			if (modeParams) {
-				params.params = modeParams;
-			}
-			if (state.last().is(':checked')) {
-				params.state = 'closed';
-			} else {
-				params.state = 'open';
-			}
-			params.author = author.first().is(':checked');
-			const progressIndicatorElement = $.progressIndicator({
-				position: 'html',
-				blockInfo: {
-					enabled: true,
-					elementToBlock: container
-				}
-			});
-			AppConnector.request(params).done(function (data) {
-				progressIndicatorElement.progressIndicator({ mode: 'hide' });
-				container.html(data);
-				thisInstance.registerEventsLoadContent(thisInstance, mode, container);
-			});
-		},
-		registerEventsLoadContent: function (thisInstance, mode, container) {
-			if (mode == 'index') {
-				thisInstance.registerWidgetsEvents();
-				thisInstance.registerDeleteShortCutEvent();
-				thisInstance.registerAddShortcutDragDropEvent();
-				thisInstance.registerWarningsAlert();
-			}
-		},
 		registerEvents: function () {
 			this.container = $('.js-dashboard-container');
-			this.registerTabEvents();
-			this.reloadContent();
 			this.registerWarningsAlert();
 			this.registerDeleteShortCutEvent();
 			this.registerAddShortcutDragDropEvent();

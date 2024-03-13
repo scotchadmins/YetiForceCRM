@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 Vtiger_Detail_Js(
@@ -11,14 +11,14 @@ Vtiger_Detail_Js(
 					src_module: 'HelpDesk',
 					src_record: app.getRecordId()
 				},
-				(modal, instance) => {
+				(_modal, instance) => {
 					instance.setSelectEvent((responseData) => {
 						Vtiger_Detail_Js.getInstance()
 							.saveFieldValues({
 								field: 'parent_id',
 								value: responseData.id
 							})
-							.done(function (response) {
+							.done(function () {
 								location.reload();
 							});
 					});
@@ -27,14 +27,17 @@ Vtiger_Detail_Js(
 		}
 	},
 	{
-		registerSetServiceContracts: function () {
-			var thisInstance = this;
-			$('.selectServiceContracts').on('click', 'ul li', function (e) {
-				var element = jQuery(e.currentTarget);
+		/**
+		 * Function sets the related module.
+		 */
+		registerSetReletedModule: function () {
+			const thisInstance = this;
+			$('.js-quick-add-relation').on('click', 'ul li', function (e) {
+				let element = jQuery(e.currentTarget);
 				thisInstance
 					.saveFieldValues({
 						setRelatedFields: true,
-						field: 'servicecontractsid',
+						field: element.data('field'),
 						value: element.data('id')
 					})
 					.done(function (response) {
@@ -42,10 +45,11 @@ Vtiger_Detail_Js(
 					});
 			});
 		},
+
 		/**
 		 * Function to get response from hierarchy
 		 * @param {array} params
-		 * @returns {jQuery}
+		 * @returns {Promise}
 		 */
 		getHierarchyResponseData: function (params) {
 			let thisInstance = this,
@@ -154,30 +158,32 @@ Vtiger_Detail_Js(
 		 */
 		showProgressConfirmation: function (element, picklistName) {
 			let picklistValue = $(element).data('picklistValue');
-			Vtiger_Helper_Js.showConfirmationBox({
+			app.showConfirmModal({
 				title: $(element).data('picklistLabel'),
-				message: app.vtranslate('JS_CHANGE_VALUE_CONFIRMATION')
-			}).done(() => {
-				const progressIndicatorElement = $.progressIndicator();
-				this.saveFieldValues({
-					value: picklistValue,
-					field: picklistName
-				})
-					.done((data) => {
-						progressIndicatorElement.progressIndicator({ mode: 'hide' });
-						if (data.success) {
-							window.location.reload();
-						}
+				text: app.vtranslate('JS_CHANGE_VALUE_CONFIRMATION'),
+				confirmedCallback: () => {
+					const progressIndicatorElement = $.progressIndicator();
+					this.saveFieldValues({
+						value: picklistValue,
+						field: picklistName
 					})
-					.fail(function (error, err) {
-						progressIndicatorElement.progressIndicator({ mode: 'hide' });
-						app.errorLog(error, err);
-					});
+						.done((data) => {
+							progressIndicatorElement.progressIndicator({ mode: 'hide' });
+							if (data.success) {
+								window.location.reload();
+							}
+						})
+						.fail(function (error, err) {
+							progressIndicatorElement.progressIndicator({ mode: 'hide' });
+							app.errorLog(error, err);
+						});
+				}
 			});
 		},
 		/**
 		 * Function save field values
 		 * @param {array} fieldDetailList
+		 * @returns {Promise}
 		 */
 		saveFieldValues: function (fieldDetailList) {
 			const self = this;
@@ -250,6 +256,7 @@ Vtiger_Detail_Js(
 		/**
 		 * Add time control when closed ticket
 		 * @param {array} params
+		 * @returns {Promise}
 		 */
 		addTimeControl(params, callback = () => {}) {
 			let aDeferred = jQuery.Deferred();
@@ -324,7 +331,7 @@ Vtiger_Detail_Js(
 		},
 		registerEvents: function () {
 			this._super();
-			this.registerSetServiceContracts();
+			this.registerSetReletedModule();
 			this.registerHierarchyRecordCount();
 			this.registerShowHierarchy();
 		}

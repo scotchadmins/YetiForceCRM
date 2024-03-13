@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 @import "../../../libraries/sass-material-colors/sass/_sass-material-colors.scss";
 @import "../../../libraries/bootstrap/scss/_functions";
 @import "../../../libraries/bootstrap/scss/_mixins";
@@ -28,7 +28,7 @@ $grid-breakpoints: (
 );
 
 //flag-icons
-$flag-icon-css-path: "../../../libraries/flag-icon-css/flags/";
+$flag-icons-path: "../../../libraries/flag-icons/flags/";
 
 //-------- sizes --------//
 $w-icon-button: calculate-rem(42px);

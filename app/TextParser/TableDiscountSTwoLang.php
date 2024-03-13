@@ -7,8 +7,8 @@ namespace App\TextParser;
  *
  * @package TextParser
  *
- * @copyright YetiForce Sp. z o.o.
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Sołek <a.solek@yetiforce.com>
  */
 class TableDiscountSTwoLang extends Base
@@ -41,7 +41,9 @@ class TableDiscountSTwoLang extends Base
 			} else {
 				$currency = $baseCurrency['id'];
 			}
-			$currencyData = \App\Fields\Currency::getById($currency);
+			$currencySymbol = \App\Fields\Currency::getById($currency)['currency_symbol'];
+		} else {
+			$currencySymbol = \App\Fields\Currency::getDefault()['currency_symbol'];
 		}
 		if (!empty($fields[0])) {
 			$discount = 0;
@@ -55,7 +57,7 @@ class TableDiscountSTwoLang extends Base
 							</thead>
 							<tbody>
 								<tr>
-									<td style="text-align:right;padding:0px 4px;border:1px solid #ddd;">' . \CurrencyField::convertToUserFormat($discount, null, true) . ' ' . $currencyData['currency_symbol'] . '</td>
+									<td style="text-align:right;padding:0px 4px;border:1px solid #ddd;">' . \CurrencyField::convertToUserFormat($discount, null, true) . ' ' . $currencySymbol . '</td>
 								</tr>
 							</tbody>
 						</table>';

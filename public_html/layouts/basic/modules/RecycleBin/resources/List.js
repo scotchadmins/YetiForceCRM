@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 Vtiger_List_Js(
@@ -9,28 +9,28 @@ Vtiger_List_Js(
 		 */
 		massActivation: function () {
 			const self = this;
-			Vtiger_Helper_Js.showConfirmationBox({
-				message: app.vtranslate('JS_ACTIVATE_RECORD_DESC'),
-				title: app.vtranslate('JS_MASS_ACTIVATE')
-			}).done(function (e) {
-				let params = self.getSelectedRecordsParams(),
-					listInstance = Vtiger_List_Js.getInstance(),
-					container = listInstance.getListViewContainer();
-				params.module = container.find('.js-source-module').val();
-				params.state = 'Active';
-				params.entityState = 'Trash';
-				params.action = 'MassState';
-				AppConnector.request(params).done(function (data) {
-					if (data && data.result && data.result.notify) {
-						Vtiger_Helper_Js.showMessage(data.result.notify);
-					}
-					listInstance.getListViewRecords({
-						module: app.getModuleName(),
-						view: 'List',
-						parent: app.getModuleName(),
-						sourceModule: container.find('.js-source-module').val()
+			app.showConfirmModal({
+				title: app.vtranslate('JS_MASS_ACTIVATE'),
+				text: app.vtranslate('JS_ACTIVATE_RECORD_DESC'),
+				confirmedCallback: () => {
+					let params = self.getSelectedRecordsParams(),
+						listInstance = Vtiger_List_Js.getInstance(),
+						container = listInstance.getListViewContainer();
+					params.module = container.find('.js-source-module').val();
+					params.state = 'Active';
+					params.entityState = 'Trash';
+					params.action = 'MassState';
+					AppConnector.request(params).done(function (data) {
+						if (data && data.result && data.result.notify) {
+							Vtiger_Helper_Js.showMessage(data.result.notify);
+						}
+						listInstance.getListViewRecords({
+							module: app.getModuleName(),
+							view: 'List',
+							sourceModule: container.find('.js-source-module').val()
+						});
 					});
-				});
+				}
 			});
 		},
 		/**
@@ -38,29 +38,29 @@ Vtiger_List_Js(
 		 */
 		massDelete: function () {
 			const self = this;
-			Vtiger_Helper_Js.showConfirmationBox({
-				message: app.vtranslate('JS_DELETE_ALL_RECYCLE_RECORD_DESC'),
-				title: app.vtranslate('JS_MASS_DELETE')
-			}).done(function (e) {
-				let params = self.getSelectedRecordsParams(),
-					listInstance = Vtiger_List_Js.getInstance(),
-					container = listInstance.getListViewContainer();
-				params.module = container.find('.js-source-module').val();
-				params.sourceModule = container.find('.js-source-module').val();
-				params.action = 'MassDelete';
-				params.entityState = 'Trash';
-				params.viewname = 'undefined';
-				AppConnector.request(params).done(function (data) {
-					if (data && data.result && data.result.notify) {
-						Vtiger_Helper_Js.showMessage(data.result.notify);
-					}
-					listInstance.getListViewRecords({
-						module: app.getModuleName(),
-						view: 'List',
-						parent: app.getModuleName(),
-						sourceModule: container.find('.js-source-module').val()
+			app.showConfirmModal({
+				title: app.vtranslate('JS_MASS_DELETE'),
+				text: app.vtranslate('JS_DELETE_ALL_RECYCLE_RECORD_DESC'),
+				confirmedCallback: () => {
+					let params = self.getSelectedRecordsParams(),
+						listInstance = Vtiger_List_Js.getInstance(),
+						container = listInstance.getListViewContainer();
+					params.module = container.find('.js-source-module').val();
+					params.sourceModule = container.find('.js-source-module').val();
+					params.action = 'MassDelete';
+					params.entityState = 'Trash';
+					params.viewname = 'undefined';
+					AppConnector.request(params).done(function (data) {
+						if (data && data.result && data.result.notify) {
+							Vtiger_Helper_Js.showMessage(data.result.notify);
+						}
+						listInstance.getListViewRecords({
+							module: app.getModuleName(),
+							view: 'List',
+							sourceModule: container.find('.js-source-module').val()
+						});
 					});
-				});
+				}
 			});
 		}
 	},
@@ -77,12 +77,11 @@ Vtiger_List_Js(
 					.getListViewRecords({
 						module: app.getModuleName(),
 						view: 'List',
-						parent: app.getModuleName(),
 						sourceModule: e.params.args.data.id
 					})
 					.done(function () {
 						self.calculatePages().done(function () {
-							container.find('.js-pagination-list').data('totalCount', '');
+							container.find('.js-pagination-list').data('totalCount', 0);
 							self.updatePagination();
 						});
 					});
@@ -121,34 +120,35 @@ Vtiger_List_Js(
 			const self = this,
 				container = this.getListViewContainer();
 			container.find('.js-recycle-empty').on('click', function () {
-				Vtiger_Helper_Js.showConfirmationBox({
-					message: app.vtranslate('JS_DELETE_ALL_RECYCLE_RECORD_DESC'),
-					title: app.vtranslate('JS_DELETE_ALL_RECYCLE_RECORD')
-				}).done(function (e) {
-					let progressIndicatorElement = $.progressIndicator();
-					AppConnector.request({
-						module: 'RecycleBin',
-						sourceModule: container.find('.js-source-module').val(),
-						action: 'MassDeleteAll',
-						sourceView: 'List'
-					})
-						.done(function (data) {
-							progressIndicatorElement.progressIndicator({ mode: 'hide' });
-							let result = {
-								text: app.vtranslate('JS_FAILED_TO_SAVE')
-							};
-							if (data && data.result) {
-								result = {
-									text: app.vtranslate('JS_ADDED_TO_QUEUE'),
-									type: 'success'
-								};
-							}
-							Vtiger_Helper_Js.showMessage(result);
-							self.getListViewRecords();
+				app.showConfirmModal({
+					title: app.vtranslate('JS_DELETE_ALL_RECYCLE_RECORD'),
+					text: app.vtranslate('JS_DELETE_ALL_RECYCLE_RECORD_DESC'),
+					confirmedCallback: () => {
+						let progressIndicatorElement = $.progressIndicator();
+						AppConnector.request({
+							module: 'RecycleBin',
+							sourceModule: container.find('.js-source-module').val(),
+							action: 'MassDeleteAll',
+							sourceView: 'List'
 						})
-						.fail(function (error, err) {
-							progressIndicatorElement.progressIndicator({ mode: 'hide' });
-						});
+							.done(function (data) {
+								progressIndicatorElement.progressIndicator({ mode: 'hide' });
+								let result = {
+									text: app.vtranslate('JS_FAILED_TO_SAVE')
+								};
+								if (data && data.result) {
+									result = {
+										text: app.vtranslate('JS_ADDED_TO_QUEUE'),
+										type: 'success'
+									};
+								}
+								Vtiger_Helper_Js.showMessage(result);
+								self.getListViewRecords();
+							})
+							.fail(function (error, err) {
+								progressIndicatorElement.progressIndicator({ mode: 'hide' });
+							});
+					}
 				});
 			});
 		},
@@ -170,6 +170,12 @@ Vtiger_List_Js(
 					aDeferred.reject(textStatus, errorThrown);
 				});
 			return aDeferred.promise();
+		},
+		getDefaultParams: function () {
+			let params = this._super();
+			params.module = $('.js-source-module').val();
+			params.entityState = 'Trash';
+			return params;
 		},
 		registerEvents: function () {
 			this._super();

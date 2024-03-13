@@ -3,8 +3,8 @@
 /**
  * Settings menu SaveAjax action class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class Settings_Menu_SaveAjax_Action extends Settings_Vtiger_Basic_Action
 {
@@ -29,9 +29,15 @@ class Settings_Menu_SaveAjax_Action extends Settings_Vtiger_Basic_Action
 			'filters' => ['Integer'],
 			'icon' => 'Text',
 			'role' => 'Alnum',
-			'dataurl' => 'Text',
+			'dataurl' => 'Url',
+			'filterId' => 'Integer',
+			'countentries' => 'Integer',
 		]
 		);
+		if ('CustomFilter' === $data['type'] && \in_array($data['type'], \App\Menu::TYPES)) {
+			$data['dataurl'] = $data['filterId'];
+			unset($data['filterId']);
+		}
 		$data['source'] = $request->getInteger('source');
 		$recordModel = Settings_Menu_Record_Model::getCleanInstance();
 		$recordModel->initialize($data);
@@ -56,9 +62,15 @@ class Settings_Menu_SaveAjax_Action extends Settings_Vtiger_Basic_Action
 			'filters' => ['Integer'],
 			'icon' => 'Text',
 			'role' => 'Alnum',
-			'dataurl' => 'Text',
+			'dataurl' => 'Url',
+			'filterId' => 'Integer',
+			'countentries' => 'Integer',
 		]
 		);
+		if (!empty($data['filterId']) && empty($data['dataurl'])) {
+			$data['dataurl'] = $data['filterId'];
+			unset($data['filterId']);
+		}
 		$data['source'] = $request->getInteger('source');
 		$recordModel = Settings_Menu_Record_Model::getInstanceById($data['id']);
 		$recordModel->initialize($data);

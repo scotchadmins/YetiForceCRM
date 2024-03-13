@@ -4,8 +4,8 @@
  *
  * @package   UIType
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 
 /**
@@ -13,17 +13,13 @@
  */
 class Calendar_Datetime_UIType extends Vtiger_Datetime_UIType
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getDisplayValue($value, $record = false, $recordModel = false, $rawText = false, $length = false)
 	{
 		return strpos($value, ' ') ? App\Fields\DateTime::formatToDisplay($value) : App\Fields\Date::formatToDisplay($value);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getEditViewDisplayValue($value, $recordModel = false)
 	{
 		$fieldName = $this->getFieldModel()->getName();
@@ -35,9 +31,7 @@ class Calendar_Datetime_UIType extends Vtiger_Datetime_UIType
 		return $value;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getDBValue($value, $recordModel = false)
 	{
 		$fieldName = $this->getFieldModel()->getName();

@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 $.Class(
@@ -31,35 +31,35 @@ $.Class(
 				let btn = $(e.currentTarget);
 				let tr = btn.closest('tr');
 				let icon = tr.find('.js-change-icon');
-				bootbox.prompt({
+				app.hideModalWindow();
+				app.showConfirmModal({
 					title: app.vtranslate('JS_ENTER_A_REASON'),
-					required: true,
-					callback: function (result) {
-						if (result) {
-							AppConnector.request(
-								$.extend(
-									{
-										module: app.getModuleName(),
-										action: 'InterestsConflict',
-										mode: 'usersCancel',
-										id: tr.data('id'),
-										comment: result
-									},
-									modalContainer.find('.js-modal-form').serializeFormData()
-								)
-							).done(function (data) {
-								if (data.result) {
-									btn.hide();
-									if (icon.length) {
-										icon.removeClass('fa-times text-danger').addClass('fa-slash text-dark');
-									}
-									app.showNotify({
-										text: data.result.message,
-										type: data.result.type
-									});
+					showDialog: true,
+					multiLineDialog: true,
+					confirmedCallback: (notice, value) => {
+						AppConnector.request(
+							$.extend(
+								{
+									module: app.getModuleName(),
+									action: 'InterestsConflict',
+									mode: 'usersCancel',
+									id: tr.data('id'),
+									comment: value
+								},
+								modalContainer.find('.js-modal-form').serializeFormData()
+							)
+						).done(function (data) {
+							if (data.result) {
+								btn.hide();
+								if (icon.length) {
+									icon.removeClass('fa-times text-danger').addClass('fa-slash text-dark');
 								}
-							});
-						}
+								app.showNotify({
+									text: data.result.message,
+									type: data.result.type
+								});
+							}
+						});
 					}
 				});
 			});

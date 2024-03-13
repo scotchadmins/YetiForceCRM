@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce Sp. z o.o.
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 /**
@@ -14,12 +14,8 @@
  */
 class Users_Field_Model extends Vtiger_Field_Model
 {
-	/**
-	 * Function to check whether the current field is read-only.
-	 *
-	 * @return bool
-	 */
-	public function isReadOnly()
+	/** {@inheritdoc} */
+	public function isReadOnly(): bool
 	{
 		$currentUserModel = Users_Record_Model::getCurrentUserModel();
 		if ((false === $currentUserModel->isAdminUser() && 98 == $this->get('uitype')) || 156 == $this->get('uitype')) {
@@ -44,12 +40,8 @@ class Users_Field_Model extends Vtiger_Field_Model
 		return parent::isViewEnabled();
 	}
 
-	/**
-	 * Function to check if the field is export table.
-	 *
-	 * @return bool
-	 */
-	public function isExportTable()
+	/** {@inheritdoc} */
+	public function isExportable(): bool
 	{
 		return $this->isViewable() || 99 === $this->getUIType();
 	}
@@ -71,18 +63,16 @@ class Users_Field_Model extends Vtiger_Field_Model
 		return $permission;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getPicklistValues($skipCheckingRole = false)
 	{
 		if (115 == $this->get('uitype')) {
 			$fieldPickListValues = [];
-			$query = (new \App\Db\Query())->select([$this->getFieldName()])->from('vtiger_' . $this->getFieldName());
+			$query = (new \App\Db\Query())->select([$this->getName()])->from('vtiger_' . $this->getName());
 			$dataReader = $query->createCommand()->query();
 			while ($row = $dataReader->read()) {
-				$picklistValue = $row[$this->getFieldName()];
-				$fieldPickListValues[$picklistValue] = \App\Language::translate($picklistValue, $this->getModuleName());
+				$picklistValue = $row[$this->getName()];
+				$fieldPickListValues[$picklistValue] = \App\Language::translate($picklistValue, $this->getModuleName(), false, false);
 			}
 			$dataReader->close();
 			return $fieldPickListValues;
@@ -90,12 +80,10 @@ class Users_Field_Model extends Vtiger_Field_Model
 		return parent::getPicklistValues($skipCheckingRole);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getDisplayValue($value, $record = false, $recordModel = false, $rawText = false, $length = false)
 	{
-		$fieldName = $this->getFieldName();
+		$fieldName = $this->getName();
 		if (('currency_decimal_separator' === $fieldName || 'currency_grouping_separator' === $fieldName) && (' ' === $value)) {
 			return \App\Language::translate('LBL_SPACE', 'Users');
 		}
@@ -121,52 +109,45 @@ class Users_Field_Model extends Vtiger_Field_Model
 	/**
 	 * Function to check whether this field editable or not.
 	 *
+	 * @param string $viewName
+	 *
 	 * @return bool true/false
 	 */
-	public function isEditable()
+	public function isEditable(string $viewName = 'Edit'): bool
 	{
 		if (null === $this->get('editable')) {
-			if (115 === $this->get('uitype') && (!\App\User::getCurrentUserModel()->isAdmin() || \App\User::getCurrentUserId() === $this->get('rocordId'))) {
+			if (115 === $this->get('uitype') && (!\App\User::getCurrentUserModel()->isAdmin() || \App\User::getCurrentUserId() === $this->get('recordId'))) {
 				$permission = false;
 			} elseif ('super_user' === $this->getName()) {
 				$permission = \App\User::getCurrentUserModel()->isAdmin();
 			} elseif ('authy_secret_totp' === $this->getColumnName()) {
-				$permission = $this->get('rocordId') === \App\User::getCurrentUserId();
-			} elseif (!$this->get('editable')) {
-				$permission = parent::isEditable();
+				$permission = $this->get('recordId') === \App\User::getCurrentUserId();
+			} else {
+				$permission = parent::isEditable($viewName);
 			}
 			$this->set('editable', $permission);
 		}
 		return $this->get('editable');
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function isViewable()
 	{
-		if ('authy_secret_totp' === $this->getColumnName()) {
-			return $this->get('rocordId') === \App\User::getCurrentUserId();
-		}
-		return parent::isViewable();
+		return 'authy_secret_totp' !== $this->getColumnName() && parent::isViewable();
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function isEditableReadOnly()
 	{
 		return ('login_method' === $this->getColumnName() && !\App\User::getCurrentUserModel()->isAdmin()) || (10 === (int) $this->get('displaytype'));
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
-	public function isWritable()
+	/** {@inheritdoc} */
+	public function isWritable(string $viewName = 'Edit'): bool
 	{
 		if (('is_admin' === $this->getName()) && \App\User::getCurrentUserModel()->isAdmin()) {
 			return true;
 		}
-		return parent::isWritable();
+		return parent::isWritable($viewName);
 	}
 }

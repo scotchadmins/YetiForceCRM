@@ -4,20 +4,19 @@
  *
  * @package   Relation
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
-use App\Relation\RelationInterface;
 
 /**
  * Campaigns_GetCampaignsRecords_Relation class.
  */
-class Campaigns_GetCampaignsRecords_Relation implements RelationInterface
+class Campaigns_GetCampaignsRecords_Relation extends \App\Relation\RelationAbstraction
 {
 	/**
-	 * Name of the table that stores relations.
+	 * @var string Name of the table that stores relations.
 	 */
 	public const TABLE_NAME = 'vtiger_campaign_records';
 
@@ -27,9 +26,7 @@ class Campaigns_GetCampaignsRecords_Relation implements RelationInterface
 		return Vtiger_Relation_Model::RELATION_M2M;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getQuery()
 	{
 		$queryGenerator = $this->relationModel->getQueryGenerator();
@@ -37,9 +34,7 @@ class Campaigns_GetCampaignsRecords_Relation implements RelationInterface
 			->addNativeCondition([self::TABLE_NAME . '.campaignid' => $this->relationModel->get('parentRecord')->getId()]);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function delete(int $sourceRecordId, int $destinationRecordId): bool
 	{
 		return (bool) App\Db::getInstance()->createCommand()
@@ -47,9 +42,7 @@ class Campaigns_GetCampaignsRecords_Relation implements RelationInterface
 			->execute();
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function create(int $sourceRecordId, int $destinationRecordId): bool
 	{
 		$result = false;
@@ -61,13 +54,11 @@ class Campaigns_GetCampaignsRecords_Relation implements RelationInterface
 		return $result;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function transfer(int $relatedRecordId, int $fromRecordId, int $toRecordId): bool
 	{
 		return (bool) \App\Db::getInstance()->createCommand()->update(self::TABLE_NAME, ['campaignid' => $toRecordId], [
-			'crmid' => $relatedRecordId, 'campaignid' => $fromRecordId
+			'crmid' => $relatedRecordId, 'campaignid' => $fromRecordId,
 		])->execute();
 	}
 }

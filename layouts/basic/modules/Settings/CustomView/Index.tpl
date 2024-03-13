@@ -1,4 +1,4 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
 	<div class="customViewList">
 		<div class="o-breadcrumb widget_header row mb-2">
@@ -19,7 +19,7 @@
 						</select>
 					</div>
 					<div class="col-md-8 col-sm-8 col-6">
-						<button class="btn btn-success float-right js-create-filter" data-js="click" type="button" data-editurl="{$MODULE_MODEL->getCreateFilterUrl($SOURCE_MODULE_ID)}"><span class="fas fa-plus"></span> {App\Language::translate('LBL_ADD_FILTER',$QUALIFIED_MODULE)}</button>
+						<button class="btn btn-success float-right js-create-filter" data-js="click" type="button" data-editurl="{$MODULE_MODEL->getCreateFilterUrl($SOURCE_MODULE)}"><span class="fas fa-plus"></span> {App\Language::translate('LBL_ADD_FILTER',$QUALIFIED_MODULE)}</button>
 					</div>
 
 				</div>

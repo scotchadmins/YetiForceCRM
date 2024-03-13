@@ -28,9 +28,9 @@ Vtiger_AdvanceFilter_Js(
 			'not has changed',
 			'is empty',
 			'is not empty',
-			'is added',
 			'is Watching Record',
-			'is Not Watching Record'
+			'is Not Watching Record',
+			'not created by owner'
 		],
 
 		getFieldSpecificType: function (fieldSelected) {

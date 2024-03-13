@@ -1,68 +1,65 @@
 <?php
 
 /**
- * TOTP authentication method class.
+ * TOTP authentication method file.
  * TOTP - Time-based One-time Password.
  *
  * @package AuthMethod
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Adach <a.adach@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
-use Sonata\GoogleAuthenticator\GoogleAuthenticator;
 
+/**
+ * TOTP authentication method class.
+ */
 class Users_Totp_Authmethod
 {
 	/**
-	 * User authentication mode possible values.
-	 * TOTP_OFF - 2FA TOTP is checking off
-	 * TOTP_OPTIONAL - It is defined by the user
-	 * TOTP_OBLIGATORY - It is obligatory.
+	 * @var string[] User authentication mode possible values.
+	 *               TOTP_OFF - 2FA TOTP is checking off
+	 *               TOTP_OPTIONAL - It is defined by the user
+	 *               TOTP_OBLIGATORY - It is obligatory.
 	 */
 	const ALLOWED_USER_AUTHY_MODE = ['TOTP_OFF', 'TOTP_OPTIONAL', 'TOTP_OBLIGATORY'];
-	/**
-	 * @var int - User id
-	 */
+
+	/** @var int - User id */
 	private $userId;
-	/**
-	 * @var string - Secret code
-	 */
+
+	/** @var \PragmaRX\Google2FA\Google2FA */
+	private $authenticator;
+
+	/** @var string - Secret code */
 	private $secret;
 
 	/**
-	 * Users_Totp_Authmethod constructor.
+	 * Constructor.
 	 *
 	 * @param int $userId - Id of user
 	 */
-	public function __construct($userId)
+	public function __construct(int $userId)
 	{
 		$this->userId = $userId;
+		$this->authenticator = new \PragmaRX\Google2FA\Google2FA();
 	}
 
 	/**
-	 * Generate otaauth url for QR codes.
-	 *
-	 * @see https://github.com/google/google-authenticator/wiki/Key-Uri-Format
+	 * Generate TOTP code url.
 	 *
 	 * @param string      $secret - REQUIRED: The secret parameter is an arbitrary key value encoded in Base32 according to RFC 3548. The padding specified in RFC 3548 section 2.2 is not required and should be omitted.
 	 * @param string      $name   - The name is used to identify which account a key is associated with.
-	 * @param string|null $issuer - STRONGLY RECOMMENDED: The issuer parameter is a string value indicating the provider or service this account is associated with, URL-encoded according to RFC 3986.
+	 * @param string|null $issuer - The issuer parameter is a string value indicating the provider or service this account is associated with, URL-encoded according to RFC 3986.
 	 *
-	 * @return string - otpauth url
+	 * @return string - Url
 	 */
 	public function getOtpAuthUrl($secret, $name, $issuer = null)
 	{
 		if (null === $issuer) {
-			$arr = parse_url(App\Config::main('site_URL'));
-			$issuer = $arr['host'] ?? '';
+			$issuer = parse_url(App\Config::main('site_URL'))['host'] ?? '';
 		}
-		$url = "otpauth://totp/{$issuer}:{$name}?secret={$secret}";
-		if (!empty($issuer)) {
-			$url .= "&issuer={$issuer}";
-		}
-		return $url;
+		return $this->authenticator->getQRCodeUrl($issuer, $name, $secret);
 	}
 
 	/**
@@ -72,7 +69,7 @@ class Users_Totp_Authmethod
 	 */
 	public function createSecret()
 	{
-		return $this->secret = (new GoogleAuthenticator())->generateSecret();
+		return $this->secret = $this->authenticator->generateSecretKey();
 	}
 
 	/**
@@ -85,7 +82,7 @@ class Users_Totp_Authmethod
 	 *
 	 * @return \Milon\Barcode\path|string - HTML code
 	 */
-	private function createQrCode($otpAuthUrl, $type = 'HTML')
+	public function createQrCode($otpAuthUrl, $type = 'HTML')
 	{
 		$qrCodeGenerator = new \Milon\Barcode\DNS2D();
 		$qrCodeGenerator->setStorPath(__DIR__ . App\Config::main('tmp_dir'));
@@ -103,17 +100,15 @@ class Users_Totp_Authmethod
 	}
 
 	/**
-	 * Create QR code for user.
-	 *
-	 * @param string $type - acceptable types [HTML, SVG, PNG]
+	 * Create URL code for user.
 	 *
 	 * @throws \App\Exceptions\NotAllowedMethod
 	 *
 	 * @return \Milon\Barcode\path|string
 	 */
-	public function createQrCodeForUser($type = 'PNG')
+	public function createUrl()
 	{
-		return $this->createQrCode($this->getOtpAuthUrl($this->secret, \App\User::getUserModel($this->userId)->getDetail('user_name')), $type);
+		return $this->getOtpAuthUrl($this->secret, \App\User::getUserModel($this->userId)->getDetail('user_name'));
 	}
 
 	/**
@@ -124,9 +119,19 @@ class Users_Totp_Authmethod
 	 *
 	 * @return bool
 	 */
-	public static function verifyCode($secret, $userCode)
+	public function verifyCode($secret, $userCode)
 	{
-		return (new GoogleAuthenticator())->checkCode($secret, (string) $userCode);
+		return $this->authenticator->verifyKey($secret, (string) $userCode);
+	}
+
+	/**
+	 * 2FA - get the current one time password.
+	 *
+	 * @return string
+	 */
+	public function getCode(): string
+	{
+		return $this->authenticator->getCurrentOtp($this->secret);
 	}
 
 	/**
@@ -143,7 +148,7 @@ class Users_Totp_Authmethod
 			$userId = \App\User::getCurrentUserRealId();
 		}
 		$userModel = \App\User::getUserModel($userId);
-		if ('PLL_PASSWORD_2FA' === $userModel->getDetail('login_method')) {
+		if ('PLL_PASSWORD_2FA' === $userModel->getDetail('login_method') || 'PLL_LDAP_2FA' === $userModel->getDetail('login_method')) {
 			switch (App\Config::security('USER_AUTHY_MODE')) {
 				case 'TOTP_OPTIONAL':
 					$isActive = 'PLL_AUTHY_TOTP' === $userModel->getDetail('authy_methods');

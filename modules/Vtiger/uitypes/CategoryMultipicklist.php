@@ -5,8 +5,8 @@
  *
  * @package   UIType
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Krzysztof Gastołek <krzysztof.gastolek@wars.pl>
  * @author Tomasz Kur <t.kur@yetiforce.com>
  * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
@@ -71,9 +71,9 @@ class Vtiger_CategoryMultipicklist_UIType extends Vtiger_Tree_UIType
 		}
 		$value = implode(', ', $names);
 		if (\is_int($length)) {
-			$value = \App\TextParser::textTruncate($value, $length);
+			$value = \App\TextUtils::textTruncate($value, $length);
 		}
-		return \App\Purifier::encodeHtml($value);
+		return $rawText ? $value : \App\Purifier::encodeHtml($value);
 	}
 
 	/** {@inheritdoc} */
@@ -85,6 +85,6 @@ class Vtiger_CategoryMultipicklist_UIType extends Vtiger_Tree_UIType
 	/** {@inheritdoc} */
 	public function getQueryOperators()
 	{
-		return ['e', 'n', 'c', 'ch', 'k', 'kh', 'y', 'ny'];
+		return ['e', 'n', 'c', 'ch', 'k', 'kh', 'y', 'ny', 'ef', 'nf'];
 	}
 }

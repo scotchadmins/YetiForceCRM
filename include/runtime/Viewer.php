@@ -6,10 +6,10 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
-class Vtiger_Viewer extends SmartyBC
+class Vtiger_Viewer extends \Smarty
 {
 	const DEFAULTLAYOUT = 'basic';
 	const DEFAULTTHEME = 'twilight';
@@ -18,6 +18,9 @@ class Vtiger_Viewer extends SmartyBC
 	// Turn-it on to analyze the data pushed to templates for the request.
 	protected static $debugViewer = false;
 	protected static $instance = false;
+
+	/** @var string Complete template path */
+	public static $completeTemplatePath;
 
 	/**
 	 * log message into the file if in debug mode.
@@ -117,11 +120,12 @@ class Vtiger_Viewer extends SmartyBC
 	 *
 	 * @return string - Module specific template path if exists, otherwise default template path for the given template name
 	 */
-	public function getTemplatePath($templateName, $moduleName = '')
+	public function getTemplatePath($templateName, $moduleName = ''): string
 	{
 		$moduleName = str_replace(':', '/', $moduleName);
 		$cacheKey = $templateName . $moduleName;
 		if (\App\Cache::has('ViewerTemplatePath', $cacheKey)) {
+			self::$completeTemplatePath = \App\Cache::get('ViewerCompleteTemplatePath', $cacheKey);
 			return \App\Cache::get('ViewerTemplatePath', $cacheKey);
 		}
 		foreach ($this->getTemplateDir() as $templateDir) {
@@ -129,8 +133,8 @@ class Vtiger_Viewer extends SmartyBC
 				$filePath = "components/$templateName";
 				break;
 			}
-			$completeFilePath = $templateDir . "modules/$moduleName/$templateName";
-			if (!empty($moduleName) && file_exists($completeFilePath)) {
+			self::$completeTemplatePath = $templateDir . "modules/$moduleName/$templateName";
+			if (!empty($moduleName) && file_exists(self::$completeTemplatePath)) {
 				$filePath = "modules/$moduleName/$templateName";
 				break;
 			}
@@ -145,8 +149,9 @@ class Vtiger_Viewer extends SmartyBC
 				];
 				foreach ($fallBackOrder as $fallBackModuleName) {
 					$intermediateFallBackFileName = 'modules/' . $fallBackModuleName . '/' . $templateName;
-					$intermediateFallBackFilePath = $templateDir . DIRECTORY_SEPARATOR . $intermediateFallBackFileName;
-					if (file_exists($intermediateFallBackFilePath)) {
+					self::$completeTemplatePath = $templateDir . DIRECTORY_SEPARATOR . $intermediateFallBackFileName;
+					if (file_exists(self::$completeTemplatePath)) {
+						\App\Cache::save('ViewerCompleteTemplatePath', $cacheKey, self::$completeTemplatePath, \App\Cache::LONG);
 						\App\Cache::save('ViewerTemplatePath', $cacheKey, $intermediateFallBackFileName, \App\Cache::LONG);
 						return $intermediateFallBackFileName;
 					}
@@ -154,6 +159,7 @@ class Vtiger_Viewer extends SmartyBC
 			}
 			$filePath = "modules/Vtiger/$templateName";
 		}
+		\App\Cache::save('ViewerCompleteTemplatePath', $cacheKey, self::$completeTemplatePath, \App\Cache::LONG);
 		\App\Cache::save('ViewerTemplatePath', $cacheKey, $filePath, \App\Cache::LONG);
 		return $filePath;
 	}
@@ -165,7 +171,7 @@ class Vtiger_Viewer extends SmartyBC
 	 * @param string $moduleName
 	 * @param bool   $fetch
 	 *
-	 * @return html data
+	 * @return string html data
 	 */
 	public function view($templateName, $moduleName = '', $fetch = false)
 	{

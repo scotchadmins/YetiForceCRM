@@ -5,8 +5,8 @@
  *
  * @package Model
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Maciej Stencel <m.stencel@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radoslaw Skrzypczak <r.skrzypczak@yetiforce.com>
@@ -59,7 +59,7 @@ class Vtiger_PDF_Model extends \App\Base
 	 *
 	 * @var array
 	 */
-	protected $viewToPicklistValue = ['Detail' => 'PLL_DETAILVIEW', 'List' => 'PLL_LISTVIEW'];
+	protected $viewToPicklistValue = ['Detail' => 'PLL_DETAILVIEW', 'List' => 'PLL_LISTVIEW', 'RelatedList' => 'PLL_RELATEDLISTVIEW'];
 
 	/**
 	 * Custom columns.
@@ -67,6 +67,9 @@ class Vtiger_PDF_Model extends \App\Base
 	 * @var bool
 	 */
 	public static $customColumns = false;
+
+	/** @var \App\TextParser Text parser. */
+	private $textParser;
 
 	/**
 	 * Function to get watermark type.
@@ -109,8 +112,8 @@ class Vtiger_PDF_Model extends \App\Base
 	 */
 	public function get($key)
 	{
-		if ('conditions' === $key && !\is_array(parent::get($key))) {
-			return json_decode(parent::get($key), true);
+		if ('conditions' === $key && ($value = parent::get($key)) && !\is_array($value)) {
+			return json_decode($value, true);
 		}
 		return parent::get($key);
 	}
@@ -479,31 +482,6 @@ class Vtiger_PDF_Model extends \App\Base
 	}
 
 	/**
-	 * Export record to PDF file.
-	 *
-	 * @param int    $recordId   - id of a record
-	 * @param int    $templateId - id of pdf template
-	 * @param string $filePath   - path name for saving pdf file
-	 * @param string $saveFlag   - save option flag
-	 */
-	public static function exportToPdf($recordId, $templateId, $filePath = '', $saveFlag = '')
-	{
-		$template = self::getInstanceById($templateId);
-		$template->setVariable('recordId', $recordId);
-
-		$pdf = new \App\Pdf\YetiForcePDF();
-		$pdf->setPageSize($template->getFormat(), $template->getOrientation());
-		$pdf->setWatermark($pdf->getTemplateWatermark($template));
-		$pdf->setFileName($template->parseVariables($template->get('filename')));
-		$pdf->parseParams($template->getParameters());
-		$pdf->loadHtml($template->parseVariables($template->getBody()));
-		$pdf->setHeader($template->parseVariables($template->getHeader()));
-		$pdf->setFooter($template->parseVariables($template->getFooter()));
-
-		$pdf->output($filePath, $saveFlag);
-	}
-
-	/**
 	 * Gets TextParser.
 	 *
 	 * @return \App\TextParser
@@ -570,9 +548,6 @@ class Vtiger_PDF_Model extends \App\Base
 		}
 
 		$zip->download('PdfZipFile_' . time());
-		foreach ($fileNames as $file) {
-			unlink($file['path']);
-		}
 	}
 
 	/**
@@ -584,8 +559,41 @@ class Vtiger_PDF_Model extends \App\Base
 	 */
 	public function getPath(string $prefix = '')
 	{
-		$filePath = 'cache' . \DIRECTORY_SEPARATOR . 'pdf' . \DIRECTORY_SEPARATOR;
-		$tmpFileName = tempnam($filePath, 'PDF' . $prefix . time());
-		return $filePath .= basename($tmpFileName);
+		return \App\Fields\File::createTempFile($prefix, 'pdf');
+	}
+
+	/**
+	 * Attach pdf as document.
+	 *
+	 * @param array $pdfFiles
+	 *
+	 * @return void
+	 */
+	public static function attachAsDocument(array $pdfFiles): void
+	{
+		$documentsModuleModel = Vtiger_Module_Model::getInstance('Documents');
+		foreach ($pdfFiles as $pdfFile) {
+			$recordId = $pdfFile['recordId'];
+			if (App\Record::isExists($recordId)) {
+				$sourceRecordModel = Vtiger_Record_Model::getInstanceById($recordId, $pdfFile['moduleName']);
+				$filePath = \App\Fields\File::loadFromPath($pdfFile['path']);
+				$fileName = $pdfFile['name'];
+				$file = ['name' => $fileName, 'type' => $filePath->getMimeType(), 'tmp_name' => $filePath->getPath(), 'error' => 0, 'size' => $filePath->getSize()];
+				$documentRecordModel = Vtiger_Record_Model::getCleanInstance('Documents');
+				$documentRecordModel->set('assigned_user_id', $sourceRecordModel->get('assigned_user_id'));
+				$documentRecordModel->set('filename', $fileName);
+				$documentRecordModel->set('filelocationtype', 'I');
+				$documentRecordModel->set('filetype', $file['type']);
+				$documentRecordModel->set('filesize', $file['size']);
+				$documentRecordModel->set('notes_title', $file['name']);
+				$documentRecordModel->set('filestatus', true);
+				$documentRecordModel->set('filelocationtype', 'I');
+				$documentRecordModel->file = $file;
+				$documentRecordModel->ext['attachedFromPdf'] = true;
+				$documentRecordModel->save();
+				$relationModel = Vtiger_Relation_Model::getInstance($sourceRecordModel->getModule(), $documentsModuleModel);
+				$relationModel->addRelation($recordId, $documentRecordModel->getId());
+			}
+		}
 	}
 }

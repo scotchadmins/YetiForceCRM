@@ -5,10 +5,11 @@
  *
  * @package   Action
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Adach <a.adach@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Users_TwoFactorAuthentication_Action extends \App\Controller\Action
 {
@@ -20,38 +21,38 @@ class Users_TwoFactorAuthentication_Action extends \App\Controller\Action
 	public function __construct()
 	{
 		parent::__construct();
-		$this->exposeMethod('secert');
+		$this->exposeMethod('secret');
 		$this->exposeMethod('off');
 		$this->exposeMethod('massOff');
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		if ('TOTP_OFF' === App\Config::security('USER_AUTHY_MODE')) {
-			throw new \App\Exceptions\NoPermittedToRecord('ERR_NO_PERMISSIONS_FOR_THE_RECORD', 406);
+			throw new \App\Exceptions\NoPermitted('ERR_PERMISSION_DENIED', 403);
 		}
 		$mode = $request->getMode();
 		if ('off' === $mode && 'TOTP_OPTIONAL' !== App\Config::security('USER_AUTHY_MODE')) {
-			throw new \App\Exceptions\NoPermittedToRecord('ERR_NO_PERMISSIONS_FOR_THE_RECORD', 406);
+			throw new \App\Exceptions\NoPermitted('ERR_PERMISSION_DENIED', 403);
 		}
-		if ('massOff' === $mode && !\App\User::getCurrentUserModel()->isAdmin()) {
-			throw new \App\Exceptions\NoPermittedToRecord('ERR_NO_PERMISSIONS_FOR_THE_RECORD', 406);
+		$userModel = \App\User::getCurrentUserModel();
+
+		if ('massOff' === $mode && !$userModel->isAdmin()) {
+			throw new \App\Exceptions\NoPermitted('ERR_PERMISSION_DENIED', 403);
+		}
+		if ('massOff' !== $mode && (\App\User::getCurrentUserRealId() !== $userModel->getId() || !\in_array($userModel->getDetail('login_method'), ['PLL_PASSWORD_2FA', 'PLL_LDAP_2FA']))) {
+			throw new \App\Exceptions\NoPermitted('ERR_PERMISSION_DENIED', 403);
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$mode = $request->getMode();
 		if (!empty($mode) && $this->isMethodExposed($mode)) {
 			return $this->{$mode}($request);
 		}
-		$this->secret($request);
 	}
 
 	/**
@@ -65,7 +66,8 @@ class Users_TwoFactorAuthentication_Action extends \App\Controller\Action
 	{
 		$secret = $request->getByType('secret', 'Alnum');
 		try {
-			$checkResult = Users_Totp_Authmethod::verifyCode($secret, $request->getByType('user_code', 'Digital'));
+			$authMethod = new Users_Totp_Authmethod(\App\User::getCurrentUserRealId());
+			$checkResult = $authMethod->verifyCode($secret, $request->getByType('user_code', \App\Purifier::DIGITS));
 			if ($checkResult) {
 				$userRecordModel = Users_Record_Model::getInstanceById(\App\User::getCurrentUserRealId(), 'Users');
 				$userRecordModel->set('authy_secret_totp', $secret);
@@ -93,7 +95,7 @@ class Users_TwoFactorAuthentication_Action extends \App\Controller\Action
 	 */
 	public function off(App\Request $request)
 	{
-		$userId = $request->getInteger('userid', \App\User::getCurrentUserRealId());
+		$userId = \App\User::getCurrentUserRealId();
 		$userRecordModel = Users_Record_Model::getInstanceById($userId, 'Users');
 		$userRecordModel->set('authy_secret_totp', '');
 		$userRecordModel->set('authy_methods', '');

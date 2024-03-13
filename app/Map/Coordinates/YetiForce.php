@@ -7,8 +7,8 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -19,9 +19,7 @@ namespace App\Map\Coordinates;
  */
 class YetiForce extends Base
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getCoordinates(array $addressInfo)
 	{
 		$product = \App\YetiForce\Register::getProducts('YetiForceMap');
@@ -29,6 +27,7 @@ class YetiForce extends Base
 			return false;
 		}
 		$params = array_merge([
+			'version' => 2.0,
 			'format' => 'json',
 			'addressdetails' => 1,
 			'limit' => 1,
@@ -36,7 +35,7 @@ class YetiForce extends Base
 		], $addressInfo);
 		$options = [
 			'timeout' => 60,
-			'headers' => ['InsKey' => \App\YetiForce\Register::getInstanceKey()]
+			'headers' => ['InsKey' => \App\YetiForce\Register::getInstanceKey()],
 		];
 		if (isset($product['params']['token'])) {
 			$params['yf_token'] = $product['params']['token'];
@@ -60,16 +59,12 @@ class YetiForce extends Base
 		return $coordinates;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
-	public function getCoordinatesByValue(string $value)
+	/** {@inheritdoc} */
+	public function getCoordinatesByValue(string $value): array
 	{
-		$coordinatesDetails = $this->getCoordinates(['q' => $value]);
-		if ($coordinatesDetails) {
-			$coordinatesDetails = reset($coordinatesDetails);
-			return ['lat' => $coordinatesDetails['lat'], 'lon' => $coordinatesDetails['lon']];
+		if (($coordinatesDetails = $this->getCoordinates(['q' => $value])) && ($coordinates = reset($coordinatesDetails)) && !empty($coordinates)) {
+			return ['lat' => $coordinates['lat'], 'lon' => $coordinates['lon']];
 		}
-		return false;
+		return [];
 	}
 }

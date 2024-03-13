@@ -7,9 +7,10 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 namespace App\Map\Address;
@@ -19,18 +20,28 @@ namespace App\Map\Address;
  */
 class OpenCageGeocoder extends Base
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $customFields = [
 		'country_codes' => [
-			'type' => 'text',
-			'info' => 'LBL_COUNTRY_CODES_INFO',
-			'link' => 'https://wikipedia.org/wiki/List_of_ISO_3166_country_codes',
+			'uitype' => 1,
+			'label' => 'LBL_COUNTRY_CODES',
+			'purifyType' => \App\Purifier::TEXT,
+			'maximumlength' => '100',
+			'typeofdata' => 'V~O',
+			'tooltip' => 'LBL_COUNTRY_CODES_PLACEHOLDER',
+			'link' => [
+				'title' => 'LBL_COUNTRY_CODES_INFO',
+				'url' => 'https://wikipedia.org/wiki/List_of_ISO_3166_country_codes',
+			]
 		],
 		'key' => [
-			'type' => 'text',
-			'validator' => 'required,custom[onlyLetterNumber]'
+			'validator' => [['name' => 'AlphaNumeric']],
+			'uitype' => 1,
+			'label' => 'LBL_KEY',
+			'purifyType' => \App\Purifier::ALNUM,
+			'maximumlength' => '200',
+			'typeofdata' => 'V~M',
+			'tooltip' => 'LBL_KEY_PLACEHOLDER',
 		],
 	];
 	/**
@@ -40,14 +51,10 @@ class OpenCageGeocoder extends Base
 	 */
 	protected static $url = 'https://api.opencagedata.com/geocode/v1/';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $docUrl = 'https://opencagedata.com/api/';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function find($value)
 	{
 		if (empty($value) || !\App\RequestUtil::isNetConnection()) {
@@ -59,7 +66,7 @@ class OpenCageGeocoder extends Base
 		$urlAddress .= '&limit=' . $config['global']['result_num'];
 		$urlAddress .= '&key=' . $config['OpenCageGeocoder']['key'];
 		if (!empty($this->config['country_codes'])) {
-			$urlAddress .= '&countrycode=' . $this->config;
+			$urlAddress .= '&countrycode=' . $this->config['country_codes'];
 		}
 		try {
 			\App\Log::beginProfile("GET|OpenCageGeocoder::find|{$urlAddress}", __NAMESPACE__);
@@ -72,11 +79,11 @@ class OpenCageGeocoder extends Base
 			$body = \App\Json::decode($response->getBody());
 			$rows = [];
 			if ($body['total_results']) {
-				$mainMapping = \App\Config::component('AddressFinder', 'REMAPPING_OPENCAGE');
+				$mainMapping = \App\Config::component('AddressFinder', 'remappingOpenCage');
 				if (!\is_callable($mainMapping)) {
 					$mainMapping = [$this, 'parseRow'];
 				}
-				$countryMapping = \App\Config::component('AddressFinder', 'REMAPPING_OPENCAGE_FOR_COUNTRY');
+				$countryMapping = \App\Config::component('AddressFinder', 'remappingOpenCageForCountry');
 				foreach ($body['results'] as $row) {
 					$mappingFunction = $mainMapping;
 					if (isset($row['components']['country'], $countryMapping[$row['components']['country']])) {
@@ -84,7 +91,9 @@ class OpenCageGeocoder extends Base
 					}
 					$rows[] = [
 						'label' => $row['formatted'],
-						'address' => \call_user_func_array($mappingFunction, [$row])
+						'address' => \call_user_func_array($mappingFunction, [$row]),
+						'coordinates' => ['lat' => $row['geometry']['lat'], 'lon' => $row['geometry']['lng']],
+						'countryCode' => strtolower($row['components']['country'] ?? ''),
 					];
 				}
 			}
@@ -115,6 +124,7 @@ class OpenCageGeocoder extends Base
 			'addresslevel8' => $row['components']['road'] ?? '',
 			'buildingnumber' => $row['components']['house_number'] ?? '',
 			'localnumber' => $row['components']['local_number'] ?? '',
+			'company_name_' => $row['components']['office'] ?? '',
 		];
 	}
 }

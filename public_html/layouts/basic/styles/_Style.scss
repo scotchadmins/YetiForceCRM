@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 
 @media print {
 	.noprint {
@@ -547,10 +547,6 @@ hr {
 	}
 }
 
-.filterConditionsDiv {
-	padding-bottom: 0;
-}
-
 .conditionGroup {
 	.header {
 		margin-bottom: 20px;
@@ -811,7 +807,7 @@ hr {
 	margin-top: 2px;
 	margin-left: 5px;
 	height: 12px;
-	z-index: 1030;
+	z-index: 1051;
 }
 
 .ui-slider-disabled {
@@ -1116,42 +1112,6 @@ hr {
 .popover-content .fieldLabel {
 	width: 35%;
 	white-space: normal;
-}
-
-#dependencyGraph {
-	.depandencyTable {
-		border: 1px solid #ddd;
-		background: #f3f3f4;
-
-		.blockHeader,
-		.picklistValueMapping {
-			border-bottom: 1px solid #ddd;
-		}
-	}
-
-	.dependencyMapping {
-		text-align: center;
-		border-left: 1px solid #ddd;
-		border-right: 1px solid #ddd;
-		background: #fff;
-
-		.pickListDependencyTable {
-			border: 0;
-
-			.blockHeader th {
-				background: #f3f3f4;
-				border-bottom: 1px solid #ddd;
-			}
-
-			.selectedCell {
-				background: #a5afb9;
-			}
-		}
-	}
-}
-
-.targetFieldsTableContainer input[type="text"] {
-	min-width: 100px;
 }
 
 #customRecordNumbering.table thead th {
@@ -1609,7 +1569,16 @@ td.listViewEntryValue .row input {
 	padding: 0;
 	margin-bottom: 0;
 }
-
+@media only screen and (min-width: 1200px) {
+	.listViewEntries .listViewEntryValue .clipboard,
+	.detailViewTable .fieldValue .clipboard {
+		display: none;
+	}
+	.listViewEntries .listViewEntryValue:hover .clipboard,
+	.detailViewTable .fieldValue:hover .clipboard {
+		display: inline-block;
+	}
+}
 .listViewContentDiv {
 	position: relative;
 }
@@ -1627,13 +1596,9 @@ table tr td .input-sm {
 	background-color: #f5f5f5;
 }
 
-.panel-title,
-.message-medium {
-	font-size: calculate-rem(14px);
-}
-
 tr.summaryViewEntries,
 #detailView table,
+#recordsListContents table,
 table.listViewEntriesTable {
 	font-size: calculate-rem(13px);
 }
@@ -1825,18 +1790,11 @@ span[name="existingImages"] img {
 	margin-left: 5px;
 }
 
-.ui-widget-content {
-	padding: 0.8em;
-}
-
 .ui-autocomplete {
 	.ui-autocomplete-category {
 		font-weight: bold;
 		line-height: 1.5;
-
-		&:first-child {
-			margin: 0.8em 0 0.2em;
-		}
+		padding: 2px 0.4em;
 	}
 
 	.ui-menu-item {
@@ -1865,12 +1823,6 @@ span[name="existingImages"] img {
 
 .scanerMailActionsButtons {
 	min-width: 96px;
-}
-
-.ui-widget-content {
-	border: 1px solid #aaa;
-	background: #fff;
-	color: #404040;
 }
 
 .ui-menu .ui-menu-item {
@@ -2244,29 +2196,6 @@ body,
 	white-space: nowrap;
 }
 
-.dashboardWidgetCalendar {
-	.small-badge {
-		padding: 3% 6%;
-	}
-
-	.medium-badge {
-		padding: 6% 11%;
-		margin: 1px 0;
-		border-radius: 1.25rem !important;
-	}
-
-	.big-badge {
-		padding: 6% 12%;
-		margin: 1px 0;
-	}
-
-	.cell-calendar {
-		@extend .text-center;
-
-		margin-top: -5px;
-	}
-}
-
 .breadCrumbs {
 	padding-top: 0;
 	padding-left: 0;
@@ -2298,10 +2227,6 @@ body,
 
 .footable-row-detail-row {
 	line-height: 2.5em;
-}
-
-.form-horizontal .form-group .description-field {
-	text-align: right;
 }
 
 .div-bordered {
@@ -2351,10 +2276,6 @@ body,
 
 #rssFeedHeading h3 {
 	margin-top: 0;
-}
-
-.bootbox .btn-warning {
-	margin-left: 5px;
 }
 
 .menuPanel {
@@ -2514,16 +2435,6 @@ body,
 		width: 100% !important;
 	}
 
-	#dependencyGraph .tableHeading {
-		padding-top: 70px;
-		-webkit-transform: rotate(90deg);
-		-moz-transform: rotate(90deg);
-		-o-transform: rotate(90deg);
-		-ms-transform: rotate(90deg);
-		transform: rotate(90deg);
-		white-space: nowrap;
-	}
-
 	.commentsList.commentsBody .liStyleNone {
 		padding-left: 20px;
 	}
@@ -2545,10 +2456,6 @@ body,
 
 	.quickCreateContent .fieldsLabelValue {
 		border-bottom: 1px solid $light;
-	}
-
-	.form-horizontal .form-group .description-field {
-		text-align: left;
 	}
 
 	.bodyContents {
@@ -3247,6 +3154,7 @@ select.form-control {
 	.inviteRow {
 		width: 220px;
 		margin-bottom: 3px;
+		margin-top: 3px;
 	}
 }
 
@@ -3308,18 +3216,6 @@ select.form-control {
 .openStreetMapModalBody .descriptionContainer {
 	max-height: 150px;
 	overflow: auto;
-}
-
-.openStreetMapModalHeader {
-	.searchValue {
-		border-top-right-radius: 0;
-		border-bottom-right-radius: 0;
-	}
-
-	.radius {
-		border-top-left-radius: 0;
-		border-bottom-left-radius: 0;
-	}
 }
 
 .activityContainer {
@@ -3514,7 +3410,8 @@ select {
 	min-width: 400px;
 }
 
-.table tr.inventoryRow td {
+.table tr.inventoryRow td,
+.table tr.inventoryRowGroup td {
 	padding: 4px;
 }
 
@@ -3561,4 +3458,15 @@ ul.tweets li {
 	.marketplace-product {
 		max-width: calculate-rem(398px);
 	}
+}
+.c-user-image {
+	width: 1.35rem;
+	height: 1.35rem;
+	border-radius: 50%;
+	vertical-align: sub;
+	margin-right: 5px;
+}
+.c-user-xl {
+	width: 2.5rem;
+	height: 2.5rem;
 }

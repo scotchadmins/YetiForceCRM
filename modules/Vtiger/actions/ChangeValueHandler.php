@@ -5,8 +5,8 @@
  *
  * @package Action
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -22,15 +22,13 @@ class Vtiger_ChangeValueHandler_Action extends \App\Controller\Action
 	 */
 	protected $record;
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		$moduleName = $request->getModule();
 		if ($request->isEmpty('record', true)) {
 			$this->record = Vtiger_Record_Model::getCleanInstance($moduleName);
-			if (!$this->record->isCreateable()) {
+			if (!$this->record->isCreatable()) {
 				throw new \App\Exceptions\NoPermittedToRecord('ERR_NO_PERMISSIONS_FOR_THE_RECORD', 406);
 			}
 		} else {
@@ -45,9 +43,7 @@ class Vtiger_ChangeValueHandler_Action extends \App\Controller\Action
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$this->getRecordModelFromRequest($request);

@@ -5,7 +5,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  *************************************************************************************/
 'use strict';
 
@@ -37,129 +37,6 @@ $.Class(
 			var className = 'Emails_MassEdit_Js';
 			var emailMassEditInstance = new window[className]();
 			return emailMassEditInstance;
-		},
-		getDayFromDate: function (date) {
-			var dayOfWeek = this.getDay(date);
-			return this.getLabelDayFromDate(dayOfWeek);
-		},
-		getDay: function (date) {
-			var dateObj = new Date(date);
-			if (isNaN(dateObj.getDay())) {
-				dateObj = Date.parse(date);
-			}
-			return dateObj.getDay();
-		},
-		getLabelDayFromDate: function (day) {
-			var dayOfWeek = day;
-			var dayOfWeekLabel = '';
-			switch (dayOfWeek) {
-				case 0:
-					dayOfWeekLabel = 'JS_SUN';
-					break;
-				case 1:
-					dayOfWeekLabel = 'JS_MON';
-					break;
-				case 2:
-					dayOfWeekLabel = 'JS_TUE';
-					break;
-				case 3:
-					dayOfWeekLabel = 'JS_WED';
-					break;
-				case 4:
-					dayOfWeekLabel = 'JS_THU';
-					break;
-				case 5:
-					dayOfWeekLabel = 'JS_FRI';
-					break;
-				case 6:
-					dayOfWeekLabel = 'JS_SAT';
-					break;
-			}
-			return app.vtranslate(dayOfWeekLabel);
-		},
-		/*
-		 * Function to get Date Instance
-		 * @params date---this is the field value
-		 * @params dateFormat---user date format
-		 * @return date object
-		 */
-
-		getDateInstance: function (dateTime, dateFormat) {
-			let dateTimeComponents = dateTime.split(' '),
-				dateComponent = dateTimeComponents[0],
-				timeComponent = dateTimeComponents[1],
-				seconds = '00',
-				dotMode = '-';
-			if (dateFormat.indexOf('-') !== -1) {
-				dotMode = '-';
-			}
-			if (dateFormat.indexOf('.') !== -1) {
-				dotMode = '.';
-			}
-			if (dateFormat.indexOf('/') !== -1) {
-				dotMode = '/';
-			}
-
-			let splittedDate = dateComponent.split(dotMode),
-				splittedDateFormat = dateFormat.split(dotMode),
-				year = splittedDate[splittedDateFormat.indexOf('yyyy')],
-				month = splittedDate[splittedDateFormat.indexOf('mm')],
-				date = splittedDate[splittedDateFormat.indexOf('dd')],
-				dateInstance = Date.parse(year + '/' + month + '/' + date);
-			if (isNaN(dateInstance) || year.length > 4 || month.length > 2 || date.length > 2 || dateInstance == null) {
-				throw app.vtranslate('JS_INVALID_DATE');
-			}
-
-			//Before creating date object time is set to 00
-			//because as while calculating date object it depends system timezone
-			if (typeof timeComponent === 'undefined') {
-				timeComponent = '00:00:00';
-			}
-
-			let timeSections = timeComponent.split(':');
-			if (typeof timeSections[2] !== 'undefined') {
-				seconds = timeSections[2];
-			}
-
-			//Am/Pm component exits
-			if (typeof dateTimeComponents[2] !== 'undefined') {
-				if (dateTimeComponents[2].toLowerCase() === 'pm' && timeSections[0] !== '12') {
-					timeSections[0] = parseInt(timeSections[0], 10) + 12;
-				}
-
-				if (dateTimeComponents[2].toLowerCase() === 'am' && timeSections[0] === '12') {
-					timeSections[0] = '00';
-				}
-			}
-
-			month = month - 1;
-			dateInstance = new Date(year, month, date, timeSections[0], timeSections[1], seconds);
-			return dateInstance;
-		},
-		/*
-		 * Function to show the confirmation messagebox
-		 */
-		showConfirmationBox: function (params) {
-			var aDeferred = $.Deferred();
-			var baseParams = {
-				callback: function (result) {
-					if (result) {
-						aDeferred.resolve();
-					} else {
-						aDeferred.reject();
-					}
-				}
-			};
-			var bootBoxModal = bootbox.confirm($.extend(baseParams, params));
-			bootBoxModal.on('hidden', function (e) {
-				//In Case of multiple modal. like mass edit and quick create, if bootbox is shown and hidden , it will remove
-				// modal open
-				if ($('#' + Window.lastModalId).length > 0) {
-					// Mimic bootstrap modal action body state change
-					$('body').addClass('modal-open');
-				}
-			});
-			return aDeferred.promise();
 		},
 		showMessage: function (params) {
 			if (typeof params.type === 'undefined') {
@@ -196,46 +73,7 @@ $.Class(
 				topScroll.scrollLeft(bottomScroll.scrollLeft());
 			});
 		},
-		convertToDateString: function (stringDate, dateFormat, modDay, type) {
-			var dotMode = '-';
-			if (dateFormat.indexOf('-') !== -1) {
-				dotMode = '-';
-			}
-			if (dateFormat.indexOf('.') !== -1) {
-				dotMode = '.';
-			}
-			if (dateFormat.indexOf('/') !== -1) {
-				dotMode = '/';
-			}
 
-			var splittedDate = stringDate.split(dotMode);
-			var splittedDateFormat = dateFormat.split(dotMode);
-			var year = splittedDate[splittedDateFormat.indexOf('yyyy')];
-			var month = splittedDate[splittedDateFormat.indexOf('mm')];
-			var date = splittedDate[splittedDateFormat.indexOf('dd')];
-			var dateInstance = new Date(year, month - 1, date);
-			if (year.length > 4 || month.length > 2 || date.length > 2 || dateInstance == null) {
-				var errorMsg = app.vtranslate('JS_INVALID_DATE');
-				throw errorMsg;
-			}
-			var newDate = dateInstance;
-			if ('0' == modDay) {
-				if ('Calendar' == type) {
-					newDate.setDate(dateInstance.getDate() - 1);
-				}
-			} else if ('-1' == modDay) {
-				if ('Calendar' == type) {
-					newDate.setDate(dateInstance.getDate() - 2);
-				} else {
-					newDate.setDate(dateInstance.getDate() - 1);
-				}
-			} else {
-				if ('Calendar' != type) {
-					newDate.setTime(dateInstance.getTime() + parseInt(modDay) * 24 * 60 * 60 * 1000);
-				}
-			}
-			return app.getStringDate(newDate);
-		},
 		hideOptions: function (element, attr, value) {
 			var opval = '';
 			element.find('option').each(function (index, option) {

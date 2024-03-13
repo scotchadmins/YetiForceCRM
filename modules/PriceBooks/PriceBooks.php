@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce Sp. z o.o
+ * Contributor(s): YetiForce S.A.
  * ****************************************************************************** */
 
 class PriceBooks extends CRMEntity
@@ -45,8 +45,9 @@ class PriceBooks extends CRMEntity
 	/**
 	 * Function to get the relation tables for related modules.
 	 *
-	 * @param - $secmodule secondary module name
-	 *                     returns the array with table names and fieldnames storing relations between module and this module
+	 * @param bool|string $secmodule secondary module name
+	 *
+	 * @return array returns the array with table names and fieldnames storing relations between module and this module
 	 */
 	public function setRelationTables($secmodule = false)
 	{

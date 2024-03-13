@@ -7,7 +7,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 /**
@@ -15,6 +15,12 @@
  */
 class Calendar_Module_Model extends Vtiger_Module_Model
 {
+	/** {@inheritdoc} */
+	public $allowTypeChange = false;
+
+	/** @var string Config table name the calendar */
+	public const TABLE_NAME_CONFIG = 'vtiger_calendar_config';
+
 	/**
 	 * Function returns the default view for the Calendar module.
 	 *
@@ -22,21 +28,7 @@ class Calendar_Module_Model extends Vtiger_Module_Model
 	 */
 	public function getDefaultViewName()
 	{
-		return $this->getCalendarViewName();
-	}
-
-	/**
-	 * Function returns the calendar view name.
-	 *
-	 * @return string
-	 */
-	public function getCalendarViewName()
-	{
-		$returnView = 'Calendar';
-		if ('Standard' !== $calendarView = App\Config::module('Calendar', 'CALENDAR_VIEW')) {
-			$returnView .= $calendarView;
-		}
-		return $returnView;
+		return 'Calendar';
 	}
 
 	/**
@@ -46,7 +38,26 @@ class Calendar_Module_Model extends Vtiger_Module_Model
 	 */
 	public function getCalendarViewUrl()
 	{
-		return 'index.php?module=' . $this->get('name') . '&view=' . $this->getCalendarViewName();
+		return 'index.php?module=' . $this->get('name') . '&view=' . $this->getDefaultViewName();
+	}
+
+	/**
+	 * Get calendar configuration by type.
+	 *
+	 * @param string $type
+	 * @param string $name
+	 *
+	 * @return string|array
+	 */
+	public static function getConfig(string $type, string $name = '')
+	{
+		if (\App\Cache::has('CalendarConfiguration', $type)) {
+			$config = \App\Cache::get('CalendarConfiguration', $type);
+		} else {
+			$config = (new \App\Db\Query())->from(self::TABLE_NAME_CONFIG)->indexBy('name')->where(['type' => $type])->all();
+			\App\Cache::save('CalendarConfiguration', $type, $config);
+		}
+		return $name ? $config[$name]['value'] ?? '' : $config;
 	}
 
 	/**
@@ -59,9 +70,7 @@ class Calendar_Module_Model extends Vtiger_Module_Model
 		return false;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getSideBarLinks($linkParams)
 	{
 		$links = Vtiger_Link_Model::getAllByType($this->getId(), ['SIDEBARLINK', 'SIDEBARWIDGET'], $linkParams);
@@ -81,8 +90,16 @@ class Calendar_Module_Model extends Vtiger_Module_Model
 			$links['SIDEBARLINK'][] = Vtiger_Link_Model::getInstanceFromValues([
 				'linktype' => 'SIDEBARLINK',
 				'linklabel' => 'LBL_CALENDAR_LIST',
-				'linkurl' => 'javascript:Calendar_Calendar_Js.getInstanceByView().goToRecordsList("' . $this->getListViewUrl() . '&viewname=All");',
+				'linkurl' => 'javascript:Calendar_Calendar_Js.goToRecordsList("' . $this->getListViewUrl() . '");',
 				'linkicon' => 'far fa-calendar-minus',
+			]);
+		}
+		if ($this->isPermitted('Kanban') && \App\Utils\Kanban::getBoards($this->getName(), true)) {
+			$links['SIDEBARLINK'][] = Vtiger_Link_Model::getInstanceFromValues([
+				'linktype' => 'SIDEBARLINK',
+				'linklabel' => 'LBL_VIEW_KANBAN',
+				'linkurl' => 'index.php?module=' . $this->getName() . '&view=Kanban',
+				'linkicon' => 'yfi yfi-kanban',
 			]);
 		}
 		return $links;
@@ -185,30 +202,31 @@ class Calendar_Module_Model extends Vtiger_Module_Model
 		$recordModels = [];
 		if (!empty($activityReminder)) {
 			$time = date('Y-m-d H:i:s', strtotime("+$activityReminder seconds"));
-			$query = (new \App\Db\Query())
-				->select(['recordid', 'vtiger_activity_reminder_popup.datetime'])
-				->from('vtiger_activity_reminder_popup')
-				->innerJoin('vtiger_activity', 'vtiger_activity_reminder_popup.recordid = vtiger_activity.activityid')
-				->innerJoin('vtiger_crmentity', 'vtiger_activity_reminder_popup.recordid = vtiger_crmentity.crmid')
-				->where(['vtiger_crmentity.smownerid' => $currentUserModel->getId(), 'vtiger_crmentity.deleted' => 0, 'vtiger_activity.status' => self::getComponentActivityStateLabel('current')])
-				->andWhere(['or', ['and', ['vtiger_activity_reminder_popup.status' => Calendar_Record_Model::REMNDER_POPUP_ACTIVE], ['<=', 'vtiger_activity_reminder_popup.datetime', $time]], ['and', ['vtiger_activity_reminder_popup.status' => Calendar_Record_Model::REMNDER_POPUP_WAIT], ['<=', 'vtiger_activity_reminder_popup.datetime', date('Y-m-d H:i:s')]]])
-				->orderBy(['vtiger_activity_reminder_popup.datetime' => SORT_DESC])
-				->distinct()
-				->limit(\App\Config::module('Calendar', 'maxNumberCalendarNotifications', 20));
-			$dataReader = $query->createCommand()->query();
-			while ($recordId = $dataReader->readColumn(0)) {
-				$recordModels[] = Vtiger_Record_Model::getInstanceById($recordId, 'Calendar');
+			$queryGenerator = new \App\QueryGenerator('Calendar');
+			$queryGenerator->setFields(['id']);
+			$queryGenerator->addJoin(['INNER JOIN', 'vtiger_activity_reminder_popup', 'vtiger_activity_reminder_popup.recordid = vtiger_activity.activityid']);
+			$queryGenerator->addJoin(['INNER JOIN', 'vtiger_activity_reminder_popup', 'vtiger_activity_reminder_popup.recordid = vtiger_crmentity.crmid']);
+			$queryGenerator->addCondition('assigned_user_id', $currentUserModel->getId(), 'e', false);
+			if (self::getConfig('reminder', 'shared_persons')) {
+				$queryGenerator->addCondition('shownerid', $currentUserModel->getId(), 'e', false);
 			}
+			$queryGenerator->addCondition('activitystatus', self::getComponentActivityStateLabel('current'), 'e');
+			$queryGenerator->addNativeCondition(['or', ['and', ['vtiger_activity_reminder_popup.status' => Calendar_Record_Model::REMNDER_POPUP_ACTIVE], ['<=', 'vtiger_activity_reminder_popup.datetime', $time]], ['and', ['vtiger_activity_reminder_popup.status' => Calendar_Record_Model::REMNDER_POPUP_WAIT], ['<=', 'vtiger_activity_reminder_popup.datetime', date('Y-m-d H:i:s')]]]);
+			$queryGenerator->setLimit(\App\Config::module('Calendar', 'maxNumberCalendarNotifications', 20));
+			$dataReader = $queryGenerator->createQuery()->orderBy(['vtiger_activity_reminder_popup.datetime' => SORT_DESC])->distinct()->createCommand()->query();
+
+			while ($row = $dataReader->read()) {
+				$recordModels[] = Vtiger_Record_Model::getInstanceById($row['id'], 'Calendar');
+			}
+			$dataReader->close();
 		}
 		return $recordModels;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getFieldsByType($type, bool $active = false): array
 	{
-		$restrictedField = ['picklist' => ['activitystatus', 'visibility', 'duration_minutes']];
+		$restrictedField = ['picklist' => ['visibility', 'duration_minutes']];
 		if (!\is_array($type)) {
 			$type = [$type];
 		}
@@ -227,9 +245,7 @@ class Calendar_Module_Model extends Vtiger_Module_Model
 		return $fieldList;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getSettingLinks(): array
 	{
 		$currentUserModel = Users_Record_Model::getCurrentUserModel();
@@ -264,9 +280,33 @@ class Calendar_Module_Model extends Vtiger_Module_Model
 		return parent::getOrderBySql($orderBy);
 	}
 
-	public static function getCalendarTypes()
+	/** {@inheritdoc} */
+	public function getValuesFromSource(App\Request $request, $moduleName = false): array
 	{
-		return App\Fields\Picklist::getValuesName('activitytype');
+		$data = parent::getValuesFromSource($request);
+
+		if (($postponeTime = $request->getInteger('postponeTime')) && $sourceRecordId = $request->getInteger('sourceRecord')) {
+			$data = array_merge($data, $this->postponeTimeValue($sourceRecordId, $postponeTime));
+		}
+		return $data;
+	}
+
+	/**
+	 * Load field  postpone values.
+	 *
+	 * @param int $sourceRecordId
+	 * @param int $postponeTime
+	 *
+	 * @return array
+	 */
+	public function postponeTimeValue(int $sourceRecordId, int $postponeTime): array
+	{
+		$sourceRecordModel = Vtiger_Record_Model::getInstanceById($sourceRecordId);
+		$dateStart = $sourceRecordModel->get('date_start') . ' ' . $sourceRecordModel->get('time_start');
+		$dateEnd = $sourceRecordModel->get('due_date') . ' ' . $sourceRecordModel->get('time_end');
+		$data['date_start'] = (new DateTime($dateStart))->modify("+ {$postponeTime} minutes")->format('Y-m-d H:i:s');
+		$data['due_date'] = (new DateTime($dateEnd))->modify("+ {$postponeTime} minutes")->format('Y-m-d H:i:s');
+		return $data;
 	}
 
 	public static function getCalendarState($data = [])
@@ -391,9 +431,7 @@ class Calendar_Module_Model extends Vtiger_Module_Model
 		return ['events' => $totalCount[$eventModule] - $skipCount[$eventModule], 'skipped_events' => $skipCount[$eventModule], 'task' => $totalCount[$todoModule] - $skipCount[$todoModule], 'skipped_task' => $skipCount[$todoModule]];
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getLayoutTypeForQuickCreate(): string
 	{
 		return 'standard';

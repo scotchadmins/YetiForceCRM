@@ -2,8 +2,8 @@
 /*
  * Settings List View Model Class
  * @package YetiForce.Settings.Model
- * @copyright YetiForce Sp. z o.o.
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
@@ -22,21 +22,17 @@ class Settings_AutomaticAssignment_ListView_Model extends Settings_Vtiger_ListVi
 			$basicLinks[] = [
 				'linktype' => 'LISTVIEWBASIC',
 				'linklabel' => 'LBL_ADD_RECORD',
-				'linkdata' => ['url' => $moduleModel->getCreateRecordUrl()],
+				'linkurl' => $this->getModule()->getCreateRecordUrl(),
 				'linkicon' => 'fas fa-plus',
-				'linkclass' => 'btn-light addRecord',
-				'showLabel' => '1',
+				'linkclass' => 'btn-light',
+				'showLabel' => '1'
 			];
 		}
 		return $basicLinks;
 	}
 
-	/**
-	 * Function creates preliminary database query.
-	 *
-	 * @return App\Db\Query()
-	 */
-	public function getBasicListQuery()
+	/** {@inheritdoc} */
+	public function getBasicListQuery(): App\Db\Query
 	{
 		$module = $this->getModule();
 		$query = (new App\Db\Query())->from($module->getBaseTable());

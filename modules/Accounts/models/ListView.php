@@ -6,22 +6,15 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Accounts_ListView_Model extends Vtiger_ListView_Model
 {
-	/**
-	 * Function to get the list of Mass actions for the module.
-	 *
-	 * @param array $linkParams
-	 *
-	 * @return array - Associative array of Link type to List of  Vtiger_Link_Model instances for Mass Actions
-	 */
+	/** {@inheritdoc} */
 	public function getListViewMassActions($linkParams)
 	{
 		$links = parent::getListViewMassActions($linkParams);
-		$currentUserModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
 		$moduleModel = $this->getModule();
 		$massActionLinks = [];
 		if ($moduleModel->isPermitted('MassComposeEmail') && App\Config::main('isActiveSendingMails') && App\Mail::getDefaultSmtp()) {
@@ -29,14 +22,6 @@ class Accounts_ListView_Model extends Vtiger_ListView_Model
 				'linktype' => 'LISTVIEWMASSACTION',
 				'linklabel' => 'LBL_MASS_SEND_EMAIL',
 				'linkurl' => 'javascript:Vtiger_List_Js.triggerSendEmail()',
-				'linkicon' => 'fas fa-envelope',
-			];
-		}
-		if ($currentUserModel->hasModulePermission('SMSNotifier') && $moduleModel->isPermitted('MassSendSMS') && SMSNotifier_Module_Model::checkServer()) {
-			$massActionLinks[] = [
-				'linktype' => 'LISTVIEWMASSACTION',
-				'linklabel' => 'LBL_MASS_SEND_SMS',
-				'linkurl' => 'javascript:Vtiger_List_Js.triggerSendSms("index.php?module=' . $this->getModule()->getName() . '&view=MassActionAjax&mode=showSendSMSForm","SMSNotifier");',
 				'linkicon' => 'fas fa-envelope',
 			];
 		}

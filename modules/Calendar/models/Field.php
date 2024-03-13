@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 /**
@@ -14,25 +14,21 @@
  */
 class Calendar_Field_Model extends Vtiger_Field_Model
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getValidator()
 	{
 		$validator = [];
 		if ('due_date' === $this->getName()) {
 			$funcName = ['name' => 'greaterThanDependentField',
 				'params' => ['date_start'], ];
-			array_push($validator, $funcName);
+			$validator[] = $funcName;
 		} else {
 			$validator = parent::getValidator();
 		}
 		return $validator;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getFieldDataType()
 	{
 		if ('date_start' == $this->getName() || 'due_date' == $this->getName()) {
@@ -44,9 +40,7 @@ class Calendar_Field_Model extends Vtiger_Field_Model
 		return parent::getFieldDataType();
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getDisplayValue($value, $record = false, $recordModel = false, $rawText = false, $length = false)
 	{
 		if ($recordModel) {
@@ -59,9 +53,7 @@ class Calendar_Field_Model extends Vtiger_Field_Model
 		return parent::getDisplayValue($value, $record, $recordModel, $rawText, $length);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getEditViewDisplayValue($value, $recordModel = false)
 	{
 		if (empty($value)) {
@@ -104,14 +96,10 @@ class Calendar_Field_Model extends Vtiger_Field_Model
 		return true;
 	}
 
-	/**
-	 * Function to get the field details.
-	 *
-	 * @return <Array> - array of field values
-	 */
-	public function getFieldInfo()
+	/** {@inheritdoc} */
+	public function getFieldInfo(): array
 	{
-		parent::getFieldInfo();
+		$this->loadFieldInfo();
 		//Change the default search operator
 		if ('date_start' == $this->get('name')) {
 			$searchParams = App\Condition::validSearchParams('Calendar', \App\Request::_getArray('search_params'));

@@ -7,8 +7,8 @@ namespace App;
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -56,7 +56,7 @@ class PrivilegeQuery
 	 *
 	 * @param \App\Db\Query $query
 	 * @param string        $moduleName
-	 * @param int           $user
+	 * @param int|\App\User $user
 	 * @param int           $relatedRecord
 	 *
 	 * @return void
@@ -69,20 +69,21 @@ class PrivilegeQuery
 			$userId = \App\User::getCurrentUserId();
 		}
 		$userModel = \Users_Privileges_Model::getInstanceById($userId);
-		if (!$userModel->isAdminUser() && \App\Config::security('PERMITTED_BY_PRIVATE_FIELD') && ($fieldInfo = \App\Field::getFieldInfo('private', $moduleName)) && \in_array($fieldInfo['presence'], [0, 2])) {
+		if (!$userModel->isAdminUser() && !$userModel->hasGlobalReadPermission() && \App\Config::security('PERMITTED_BY_PRIVATE_FIELD') && ($fieldInfo = \App\Field::getFieldInfo('private', $moduleName)) && \in_array($fieldInfo['presence'], [0, 2])) {
+			$owners = array_merge([$userId], $userModel->groups);
 			$conditions = ['or'];
 			$conditions[] = ['vtiger_crmentity.private' => 0];
-			$subConditions = ['or', ['vtiger_crmentity.smownerid' => $userId]];
+			$subConditions = ['or', ['vtiger_crmentity.smownerid' => $owners]];
 			if (\App\Config::security('PERMITTED_BY_SHARED_OWNERS')) {
 				$subQuery = (new \App\Db\Query())->select(['crmid'])->distinct()
 					->from('u_yf_crmentity_showners')
-					->where(['userid' => array_merge([$userId], $userModel->groups)]);
+					->where(['userid' => $owners]);
 				$subConditions[] = ['vtiger_crmentity.crmid' => $subQuery];
 			}
 			$conditions[] = ['and', ['vtiger_crmentity.private' => 1], $subConditions];
 			$query->andWhere($conditions);
 		}
-		if (\App\Config::security('PERMITTED_BY_RECORD_HIERARCHY') && !empty($relatedRecord)) {
+		if (!empty($relatedRecord) && \App\Config::security('PERMITTED_BY_RECORD_HIERARCHY') && !$userModel->hasGlobalReadPermission()) {
 			$role = $userModel->getRoleDetail();
 			if (2 == $role->get('listrelatedrecord')) {
 				$parentRecord = \Users_Privileges_Model::getParentRecord($relatedRecord, false, $role->get('listrelatedrecord'));
@@ -99,7 +100,7 @@ class PrivilegeQuery
 			}
 		}
 		$tabId = Module::getModuleId($moduleName);
-		if (!$userModel->isAdminUser() && 1 == $userModel->profile_global_permission[1] && 1 == $userModel->profile_global_permission[2] && 3 === ($userModel->defaultOrgSharingPermission[$tabId] ?? null)) {
+		if (!$userModel->isAdminUser() && !$userModel->hasGlobalReadPermission() && 3 === ($userModel->defaultOrgSharingPermission[$tabId] ?? null)) {
 			$conditions = ['or'];
 			$conditions[] = ['vtiger_crmentity.smownerid' => $userId];
 			if (!empty($userModel->groups)) {

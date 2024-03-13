@@ -7,8 +7,8 @@ namespace App\Db\Drivers;
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  * @author    Tomasz Kur <t.kur@yetiforce.com>
@@ -85,7 +85,7 @@ trait SchemaTrait
 	 *                      and [[Transaction::SERIALIZABLE]] but also a string containing DBMS specific syntax to be used
 	 *                      after `SET TRANSACTION ISOLATION LEVEL`.
 	 *
-	 * @see http://en.wikipedia.org/wiki/Isolation_%28database_systems%29#Isolation_levels
+	 * @see https://en.wikipedia.org/wiki/Isolation_%28database_systems%29#Isolation_levels
 	 */
 	public function setTransactionIsolationLevel($level)
 	{

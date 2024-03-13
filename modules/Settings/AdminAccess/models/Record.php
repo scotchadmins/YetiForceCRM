@@ -4,8 +4,8 @@
  *
  * @package   Settings.Model
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
@@ -162,8 +162,10 @@ class Settings_AdminAccess_Record_Model extends Settings_Vtiger_Record_Model
 
 	/**
 	 * Clear cache.
+	 *
+	 * @return void
 	 */
-	public function clearCache()
+	public function clearCache(): void
 	{
 		$previous = $this->changes['user'] ?? [];
 		$users = array_merge($this->get('user'), $previous);

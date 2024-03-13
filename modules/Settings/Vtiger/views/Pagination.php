@@ -3,11 +3,16 @@
 /**
  * Settings Pagination view class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class Settings_Vtiger_Pagination_View extends Settings_Vtiger_IndexAjax_View
 {
+	/** @var Settings_Vtiger_Record_Model[] List view entries. */
+	protected $listViewEntries;
+	/** @var int List view entries count. */
+	protected $listViewCount;
+
 	public function __construct()
 	{
 		parent::__construct();
@@ -50,11 +55,11 @@ class Settings_Vtiger_Pagination_View extends Settings_Vtiger_IndexAjax_View
 			$listViewModel->set('search_value', $searchValue);
 		}
 
-		$searchParmams = $request->getArray('search_params');
-		if (empty($searchParmams) || !\is_array($searchParmams)) {
-			$searchParmams = [];
+		$searchParams = $request->getArray('search_params');
+		if (empty($searchParams) || !\is_array($searchParams)) {
+			$searchParams = [];
 		}
-		$transformedSearchParams = $this->transferListSearchParamsToFilterCondition($searchParmams, $listViewModel->getModule());
+		$transformedSearchParams = $this->transferListSearchParamsToFilterCondition($searchParams, $listViewModel->getModule());
 		$listViewModel->set('search_params', $transformedSearchParams);
 		if (!empty($searchResult) && \is_array($searchResult)) {
 			$listViewModel->get('query_generator')->addNativeCondition(['vtiger_crmentity.crmid' => $searchResult]);

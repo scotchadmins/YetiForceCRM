@@ -6,14 +6,14 @@
  *
  * @package Config
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 
 namespace Config;
 
 /**
- * Configuration Class.
+ * Configuration file: Config\Debug.
  */
 class Debug
 {
@@ -103,10 +103,10 @@ class Debug
 	public static $apiLogAllRequests = false;
 
 	/** API - Sabre dav - This is a flag that allows (or not) showing file, line, and code of the exception in the returned XML */
-	public static $DAV_DEBUG_EXCEPTIONS = false;
+	public static $davDebugExceptions = false;
 
 	/** Activate the plugin recording log in DAV */
-	public static $DAV_DEBUG_PLUGIN = false;
+	public static $davDebugPlugin = false;
 
 	/** Mailer debug */
 	public static $MAILER_DEBUG = false;

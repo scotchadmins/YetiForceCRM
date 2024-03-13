@@ -2,12 +2,12 @@
 /**
  * OSSMail module config.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 return [
-	'default_host' => [
-		'default' => ['ssl://imap.gmail.com' => 'ssl://imap.gmail.com'],
+	'imap_host' => [
+		'default' => ['ssl://imap.gmail.com:993' => 'ssl://imap.gmail.com:993'],
 		'description' => 'Default host.',
 		'validation' => function () {
 			$arg = func_get_arg(0);
@@ -16,7 +16,7 @@ return [
 			}
 			$arg = (array) \App\Purifier::purify($arg);
 			foreach ($arg as $url) {
-				if (!\App\Validator::urlDomain($url)) {
+				if (!\App\Validator::url($url)) {
 					return false;
 				}
 			}
@@ -35,30 +35,14 @@ return [
 			return $saveValue;
 		}
 	],
-	'default_port' => [
-		'default' => 993,
-		'description' => 'Port used to connect to IMAP.',
-		'validation' => '\App\Validator::port',
-		'sanitization' => function () {
-			return (int) func_get_arg(0);
-		}
-	],
-	'smtp_server' => [
-		'default' => 'ssl://smtp.gmail.com',
+	'smtp_host' => [
+		'default' => 'ssl://smtp.gmail.com:465',
 		'description' => 'Name of SMTP server',
 		'validation' => function () {
 			$arg = func_get_arg(0);
-			return $arg && \App\Purifier::purify($arg);
+			return $arg && \App\Validator::url($arg);
 		},
 		'sanitization' => '\App\Purifier::purify'
-	],
-	'smtp_port' => [
-		'default' => 465,
-		'description' => 'Default smtp port',
-		'validation' => '\App\Validator::port',
-		'sanitization' => function () {
-			return (int) func_get_arg(0);
-		}
 	],
 	'username_domain' => [
 		'default' => 'gmail.com',
@@ -89,7 +73,7 @@ return [
 		'description' => 'Login to SMTP server',
 		'validation' => function () {
 			$arg = func_get_arg(0);
-			return $arg && !is_numeric($arg) && \is_string($arg) && $arg === strip_tags($arg) && 256 > \App\TextParser::getTextLength($arg);
+			return $arg && !is_numeric($arg) && \is_string($arg) && $arg === strip_tags($arg) && 256 > \App\TextUtils::getTextLength($arg);
 		},
 		'sanitization' => '\App\Purifier::encodeHtml'
 	],
@@ -98,7 +82,7 @@ return [
 		'description' => "SMTP password (if required) if you use %p as the password Roundcube will use the current user's password for login",
 		'validation' => function () {
 			$arg = func_get_arg(0);
-			return !empty($arg) && 256 > \App\TextParser::getTextLength($arg);
+			return !empty($arg) && 256 > \App\TextUtils::getTextLength($arg);
 		}
 	],
 	'language' => [
@@ -140,17 +124,13 @@ return [
 			$arg = func_get_arg(0);
 			return is_numeric($arg) && \in_array($arg, [0, 1, 2, 3, 4]);
 		},
-		'sanitization' => function () {
-			return (int) func_get_arg(0);
-		}
+		'sanitization' => fn () => (int) func_get_arg(0)
 	],
 	'session_lifetime' => [
 		'default' => 30,
 		'description' => 'Session lifetime in minutes',
 		'validation' => '\App\Validator::naturalNumber',
-		'sanitization' => function () {
-			return (int) func_get_arg(0);
-		}
+		'sanitization' => fn () => (int) func_get_arg(0)
 	],
 	//------------------------------------------------------------------------------------------------------------
 	'db_prefix' => [
@@ -164,7 +144,7 @@ return [
 	],
 	'plugins' => [
 		'default' => [
-			'identity_smtp', 'thunderbird_labels', 'zipdownload', 'archive', 'html5_notifier', 'advanced_search', 'contextmenu', 'yetiforce', //'enigma'
+			'identity_smtp', 'thunderbird_labels', 'zipdownload', 'archive', 'html5_notifier', 'contextmenu', 'yetiforce', //'enigma'
 		],
 		'description' => 'List of plugins',
 	],
@@ -394,5 +374,13 @@ return RCUBE_INSTALL_PATH . "/../../../../cache/mail/";',
 	'junk_mbox' => [
 		'default' => '',
 		'description' => 'Store spam messages in this mailbox'
+	],
+	'zipdownload_selection' => [
+		'default' => '500MB',
+		'description' => "Zip selection of mail messages\nThis option enables downloading of multiple messages as one zip archive.\nThe number or string value specifies maximum total size of all messages\nin the archive (not the size of the archive itself)."
+	],
+	'zipdownload_charset' => [
+		'default' => 'UTF-8',
+		'description' => 'Charset to use for filenames inside the zip'
 	],
 ];

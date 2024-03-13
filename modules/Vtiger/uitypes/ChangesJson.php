@@ -5,8 +5,8 @@
  *
  * @package UIType
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
@@ -23,6 +23,10 @@ class Vtiger_ChangesJson_UIType extends Vtiger_Base_UIType
 			$requestFieldName = $fieldName;
 		}
 		$value = $request->getArray($requestFieldName, 'Text');
+		if (!empty($value['changes']) && !empty($value['module'])) {
+			$moduleModel = Vtiger_Module_Model::getInstance($value['module']);
+			$value['changes'] = array_intersect_key($value['changes'], $moduleModel->getFields());
+		}
 		$this->validate($value, true);
 		$recordModel->set($fieldName, $this->getDBValue($value, $recordModel));
 	}
@@ -113,7 +117,7 @@ class Vtiger_ChangesJson_UIType extends Vtiger_Base_UIType
 			$data[] = $fieldModel->getFullLabelTranslation() . ': ' . $fieldModel->getDisplayValue($value, $recordId, false, true);
 		}
 		$value = implode(' ', $data);
-		return \App\TextParser::textTruncate(\App\Utils\Completions::decode($value), 100);
+		return \App\TextUtils::textTruncate(\App\Utils\Completions::decode($value), 100);
 	}
 
 	/** {@inheritdoc} */

@@ -4,20 +4,19 @@
  *
  * @package   Relation
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
-use App\Relation\RelationInterface;
 
 /**
  * Products_GetProducts_Relation class.
  */
-class Products_GetProducts_Relation implements RelationInterface
+class Products_GetProducts_Relation extends \App\Relation\RelationAbstraction
 {
 	/**
-	 * Name of the table that stores relations.
+	 * @var string Name of the table that stores relations.
 	 */
 	public const TABLE_NAME = 'vtiger_seproductsrel';
 
@@ -27,9 +26,7 @@ class Products_GetProducts_Relation implements RelationInterface
 		return Vtiger_Relation_Model::RELATION_M2M;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getQuery()
 	{
 		$tableName = self::TABLE_NAME;
@@ -42,7 +39,7 @@ class Products_GetProducts_Relation implements RelationInterface
 				'INNER JOIN',
 				$tableName,
 				"{$tableName}.crmid = " . $queryGenerator->getColumnName('id') . " AND {$tableName}.setype=:module",
-				[':module' => $sourceModuleName]
+				[':module' => $sourceModuleName],
 			])->addNativeCondition(["{$tableName}.productid" => $this->relationModel->get('parentRecord')->getId()]);
 		} else {
 			$moduleModel = $this->relationModel->getParentModuleModel();
@@ -54,9 +51,7 @@ class Products_GetProducts_Relation implements RelationInterface
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function delete(int $sourceRecordId, int $destinationRecordId): bool
 	{
 		if ($this->relationModel->getRelationModuleName() === $this->relationModel->getParentModuleModel()->getName()) {
@@ -69,9 +64,7 @@ class Products_GetProducts_Relation implements RelationInterface
 			->execute();
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function create(int $sourceRecordId, int $destinationRecordId): bool
 	{
 		$result = false;
@@ -91,9 +84,7 @@ class Products_GetProducts_Relation implements RelationInterface
 		return (bool) $result;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function transfer(int $relatedRecordId, int $fromRecordId, int $toRecordId): bool
 	{
 		return (bool) \App\Db::getInstance()->createCommand()->update(self::TABLE_NAME,

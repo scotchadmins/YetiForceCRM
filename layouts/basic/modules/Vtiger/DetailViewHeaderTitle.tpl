@@ -6,16 +6,28 @@
 * The Initial Developer of the Original Code is vtiger.
 * Portions created by vtiger are Copyright (C) vtiger.
 * All Rights Reserved.
-* Contributor(s): YetiForce Sp. z o.o.
+* Contributor(s): YetiForce S.A.
 ********************************************************************************/
 -->*}
 {strip}
 	<!-- tpl-Base-DetailViewHeaderTitle -->
+	{foreach item=FIELD_MODEL key=FIELD_NAME from=$MODULE_MODEL->getFieldsByType('recordLog', true)}
+		{if $FIELD_MODEL->isActiveField() && $FIELD_MODEL->isViewEnabled() && !empty($RECORD->get($FIELD_NAME))}
+			<div class="alert alert-warning w-100 mx-4" role="alert">
+				<h4 class="alert-heading">
+					<span class="fas fa-exclamation-triangle pr-3"></span>
+					{$FIELD_MODEL->getFullLabelTranslation()}
+				</h4>
+				<p>{\App\Language::translate('ERR_DETECTED_ERRORS_CURRENT_RECORD','Other.Exceptions')}<br>{\App\Language::translate('ERR_DETECTED_ERRORS_WILL_DISAPPEAR','Other.Exceptions')}</p>
+				<p>{$RECORD->getDisplayValue($FIELD_NAME,false,false,1000)}</p>
+			</div>
+		{/if}
+	{/foreach}
 	<div class="d-flex flex-wrap flex-md-nowrap px-md-3 px-1 w-100">
 		<div class="u-min-w-md-70 w-100">
 			{assign var=COUNT_IN_HIERARCHY value=App\Config::module($MODULE_NAME, 'COUNT_IN_HIERARCHY')}
-			<div class="moduleIcon{if $COUNT_IN_HIERARCHY} mt-3{/if}">
-				<span class="o-detail__icon js-detail__icon yfm-{$MODULE_NAME}{if $COUNT_IN_HIERARCHY} u-cursor-pointer js-detail-hierarchy{/if}"></span>
+			<div class="moduleIcon">
+				<span class="o-detail__icon js-detail__icon yfm-{$MODULE_NAME}{if $COUNT_IN_HIERARCHY} u-cursor-pointer js-detail-hierarchy position-relative{/if}"></span>
 				{if $COUNT_IN_HIERARCHY}
 					<span class="hierarchy">
 						<span class="badge {if $RECORD->get('active')} bgGreen {else} bgOrange {/if}"></span>
@@ -24,21 +36,22 @@
 			</div>
 			<div class="pl-1">
 				<div class="d-flex flex-nowrap align-items-center js-popover-tooltip--ellipsis-icon"
-					 data-content="{\App\Purifier::encodeHtml($RECORD->getName())}" data-toggle="popover" data-js="popover | mouseenter">
+					data-content="{\App\Purifier::encodeHtml($RECORD->getName())}" data-toggle="popover" data-js="popover | mouseenter">
 					<h4 class="recordLabel h6 mb-0 js-popover-text" data-js="clone">
 						<span class="modCT_{$MODULE_NAME}">
 							{\App\Utils\Completions::decode(Vtiger_Util_Helper::toVtiger6SafeHTML(\App\Purifier::decodeHtml($RECORD->getName())))}
 						</span>
 					</h4>
 					<span class="fas fa-info-circle fa-sm js-popover-icon d-none" data-js="class: d-none"></span>
-					{assign var=RECORD_STATE value=\App\Record::getState($RECORD->getId())}
-					{if $RECORD_STATE !== 'Active'}
+					{assign var=RECORD_STATE value=\App\Record::getStateLabel($RECORD->getId())}
+					{if $RECORD_STATE && $RECORD_STATE !== 'Active'}
 						{assign var=COLOR value=App\Config::search('LIST_ENTITY_STATE_COLOR')}
-						<span class="badge badge-secondary"
-							  {if $COLOR[$RECORD_STATE]}style="background-color: {$COLOR[$RECORD_STATE]};"{/if}>
-							{if \App\Record::getState($RECORD->getId()) === 'Trash'}
+						<span class="badge badge-secondary ml-1" {if $COLOR[$RECORD_STATE]}style="background-color: {$COLOR[$RECORD_STATE]};" {/if}>
+							{if $RECORD_STATE === 'Trash'}
+								<span class="fas fa-trash-alt mr-2"></span>
 								{\App\Language::translate('LBL_ENTITY_STATE_TRASH')}
 							{else}
+								<span class="fas fa-archive mr-2"></span>
 								{\App\Language::translate('LBL_ENTITY_STATE_ARCHIVED')}
 							{/if}
 						</span>

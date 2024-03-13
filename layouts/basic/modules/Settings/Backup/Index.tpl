@@ -1,4 +1,4 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
 	<div class="tpl-Settings-Backup-Index">
 		<div class="o-breadcrumb widget_header row">
@@ -7,15 +7,15 @@
 			</div>
 		</div>
 		<div class="contents mt-2">
-			<h5>{\App\Language::translate('LBL_BACKUP_LIST',$QUALIFIED_MODULE)}</h5>
 			<div class="listViewContentDiv ps ps--active-y">
-				{if !empty($SHOW_CONFIG_ALERT)}
+				{if !empty($CONFIG_ALERT)}
 					<div class="alert alert-block alert-danger fade in show">
 						<button type="button" class="close" data-dismiss="alert">×</button>
 						<h4 class="alert-heading">{\App\Language::translate('ERR_CONFIG_ALERT_TITLE', $QUALIFIED_MODULE)}</h4>
-						<p>{\App\Language::translate('ERR_CONFIG_ALERT_DESC', $QUALIFIED_MODULE)}</p>
+						<p>{$CONFIG_ALERT}</p>
 					</div>
 				{else}
+					<h5>{\App\Language::translate('LBL_BACKUP_LIST',$QUALIFIED_MODULE)}</h5>
 					<table class="table tableBorderHeadBody listViewEntriesTable medium">
 						{if !empty($STRUCTURE['manage'])}
 							<tr class="listViewEntries">
@@ -32,9 +32,9 @@
 									<td>
 										{if empty($catalog['url'])}
 											<span class="fas fa-folder mr-1"></span>
-										{\App\Purifier::encodeHtml($catalog['name'])}
+											{\App\Purifier::encodeHtml($catalog['name'])}
 										{else}
-											<a href="{$catalog['url']}" class="font-weight-bold">
+											<a href="{\App\Purifier::encodeHtml($catalog['url'])}" class="font-weight-bold">
 												<span class="fas fa-folder"></span> {\App\Purifier::encodeHtml($catalog['name'])}
 											</a>
 										{/if}
@@ -67,7 +67,7 @@
 									<td>{$file['date']}</td>
 									<td>{$file['size']}</td>
 									<td class="u-w-1em">
-										<a href="{$file['url']}" class="btn btn-primary btn-sm">
+										<a href="{$file['url']}" class="btn btn-primary btn-sm js-post-action">
 											<span class="fas fa-download mr-1"></span> {\App\Language::translate('LBL_DOWNLOAD',$QUALIFIED_MODULE)}
 										</a>
 									</td>
@@ -78,9 +78,9 @@
 					{if empty($STRUCTURE['files'])}
 						<table class="emptyRecordsDiv">
 							<tbody>
-							<tr>
-								<td>{\App\Language::translate('LBL_NO_RECORDS_FOUND')}</td>
-							</tr>
+								<tr>
+									<td>{\App\Language::translate('LBL_NO_RECORDS_FOUND')}</td>
+								</tr>
 							</tbody>
 						</table>
 					{/if}

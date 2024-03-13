@@ -5,8 +5,8 @@ namespace Importers;
 /**
  * Class that imports base database.
  *
- * @copyright YetiForce Sp. z o.o.
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class Base1 extends \App\Db\Importers\Base
@@ -51,9 +51,9 @@ class Base1 extends \App\Db\Importers\Base
 					'summary' => $this->stringType(400)->notNull(),
 					'test' => $this->text(),
 					'execution_condition' => $this->integer(10)->notNull(),
-					'defaultworkflow' => $this->integer(1),
+					'defaultworkflow' => $this->smallInteger(1),
 					'type' => $this->stringType(),
-					'filtersavedinnew' => $this->integer(1),
+					'filtersavedinnew' => $this->smallInteger(1),
 					'schtypeid' => $this->integer(10),
 					'schdayofmonth' => $this->stringType(100),
 					'schdayofweek' => $this->stringType(100),
@@ -61,6 +61,10 @@ class Base1 extends \App\Db\Importers\Base
 					'schtime' => $this->stringType(50),
 					'nexttrigger_time' => $this->dateTime(),
 					'params' => $this->text(),
+				],
+				'columns_mysql' => [
+					'defaultworkflow' => $this->tinyInteger(1),
+					'filtersavedinnew' => $this->tinyInteger(1),
 				],
 				'index' => [
 					['com_vtiger_workflows_idx', 'workflow_id'],
@@ -151,8 +155,8 @@ class Base1 extends \App\Db\Importers\Base
 					['dav_addressbooks_idx', 'principaluri'],
 				],
 				'index_mysql' => [
-					['principaluri', ['principaluri(100)', 'uri(100)'], true],
 					['dav_addressbooks_idx', 'principaluri(100)'],
+					['principaluri', ['principaluri(100)', 'uri(100)'], true],
 				],
 				'engine' => 'InnoDB',
 				'charset' => 'utf8mb4'
@@ -377,7 +381,7 @@ class Base1 extends \App\Db\Importers\Base
 					'username' => $this->stringType(50),
 					'digesta1' => $this->stringType(32),
 					'userid' => $this->integer(10)->unsigned(),
-					'key' => $this->stringType(50),
+					'key' => $this->stringType(500),
 				],
 				'columns_mysql' => [
 					'username' => $this->varbinary(50),
@@ -395,17 +399,57 @@ class Base1 extends \App\Db\Importers\Base
 			],
 			'i_#__magento_config' => [
 				'columns' => [
-					'name' => $this->stringType(15),
-					'value' => $this->stringType(50),
+					'server_id' => $this->integer(10)->unsigned()->notNull(),
+					'name' => $this->stringType(50)->notNull(),
+					'value' => $this->stringType(50)->notNull(),
+				],
+				'index' => [
+					['server_id', 'server_id'],
+					['name', 'name'],
 				],
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
 			],
-			'i_#__magento_record' => [
+			'i_#__magento_servers' => [
 				'columns' => [
-					'id' => $this->integer(10)->unsigned()->notNull(),
-					'crmid' => $this->integer(10)->unsigned()->notNull(),
-					'type' => $this->stringType(25)->notNull(),
+					'id' => $this->primaryKey(10)->unsigned(),
+					'status' => $this->smallInteger(1)->unsigned()->notNull()->defaultValue(0),
+					'name' => $this->stringType(50)->notNull(),
+					'url' => $this->stringType()->notNull(),
+					'connector' => $this->stringType(20)->notNull(),
+					'user_name' => $this->stringType()->notNull(),
+					'password' => $this->stringType()->notNull(),
+					'store_code' => $this->stringType()->notNull(),
+					'store_id' => $this->integer(10)->unsigned()->notNull(),
+					'storage_id' => $this->integer(10)->unsigned()->notNull()->defaultValue(0),
+					'shipping_service_id' => $this->integer(10)->unsigned()->notNull()->defaultValue(0),
+					'payment_paypal_service_id' => $this->integer(10)->unsigned()->notNull()->defaultValue(0),
+					'payment_cash_service_id' => $this->integer(10)->unsigned()->notNull()->defaultValue(0),
+					'storage_quantity_location' => $this->stringType(20)->notNull(),
+					'sync_currency' => $this->smallInteger(1)->unsigned()->notNull()->defaultValue(0),
+					'sync_categories' => $this->smallInteger(1)->unsigned()->notNull()->defaultValue(0),
+					'sync_products' => $this->smallInteger(1)->unsigned()->notNull()->defaultValue(0),
+					'sync_customers' => $this->smallInteger(1)->unsigned()->notNull()->defaultValue(0),
+					'sync_orders' => $this->smallInteger(1)->unsigned()->notNull()->defaultValue(0),
+					'sync_invoices' => $this->smallInteger(1)->unsigned()->notNull()->defaultValue(0),
+					'product_map_class' => $this->stringType(),
+					'customer_map_class' => $this->stringType(),
+					'order_map_class' => $this->stringType(),
+					'invoice_map_class' => $this->stringType(),
+					'categories_limit' => $this->smallInteger(5)->unsigned()->notNull()->defaultValue(200),
+					'products_limit' => $this->smallInteger(5)->unsigned()->notNull()->defaultValue(1000),
+					'customers_limit' => $this->smallInteger(5)->unsigned()->notNull()->defaultValue(1000),
+					'orders_limit' => $this->smallInteger(5)->unsigned()->notNull()->defaultValue(200),
+					'invoices_limit' => $this->smallInteger(5)->unsigned()->notNull()->defaultValue(200),
+				],
+				'columns_mysql' => [
+					'status' => $this->tinyInteger(1)->unsigned()->notNull()->defaultValue(0),
+					'sync_currency' => $this->tinyInteger(1)->unsigned()->notNull()->defaultValue(0),
+					'sync_categories' => $this->tinyInteger(1)->unsigned()->notNull()->defaultValue(0),
+					'sync_products' => $this->tinyInteger(1)->unsigned()->notNull()->defaultValue(0),
+					'sync_customers' => $this->tinyInteger(1)->unsigned()->notNull()->defaultValue(0),
+					'sync_orders' => $this->tinyInteger(1)->unsigned()->notNull()->defaultValue(0),
+					'sync_invoices' => $this->tinyInteger(1)->unsigned()->notNull()->defaultValue(0),
 				],
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
@@ -559,6 +603,21 @@ class Base1 extends \App\Db\Importers\Base
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
 			],
+			'roundcube_filestore' => [
+				'columns' => [
+					'file_id' => $this->primaryKey(10)->unsigned(),
+					'user_id' => $this->integer(10)->unsigned()->notNull(),
+					'context' => $this->stringType(32)->notNull(),
+					'filename' => $this->stringType(128)->notNull(),
+					'mtime' => $this->integer(10)->notNull(),
+					'data' => $this->text()->notNull(),
+				],
+				'index' => [
+					['uniqueness', ['user_id', 'context', 'filename']],
+				],
+				'engine' => 'InnoDB',
+				'charset' => 'utf8'
+			],
 			'roundcube_identities' => [
 				'columns' => [
 					'identity_id' => $this->primaryKey(10)->unsigned(),
@@ -629,12 +688,18 @@ class Base1 extends \App\Db\Importers\Base
 					'language' => $this->stringType(5),
 					'preferences' => $this->text(),
 					'actions' => $this->text(),
-					'password' => $this->stringType(200),
+					'password' => $this->stringType(500),
 					'crm_user_id' => $this->integer(10)->defaultValue(0),
+					'crm_status' => $this->smallInteger(1)->defaultValue(0),
+					'crm_error' => $this->stringType(),
+				],
+				'columns_mysql' => [
+					'crm_status' => $this->tinyInteger(1)->defaultValue(0),
 				],
 				'index' => [
 					['username', ['username', 'mail_host']],
 					['crm_user_id', 'crm_user_id'],
+					['crm_status', 'crm_status'],
 				],
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
@@ -650,6 +715,7 @@ class Base1 extends \App\Db\Importers\Base
 				],
 				'index' => [
 					['rcuser_id', 'rcuser_id'],
+					['crmuser_id', 'crmuser_id'],
 				],
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
@@ -819,6 +885,37 @@ class Base1 extends \App\Db\Importers\Base
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
 			],
+			'u_#__bankaccounts' => [
+				'columns' => [
+					'bankaccountsid' => $this->integer(10)->notNull(),
+					'name' => $this->stringType(),
+					'number' => $this->stringType(32),
+					'currency_id' => $this->integer(10),
+					'swift' => $this->stringType()->defaultValue(''),
+					'bank_name' => $this->stringType()->defaultValue(''),
+					'bankaccount_status' => $this->stringType()->defaultValue(''),
+					'account_number' => $this->stringType()->defaultValue(''),
+					'multicompanyid' => $this->integer()->unsigned()->defaultValue(0),
+				],
+				'index' => [
+					['u_yf_bankaccounts_multicompanyid_idx', 'multicompanyid'],
+				],
+				'primaryKeys' => [
+					['bankaccounts_pk', 'bankaccountsid']
+				],
+				'engine' => 'InnoDB',
+				'charset' => 'utf8'
+			],
+			'u_#__bankaccountscf' => [
+				'columns' => [
+					'bankaccountsid' => $this->integer(10)->notNull(),
+				],
+				'primaryKeys' => [
+					['bankaccountscf_pk', 'bankaccountsid']
+				],
+				'engine' => 'InnoDB',
+				'charset' => 'utf8'
+			],
 			'u_#__browsinghistory' => [
 				'columns' => [
 					'id' => $this->primaryKey(10),
@@ -887,7 +984,7 @@ class Base1 extends \App\Db\Importers\Base
 					'crmid' => $this->integer(10),
 					'userid' => $this->smallInteger(5)->unsigned()->notNull(),
 					'created' => $this->dateTime(),
-					'messages' => $this->stringType(500)->notNull(),
+					'messages' => $this->text()->notNull(),
 				],
 				'index' => [
 					['room_crmid', 'crmid'],
@@ -901,7 +998,7 @@ class Base1 extends \App\Db\Importers\Base
 					'globalid' => $this->integer(10)->unsigned()->notNull(),
 					'userid' => $this->smallInteger(5)->unsigned()->notNull(),
 					'created' => $this->dateTime(),
-					'messages' => $this->stringType(500)->notNull(),
+					'messages' => $this->text()->notNull(),
 				],
 				'index' => [
 					['globalid', 'globalid'],
@@ -915,7 +1012,7 @@ class Base1 extends \App\Db\Importers\Base
 					'groupid' => $this->integer(10),
 					'userid' => $this->smallInteger(5)->unsigned()->notNull(),
 					'created' => $this->dateTime(),
-					'messages' => $this->stringType(500)->notNull(),
+					'messages' => $this->text()->notNull(),
 				],
 				'index' => [
 					['room_groupid', 'groupid'],
@@ -929,7 +1026,7 @@ class Base1 extends \App\Db\Importers\Base
 					'privateid' => $this->integer(10)->unsigned()->notNull(),
 					'userid' => $this->smallInteger(5)->unsigned()->notNull(),
 					'created' => $this->dateTime(),
-					'messages' => $this->stringType(500)->notNull(),
+					'messages' => $this->text()->notNull(),
 				],
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
@@ -940,7 +1037,11 @@ class Base1 extends \App\Db\Importers\Base
 					'roomid' => $this->integer(10),
 					'userid' => $this->smallInteger(5)->unsigned()->notNull(),
 					'created' => $this->dateTime(),
-					'messages' => $this->stringType(500)->notNull(),
+					'messages' => $this->text()->notNull(),
+				],
+				'index' => [
+					['roomid', 'roomid'],
+					['userid', 'userid'],
 				],
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
@@ -1033,6 +1134,10 @@ class Base1 extends \App\Db\Importers\Base
 					'userid' => $this->integer(10)->notNull(),
 					'last_message' => $this->integer(10)->unsigned()->defaultValue(0),
 				],
+				'index' => [
+					['userid', 'userid'],
+					['roomid', 'roomid'],
+				],
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
 			],
@@ -1041,6 +1146,10 @@ class Base1 extends \App\Db\Importers\Base
 					'roomid' => $this->primaryKey(10)->unsigned(),
 					'userid' => $this->integer(10)->notNull(),
 					'reluserid' => $this->integer(10)->notNull(),
+				],
+				'index' => [
+					['reluserid', 'reluserid'],
+					['userid', 'userid'],
 				],
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
@@ -1098,7 +1207,7 @@ class Base1 extends \App\Db\Importers\Base
 					'competitionid' => $this->integer(10)->notNull()->defaultValue(0),
 					'competition_no' => $this->stringType()->defaultValue(''),
 					'subject' => $this->stringType(),
-					'vat_id' => $this->stringType(30),
+					'vat_id' => $this->stringType(50),
 					'sum_time' => $this->decimal('10,2')->defaultValue(0),
 					'email' => $this->stringType(100)->defaultValue(''),
 					'active' => $this->smallInteger(1)->defaultValue(0),
@@ -1127,8 +1236,8 @@ class Base1 extends \App\Db\Importers\Base
 					'addresslevel6a' => $this->stringType(),
 					'addresslevel7a' => $this->stringType(),
 					'addresslevel8a' => $this->stringType(),
-					'buildingnumbera' => $this->stringType(100),
-					'localnumbera' => $this->stringType(100),
+					'buildingnumbera' => $this->stringType(),
+					'localnumbera' => $this->stringType(50),
 					'poboxa' => $this->stringType(50),
 				],
 				'primaryKeys' => [
@@ -1172,7 +1281,7 @@ class Base1 extends \App\Db\Importers\Base
 			],
 			'u_#__crmentity_label' => [
 				'columns' => [
-					'crmid' => $this->integer(10)->unsigned()->notNull(),
+					'crmid' => $this->integer(10)->notNull(),
 					'label' => $this->stringType(),
 				],
 				'index' => [
@@ -1181,19 +1290,6 @@ class Base1 extends \App\Db\Importers\Base
 				],
 				'primaryKeys' => [
 					['crmentity_label_pk', 'crmid']
-				],
-				'engine' => 'MyISAM',
-				'charset' => 'utf8'
-			],
-			'u_#__crmentity_last_changes' => [
-				'columns' => [
-					'crmid' => $this->integer(10)->notNull(),
-					'fieldname' => $this->stringType(50)->notNull(),
-					'user_id' => $this->integer(10)->notNull(),
-					'date_updated' => $this->dateTime()->notNull(),
-				],
-				'index' => [
-					['crmid', ['crmid', 'fieldname']],
 				],
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
@@ -1213,19 +1309,19 @@ class Base1 extends \App\Db\Importers\Base
 			],
 			'u_#__crmentity_search_label' => [
 				'columns' => [
-					'crmid' => $this->integer(10)->unsigned()->notNull(),
+					'crmid' => $this->integer(10)->notNull(),
 					'searchlabel' => $this->stringType()->notNull(),
-					'setype' => $this->stringType(30)->notNull(),
+					'tabid' => $this->smallInteger(5)->notNull(),
 					'userid' => $this->text(),
 				],
 				'index' => [
-					['crmentity_searchlabel_setype', ['searchlabel', 'setype']],
+					['crmentity_tabid_searchlabel', ['tabid', 'searchlabel']],
 					['crmentity_searchlabel_fulltext', 'searchlabel'],
 				],
 				'primaryKeys' => [
 					['crmentity_search_label_pk', 'crmid']
 				],
-				'engine' => 'MyISAM',
+				'engine' => 'InnoDB',
 				'charset' => 'utf8'
 			],
 			'u_#__crmentity_showners' => [
@@ -1290,6 +1386,17 @@ class Base1 extends \App\Db\Importers\Base
 				'index' => [
 					['u_yf_cv_duplicates_cvid_idx', 'cvid'],
 					['u_yf_cv_duplicates_fieldid_idx', 'fieldid'],
+				],
+				'engine' => 'InnoDB',
+				'charset' => 'utf8'
+			],
+			'u_#__cv_privileges' => [
+				'columns' => [
+					'member' => $this->stringType(30)->notNull(),
+					'cvid' => $this->integer(10)->notNull(),
+				],
+				'primaryKeys' => [
+					['cv_privileges_pk', ['cvid', 'member']]
 				],
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
@@ -1496,7 +1603,7 @@ class Base1 extends \App\Db\Importers\Base
 					'addresslevel6a' => $this->stringType(),
 					'addresslevel7a' => $this->stringType(),
 					'addresslevel8a' => $this->stringType(),
-					'buildingnumbera' => $this->stringType(50),
+					'buildingnumbera' => $this->stringType(),
 					'localnumbera' => $this->stringType(50),
 					'poboxa' => $this->stringType(50),
 				],
@@ -1629,16 +1736,17 @@ class Base1 extends \App\Db\Importers\Base
 					'paymentdate' => $this->date(),
 					'saledate' => $this->date(),
 					'accountid' => $this->integer(10),
-					'finvoice_formpayment' => $this->stringType()->defaultValue(''),
+					'finvoice_formpayment' => $this->stringType(),
 					'sum_total' => $this->decimal('28,8'),
 					'sum_gross' => $this->decimal('28,8'),
-					'finvoice_status' => $this->stringType()->defaultValue(''),
+					'finvoice_status' => $this->stringType(),
 					'finvoice_type' => $this->stringType(),
 					'pscategory' => $this->stringType(100),
 					'issue_time' => $this->date(),
 					'ssalesprocessesid' => $this->integer(10),
 					'projectid' => $this->integer(10),
 					'payment_status' => $this->stringType(),
+					'payment_sum' => $this->decimal('28,8'),
 				],
 				'index' => [
 					['accountid', 'accountid'],
@@ -1662,9 +1770,34 @@ class Base1 extends \App\Db\Importers\Base
 					'addresslevel6a' => $this->stringType(),
 					'addresslevel7a' => $this->stringType(),
 					'addresslevel8a' => $this->stringType(),
-					'buildingnumbera' => $this->stringType(50),
+					'buildingnumbera' => $this->stringType(),
 					'localnumbera' => $this->stringType(50),
 					'poboxa' => $this->stringType(50),
+					'first_name_a' => $this->stringType(),
+					'last_name_a' => $this->stringType(),
+					'vat_id_a' => $this->stringType(50),
+					'email_a' => $this->stringType(100),
+					'phone_a' => $this->stringType(100),
+					'addresslevel8b' => $this->stringType(),
+					'localnumberb' => $this->stringType(50),
+					'addresslevel5b' => $this->stringType(),
+					'buildingnumberb' => $this->stringType(),
+					'addresslevel7b' => $this->stringType(),
+					'addresslevel6b' => $this->stringType(),
+					'addresslevel2b' => $this->stringType(),
+					'addresslevel4b' => $this->stringType(),
+					'addresslevel1b' => $this->stringType(),
+					'addresslevel3b' => $this->stringType(),
+					'poboxb' => $this->stringType(50),
+					'first_name_b' => $this->stringType(),
+					'last_name_b' => $this->stringType(),
+					'company_name_b' => $this->stringType(),
+					'vat_id_b' => $this->stringType(50),
+					'email_b' => $this->stringType(100),
+					'phone_b' => $this->stringType(100),
+					'company_name_a' => $this->stringType(),
+					'phone_b_extra' => $this->stringType(100),
+					'phone_a_extra' => $this->stringType(100),
 				],
 				'primaryKeys' => [
 					['finvoice_address_pk', 'finvoiceaddressid']
@@ -1781,7 +1914,7 @@ class Base1 extends \App\Db\Importers\Base
 					'addresslevel6a' => $this->stringType(),
 					'addresslevel7a' => $this->stringType(),
 					'addresslevel8a' => $this->stringType(),
-					'buildingnumbera' => $this->stringType(50),
+					'buildingnumbera' => $this->stringType(),
 					'localnumbera' => $this->stringType(50),
 					'poboxa' => $this->stringType(50),
 				],
@@ -1834,6 +1967,9 @@ class Base1 extends \App\Db\Importers\Base
 					'params' => $this->text(),
 					'colspan' => $this->smallInteger(1)->unsigned()->notNull()->defaultValue(1),
 				],
+				'columns_mysql' => [
+					'presence' => $this->tinyInteger(1)->unsigned()->notNull()->defaultValue(0),
+				],
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
 			],
@@ -1871,6 +2007,8 @@ class Base1 extends \App\Db\Importers\Base
 					'sum_total' => $this->decimal('28,8'),
 					'sum_gross' => $this->decimal('28,8'),
 					'finvoiceproforma_status' => $this->stringType(),
+					'payment_sum' => $this->decimal('28,8'),
+					'payment_status' => $this->stringType(),
 				],
 				'index' => [
 					['accountid', 'accountid'],
@@ -1884,17 +2022,42 @@ class Base1 extends \App\Db\Importers\Base
 			'u_#__finvoiceproforma_address' => [
 				'columns' => [
 					'finvoiceproformaaddressid' => $this->integer(10)->notNull(),
-					'addresslevel1c' => $this->stringType(),
-					'addresslevel2c' => $this->stringType(),
-					'addresslevel3c' => $this->stringType(),
-					'addresslevel4c' => $this->stringType(),
-					'addresslevel5c' => $this->stringType(),
-					'addresslevel6c' => $this->stringType(),
-					'addresslevel7c' => $this->stringType(),
-					'addresslevel8c' => $this->stringType(),
-					'buildingnumberc' => $this->stringType(),
-					'localnumberc' => $this->stringType(),
-					'poboxc' => $this->stringType(),
+					'addresslevel1a' => $this->stringType(),
+					'addresslevel2a' => $this->stringType(),
+					'addresslevel3a' => $this->stringType(),
+					'addresslevel4a' => $this->stringType(),
+					'addresslevel5a' => $this->stringType(),
+					'addresslevel6a' => $this->stringType(),
+					'addresslevel7a' => $this->stringType(),
+					'addresslevel8a' => $this->stringType(),
+					'buildingnumbera' => $this->stringType(),
+					'localnumbera' => $this->stringType(50),
+					'poboxa' => $this->stringType(50),
+					'addresslevel8b' => $this->stringType(),
+					'localnumberb' => $this->stringType(50),
+					'addresslevel5b' => $this->stringType(),
+					'buildingnumberb' => $this->stringType(),
+					'addresslevel7b' => $this->stringType(),
+					'addresslevel6b' => $this->stringType(),
+					'addresslevel2b' => $this->stringType(),
+					'addresslevel4b' => $this->stringType(),
+					'addresslevel1b' => $this->stringType(),
+					'addresslevel3b' => $this->stringType(),
+					'poboxb' => $this->stringType(50),
+					'first_name_a' => $this->stringType(),
+					'first_name_b' => $this->stringType(),
+					'last_name_a' => $this->stringType(),
+					'last_name_b' => $this->stringType(),
+					'company_name_a' => $this->stringType(),
+					'company_name_b' => $this->stringType(),
+					'vat_id_a' => $this->stringType(50),
+					'vat_id_b' => $this->stringType(50),
+					'email_a' => $this->stringType(100),
+					'email_b' => $this->stringType(100),
+					'phone_a' => $this->stringType(100),
+					'phone_b' => $this->stringType(100),
+					'phone_a_extra' => $this->stringType(100),
+					'phone_b_extra' => $this->stringType(100),
 				],
 				'primaryKeys' => [
 					['finvoiceproforma_address_pk', 'finvoiceproformaaddressid']
@@ -2533,6 +2696,51 @@ class Base1 extends \App\Db\Importers\Base
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
 			],
+			'u_#__interests_conflict_conf' => [
+				'columns' => [
+					'id' => $this->primaryKey(10)->unsigned(),
+					'date_time' => $this->dateTime()->notNull(),
+					'status' => $this->smallInteger(1)->unsigned()->notNull()->defaultValue(0),
+					'user_id' => $this->smallInteger(5)->unsigned()->notNull(),
+					'related_id' => $this->integer(10)->unsigned()->notNull(),
+					'related_label' => $this->stringType()->notNull(),
+					'source_id' => $this->integer(10)->notNull()->defaultValue(0),
+					'modify_user_id' => $this->smallInteger(5)->unsigned()->notNull()->defaultValue(0),
+					'modify_date_time' => $this->dateTime(),
+				],
+				'columns_mysql' => [
+					'status' => $this->tinyInteger(1)->unsigned()->notNull()->defaultValue(0),
+				],
+				'index' => [
+					['user_id', 'user_id'],
+					['related_id', 'related_id'],
+				],
+				'engine' => 'InnoDB',
+				'charset' => 'utf8'
+			],
+			'u_#__interests_conflict_unlock' => [
+				'columns' => [
+					'id' => $this->primaryKey(10)->unsigned(),
+					'date_time' => $this->dateTime()->notNull(),
+					'status' => $this->smallInteger(1)->unsigned()->notNull(),
+					'user_id' => $this->smallInteger(5)->notNull(),
+					'related_id' => $this->integer(10)->unsigned()->notNull(),
+					'source_id' => $this->integer(10)->unsigned()->notNull(),
+					'comment' => $this->stringType()->notNull(),
+					'modify_user_id' => $this->smallInteger(5)->unsigned()->notNull()->defaultValue(0),
+					'modify_date_time' => $this->dateTime(),
+				],
+				'columns_mysql' => [
+					'status' => $this->tinyInteger(1)->unsigned()->notNull(),
+				],
+				'index' => [
+					['date_time', 'date_time'],
+					['user_id', 'user_id'],
+					['related_id', 'related_id'],
+				],
+				'engine' => 'InnoDB',
+				'charset' => 'utf8'
+			],
 			'u_#__ipreorder' => [
 				'columns' => [
 					'ipreorderid' => $this->integer(10)->notNull(),
@@ -2762,8 +2970,8 @@ class Base1 extends \App\Db\Importers\Base
 					'addresslevel6a' => $this->stringType(),
 					'addresslevel7a' => $this->stringType(),
 					'addresslevel8a' => $this->stringType(),
-					'buildingnumbera' => $this->stringType(100),
-					'localnumbera' => $this->stringType(100),
+					'buildingnumbera' => $this->stringType(),
+					'localnumbera' => $this->stringType(50),
 					'poboxa' => $this->stringType(50),
 				],
 				'primaryKeys' => [
@@ -2970,6 +3178,47 @@ class Base1 extends \App\Db\Importers\Base
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
 			],
+			'u_#__locations' => [
+				'columns' => [
+					'locationsid' => $this->integer(10)->notNull()->defaultValue(0),
+					'locations_no' => $this->stringType()->defaultValue(''),
+					'subject' => $this->stringType(),
+					'email' => $this->stringType(100)->defaultValue(''),
+					'active' => $this->smallInteger(1)->defaultValue(0),
+					'phone' => $this->stringType(30)->defaultValue(''),
+					'phone_extra' => $this->stringType(100),
+					'capacity' => $this->integer(8)->defaultValue(0),
+				],
+				'columns_mysql' => [
+					'active' => $this->tinyInteger(1)->defaultValue(0),
+				],
+				'primaryKeys' => [
+					['locations_pk', 'locationsid']
+				],
+				'engine' => 'InnoDB',
+				'charset' => 'utf8'
+			],
+			'u_#__locations_address' => [
+				'columns' => [
+					'locationaddressid' => $this->integer(10)->notNull(),
+					'addresslevel1a' => $this->stringType(),
+					'addresslevel2a' => $this->stringType(),
+					'addresslevel3a' => $this->stringType(),
+					'addresslevel4a' => $this->stringType(),
+					'addresslevel5a' => $this->stringType(),
+					'addresslevel6a' => $this->stringType(),
+					'addresslevel7a' => $this->stringType(),
+					'addresslevel8a' => $this->stringType(),
+					'buildingnumbera' => $this->stringType(),
+					'localnumbera' => $this->stringType(50),
+					'poboxa' => $this->stringType(50),
+				],
+				'primaryKeys' => [
+					['locations_address_pk', 'locationaddressid']
+				],
+				'engine' => 'InnoDB',
+				'charset' => 'utf8'
+			],
 			'u_#__mail_address_book' => [
 				'columns' => [
 					'id' => $this->integer(10)->notNull(),
@@ -3007,6 +3256,18 @@ class Base1 extends \App\Db\Importers\Base
 				],
 				'index' => [
 					['userid', ['userid', 'key']],
+				],
+				'engine' => 'InnoDB',
+				'charset' => 'utf8'
+			],
+			'u_#__mail_quantities' => [
+				'columns' => [
+					'userid' => $this->integer(10)->unsigned()->notNull(),
+					'num' => $this->smallInteger()->unsigned()->defaultValue(0),
+					'date' => $this->dateTime(),
+				],
+				'primaryKeys' => [
+					['mail_quantities_pk', 'userid']
 				],
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
@@ -3052,7 +3313,7 @@ class Base1 extends \App\Db\Importers\Base
 					'vat' => $this->stringType(),
 					'companyid1' => $this->stringType(),
 					'companyid2' => $this->stringType(),
-					'buildingnumbera' => $this->stringType(50),
+					'buildingnumbera' => $this->stringType(),
 					'localnumbera' => $this->stringType(50),
 					'addresslevel8a' => $this->stringType(),
 					'addresslevel7a' => $this->stringType(),
@@ -3105,6 +3366,7 @@ class Base1 extends \App\Db\Importers\Base
 					['process', 'process'],
 					['subprocess', 'subprocess'],
 					['linkextend', 'linkextend'],
+					['notification_status', 'notification_status'],
 				],
 				'primaryKeys' => [
 					['notification_pk', 'notificationid']
@@ -3112,12 +3374,37 @@ class Base1 extends \App\Db\Importers\Base
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
 			],
+			'u_#__occurrences' => [
+				'columns' => [
+					'occurrencesid' => $this->integer(10)->notNull(),
+					'topic' => $this->stringType(),
+					'number' => $this->stringType(32),
+					'occurrences_status' => $this->stringType(),
+					'occurrences_type' => $this->stringType(),
+					'date_start' => $this->dateTime(),
+					'date_end' => $this->dateTime(),
+					'description' => $this->text(),
+					'attention' => $this->text(),
+					'occurrences_rating' => $this->stringType()->defaultValue(''),
+					'locationid' => $this->integer()->unsigned()->defaultValue(0),
+					'participants' => $this->integer(8)->defaultValue(0),
+					'meeting_url' => $this->stringType(2048),
+				],
+				'index' => [
+					['u_yf_occurrences_locationid_idx', 'locationid'],
+				],
+				'primaryKeys' => [
+					['occurrences_pk', 'occurrencesid']
+				],
+				'engine' => 'InnoDB',
+				'charset' => 'utf8'
+			],
 			'u_#__openstreetmap' => [
 				'columns' => [
-					'crmid' => $this->integer(10)->unsigned()->notNull(),
+					'crmid' => $this->integer(10)->notNull(),
 					'type' => $this->char()->notNull(),
-					'lat' => $this->decimal('10,7'),
-					'lon' => $this->decimal('10,7'),
+					'lat' => $this->decimal('10,7')->notNull(),
+					'lon' => $this->decimal('10,7')->notNull(),
 				],
 				'index' => [
 					['u_yf_openstreetmap_lat_lon', ['lat', 'lon']],
@@ -3128,7 +3415,7 @@ class Base1 extends \App\Db\Importers\Base
 			],
 			'u_#__openstreetmap_address_updater' => [
 				'columns' => [
-					'crmid' => $this->integer(10),
+					'crmid' => $this->integer(10)->notNull(),
 				],
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
@@ -3162,14 +3449,18 @@ class Base1 extends \App\Db\Importers\Base
 					'partnersid' => $this->integer(10)->notNull()->defaultValue(0),
 					'partners_no' => $this->stringType()->defaultValue(''),
 					'subject' => $this->stringType(),
-					'vat_id' => $this->stringType(30),
+					'vat_id' => $this->stringType(50),
 					'sum_time' => $this->decimal('10,2')->defaultValue(0),
 					'email' => $this->stringType(100)->defaultValue(''),
 					'active' => $this->smallInteger(1)->defaultValue(0),
 					'category' => $this->stringType()->defaultValue(''),
+					'parentid' => $this->integer(10)->unsigned()->defaultValue(0),
 				],
 				'columns_mysql' => [
 					'active' => $this->tinyInteger(1)->defaultValue(0),
+				],
+				'index' => [
+					['u_yf_partners_parentid_idx', 'parentid'],
 				],
 				'primaryKeys' => [
 					['partners_pk', 'partnersid']
@@ -3188,8 +3479,8 @@ class Base1 extends \App\Db\Importers\Base
 					'addresslevel6a' => $this->stringType(),
 					'addresslevel7a' => $this->stringType(),
 					'addresslevel8a' => $this->stringType(),
-					'buildingnumbera' => $this->stringType(100),
-					'localnumbera' => $this->stringType(100),
+					'buildingnumbera' => $this->stringType(),
+					'localnumbera' => $this->stringType(50),
 					'poboxa' => $this->stringType(50),
 				],
 				'primaryKeys' => [
@@ -3204,6 +3495,27 @@ class Base1 extends \App\Db\Importers\Base
 				],
 				'primaryKeys' => [
 					['partnerscf_pk', 'partnersid']
+				],
+				'engine' => 'InnoDB',
+				'charset' => 'utf8'
+			],
+			'u_#__passwords' => [
+				'columns' => [
+					'passwordsid' => $this->integer(10)->notNull(),
+					'subject' => $this->stringType(),
+					'number' => $this->stringType(32),
+					'multicompanyid' => $this->integer(10)->unsigned()->defaultValue(0),
+					'link' => $this->integer(10)->unsigned(),
+					'linkextend' => $this->integer(10)->unsigned(),
+					'website' => $this->stringType(),
+					'username' => $this->stringType()->defaultValue(''),
+					'password' => $this->stringType()->defaultValue(''),
+				],
+				'index' => [
+					['u_yf_passwords_multicompanyid_idx', 'multicompanyid'],
+				],
+				'primaryKeys' => [
+					['passwords_pk', 'passwordsid']
 				],
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
@@ -3234,6 +3546,56 @@ class Base1 extends \App\Db\Importers\Base
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
 			],
+			'u_#__productcategory' => [
+				'columns' => [
+					'productcategoryid' => $this->integer(10)->notNull(),
+					'category' => $this->stringType(),
+					'number' => $this->stringType(32),
+					'parent_id' => $this->integer(10)->unsigned()->defaultValue(0),
+					'active' => $this->smallInteger(1)->defaultValue(0),
+				],
+				'columns_mysql' => [
+					'active' => $this->tinyInteger(1)->defaultValue(0),
+				],
+				'index' => [
+					['u_yf_productcategory_parent_id_idx', 'parent_id'],
+				],
+				'primaryKeys' => [
+					['productcategory_pk', 'productcategoryid']
+				],
+				'engine' => 'InnoDB',
+				'charset' => 'utf8'
+			],
+			'u_#__productcategorycf' => [
+				'columns' => [
+					'productcategoryid' => $this->integer(10)->notNull(),
+				],
+				'primaryKeys' => [
+					['productcategorycf_pk', 'productcategoryid']
+				],
+				'engine' => 'InnoDB',
+				'charset' => 'utf8'
+			],
+			'u_#__queue' => [
+				'columns' => [
+					'queueid' => $this->integer(10)->notNull(),
+					'subject' => $this->stringType(),
+					'number' => $this->stringType(32),
+					'related_to' => $this->integer(10)->unsigned()->defaultValue(0),
+					'reason_for_change' => $this->text(),
+					'reason_for_rejection' => $this->text(),
+					'changes' => $this->text(),
+					'queue_status' => $this->stringType()->defaultValue(''),
+				],
+				'index' => [
+					['u_yf_queue_related_to_idx', 'related_to'],
+				],
+				'primaryKeys' => [
+					['queue_pk', 'queueid']
+				],
+				'engine' => 'InnoDB',
+				'charset' => 'utf8'
+			],
 			'u_#__recurring_info' => [
 				'columns' => [
 					'srecurringordersid' => $this->integer(10)->notNull()->defaultValue(0),
@@ -3247,6 +3609,20 @@ class Base1 extends \App\Db\Importers\Base
 				],
 				'primaryKeys' => [
 					['recurring_info_pk', 'srecurringordersid']
+				],
+				'engine' => 'InnoDB',
+				'charset' => 'utf8'
+			],
+			'u_#__relations_members_entity' => [
+				'columns' => [
+					'crmid' => $this->integer(10),
+					'relcrmid' => $this->integer(10),
+					'status_rel' => $this->stringType(225),
+					'comment_rel' => $this->text(),
+				],
+				'index' => [
+					['u_yf_relations_members_entity_crmid_idx', 'crmid'],
+					['u_yf_relations_members_entity_relcrmid_idx', 'relcrmid'],
 				],
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
@@ -3282,11 +3658,13 @@ class Base1 extends \App\Db\Importers\Base
 					'sum_total' => $this->decimal('28,8'),
 					'sum_marginp' => $this->decimal('10,2'),
 					'sum_margin' => $this->decimal('28,8'),
+					'parent_id' => $this->integer(10)->unsigned()->defaultValue(0),
 				],
 				'index' => [
 					['salesprocessid', 'salesprocessid'],
 					['accountid', 'accountid'],
 					['srequirementscardsid', 'srequirementscardsid'],
+					['u_yf_scalculations_parent_id_idx', 'parent_id'],
 				],
 				'primaryKeys' => [
 					['scalculations_pk', 'scalculationsid']
@@ -3439,58 +3817,6 @@ class Base1 extends \App\Db\Importers\Base
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
 			],
-			'u_#__squoteenquiries_inventory' => [
-				'columns' => [
-					'id' => $this->primaryKey(10),
-					'crmid' => $this->integer(10),
-					'seq' => $this->integer(10),
-					'name' => $this->integer(10)->notNull()->defaultValue(0),
-					'qty' => $this->decimal('25,3')->notNull()->defaultValue(0),
-					'comment1' => $this->text(),
-					'unit' => $this->stringType(),
-					'subunit' => $this->stringType(),
-				],
-				'index' => [
-					['u_yf_squoteenquiries_inventory_crmid_idx', 'crmid'],
-				],
-				'engine' => 'InnoDB',
-				'charset' => 'utf8'
-			],
-			'u_#__squoteenquiries_invfield' => [
-				'columns' => [
-					'id' => $this->primaryKey(10),
-					'columnname' => $this->stringType(30)->notNull(),
-					'label' => $this->stringType(50)->notNull(),
-					'invtype' => $this->stringType(30)->notNull(),
-					'presence' => $this->smallInteger(1)->unsigned()->notNull()->defaultValue(0),
-					'defaultvalue' => $this->stringType(),
-					'sequence' => $this->integer(10)->unsigned()->notNull(),
-					'block' => $this->smallInteger(1)->unsigned()->notNull(),
-					'displaytype' => $this->smallInteger(1)->unsigned()->notNull()->defaultValue(1),
-					'params' => $this->text(),
-					'colspan' => $this->smallInteger(1)->unsigned()->notNull()->defaultValue(1),
-				],
-				'columns_mysql' => [
-					'presence' => $this->tinyInteger(1)->unsigned()->notNull()->defaultValue(0),
-					'block' => $this->tinyInteger(1)->unsigned()->notNull(),
-					'displaytype' => $this->tinyInteger(1)->unsigned()->notNull()->defaultValue(1),
-					'colspan' => $this->tinyInteger(1)->unsigned()->notNull()->defaultValue(1),
-				],
-				'engine' => 'InnoDB',
-				'charset' => 'utf8'
-			],
-			'u_#__squoteenquiries_invmap' => [
-				'columns' => [
-					'module' => $this->stringType(50)->notNull(),
-					'field' => $this->stringType(50)->notNull(),
-					'tofield' => $this->stringType(50)->notNull(),
-				],
-				'primaryKeys' => [
-					['squoteenquiries_invmap_pk', ['module', 'field', 'tofield']]
-				],
-				'engine' => 'InnoDB',
-				'charset' => 'utf8'
-			],
 			'u_#__squoteenquiriescf' => [
 				'columns' => [
 					'squoteenquiriesid' => $this->integer(10)->notNull(),
@@ -3519,11 +3845,13 @@ class Base1 extends \App\Db\Importers\Base
 					'sum_gross' => $this->decimal('28,8'),
 					'sum_discount' => $this->decimal('28,8'),
 					'valid_until' => $this->date(),
+					'parent_id' => $this->integer(10)->unsigned()->defaultValue(0),
 				],
 				'index' => [
 					['salesprocessid', 'salesprocessid'],
 					['scalculationsid', 'scalculationsid'],
 					['accountid', 'accountid'],
+					['u_yf_squotes_parent_id_idx', 'parent_id'],
 				],
 				'primaryKeys' => [
 					['squotes_pk', 'squotesid']
@@ -3542,8 +3870,8 @@ class Base1 extends \App\Db\Importers\Base
 					'addresslevel6a' => $this->stringType(),
 					'addresslevel7a' => $this->stringType(),
 					'addresslevel8a' => $this->stringType(),
-					'buildingnumbera' => $this->stringType(100),
-					'localnumbera' => $this->stringType(100),
+					'buildingnumbera' => $this->stringType(),
+					'localnumbera' => $this->stringType(50),
 					'poboxa' => $this->stringType(50),
 				],
 				'primaryKeys' => [
@@ -3670,8 +3998,8 @@ class Base1 extends \App\Db\Importers\Base
 					'addresslevel6a' => $this->stringType(),
 					'addresslevel7a' => $this->stringType(),
 					'addresslevel8a' => $this->stringType(),
-					'buildingnumbera' => $this->stringType(100),
-					'localnumbera' => $this->stringType(100),
+					'buildingnumbera' => $this->stringType(),
+					'localnumbera' => $this->stringType(50),
 					'poboxa' => $this->stringType(50),
 				],
 				'primaryKeys' => [
@@ -3861,12 +4189,16 @@ class Base1 extends \App\Db\Importers\Base
 					'campaignid' => $this->integer(10),
 					'parentid' => $this->integer(10)->defaultValue(0),
 					'startdate' => $this->date(),
+					'estimated_margin' => $this->decimal('28,8'),
+					'expected_margin' => $this->decimal('28,8'),
+					'expected_sale' => $this->decimal('28,8'),
 				],
 				'index' => [
 					['related_to', 'related_to'],
 					['campaignid', 'campaignid'],
 					['parentid', 'parentid'],
 					['ssalesprocesses_no', 'ssalesprocesses_no'],
+					['ssalesprocesses_status', 'ssalesprocesses_status'],
 				],
 				'primaryKeys' => [
 					['ssalesprocesses_pk', 'ssalesprocessesid']
@@ -3897,7 +4229,6 @@ class Base1 extends \App\Db\Importers\Base
 					'date_start' => $this->date(),
 					'date_end' => $this->date(),
 					'duedate' => $this->date(),
-					'company' => $this->stringType(),
 					'sum_time' => $this->decimal('10,2')->defaultValue(0),
 					'sum_total' => $this->decimal('28,8'),
 					'sum_marginp' => $this->decimal('10,2'),
@@ -3908,12 +4239,16 @@ class Base1 extends \App\Db\Importers\Base
 					'istorageaddressid' => $this->integer(10),
 					'ssingleorders_method_payments' => $this->stringType(),
 					'payment_status' => $this->stringType(),
+					'contactid' => $this->integer(10)->unsigned()->defaultValue(0),
+					'parent_id' => $this->integer(10)->unsigned()->defaultValue(0),
 				],
 				'index' => [
 					['salesprocessid', 'salesprocessid'],
 					['squotesid', 'squotesid'],
 					['accountid', 'accountid'],
 					['u_yf_ssingleorders_istorageaddressid_idx', 'istorageaddressid'],
+					['u_yf_ssingleorders_contactid_idx', 'contactid'],
+					['u_yf_ssingleorders_parent_id_idx', 'parent_id'],
 				],
 				'primaryKeys' => [
 					['ssingleorders_pk', 'ssingleordersid']
@@ -3932,9 +4267,34 @@ class Base1 extends \App\Db\Importers\Base
 					'addresslevel6a' => $this->stringType(),
 					'addresslevel7a' => $this->stringType(),
 					'addresslevel8a' => $this->stringType(),
-					'buildingnumbera' => $this->stringType(100),
-					'localnumbera' => $this->stringType(100),
+					'buildingnumbera' => $this->stringType(),
+					'localnumbera' => $this->stringType(50),
 					'poboxa' => $this->stringType(50),
+					'first_name_a' => $this->stringType(),
+					'last_name_a' => $this->stringType(),
+					'company_name_a' => $this->stringType(),
+					'vat_id_a' => $this->stringType(50),
+					'email_a' => $this->stringType(100),
+					'phone_a' => $this->stringType(100),
+					'addresslevel8b' => $this->stringType(),
+					'addresslevel7b' => $this->stringType(),
+					'addresslevel6b' => $this->stringType(),
+					'addresslevel5b' => $this->stringType(),
+					'addresslevel4b' => $this->stringType(),
+					'addresslevel3b' => $this->stringType(),
+					'addresslevel2b' => $this->stringType(),
+					'addresslevel1b' => $this->stringType(),
+					'buildingnumberb' => $this->stringType(),
+					'localnumberb' => $this->stringType(50),
+					'poboxb' => $this->stringType(50),
+					'first_name_b' => $this->stringType(),
+					'last_name_b' => $this->stringType(),
+					'company_name_b' => $this->stringType(),
+					'vat_id_b' => $this->stringType(50),
+					'email_b' => $this->stringType(100),
+					'phone_b' => $this->stringType(100),
+					'phone_a_extra' => $this->stringType(100),
+					'phone_b_extra' => $this->stringType(100),
 				],
 				'primaryKeys' => [
 					['ssingleorders_address_pk', 'ssingleordersaddressid']
@@ -4083,6 +4443,9 @@ class Base1 extends \App\Db\Importers\Base
 					'params' => $this->text(),
 					'colspan' => $this->smallInteger(1)->unsigned()->notNull()->defaultValue(1),
 				],
+				'columns_mysql' => [
+					'presence' => $this->tinyInteger(1)->unsigned()->notNull()->defaultValue(0),
+				],
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
 			],
@@ -4116,6 +4479,17 @@ class Base1 extends \App\Db\Importers\Base
 				],
 				'index' => [
 					['timeline_crmid_idx', 'crmid'],
+				],
+				'engine' => 'InnoDB',
+				'charset' => 'utf8'
+			],
+			'u_#__users_labels' => [
+				'columns' => [
+					'id' => $this->integer(10)->unsigned()->notNull(),
+					'label' => $this->stringType()->notNull(),
+				],
+				'primaryKeys' => [
+					['users_labels_pk', 'id']
 				],
 				'engine' => 'InnoDB',
 				'charset' => 'utf8'
@@ -4186,10 +4560,11 @@ class Base1 extends \App\Db\Importers\Base
 			],
 		];
 		$this->foreignKey = [
-			['com_vtiger_workflowtasks_ibfk_1', 'com_vtiger_workflowtasks', 'workflow_id', 'com_vtiger_workflows', 'workflow_id', 'CASCADE', 'RESTRICT'],
-			['dav_addressbooks_ibfk_1', 'dav_addressbooks', 'principaluri', 'dav_principals', 'uri', 'CASCADE', 'RESTRICT'],
-			['dav_calendarobjects_ibfk_1', 'dav_calendarobjects', 'calendarid', 'dav_calendars', 'id', 'CASCADE', 'RESTRICT'],
-			['dav_cards_ibfk_1', 'dav_cards', 'addressbookid', 'dav_addressbooks', 'id', 'CASCADE', 'RESTRICT'],
+			['com_vtiger_workflowtasks_ibfk_1', 'com_vtiger_workflowtasks', 'workflow_id', 'com_vtiger_workflows', 'workflow_id', 'CASCADE', NULL],
+			['dav_addressbooks_ibfk_1', 'dav_addressbooks', 'principaluri', 'dav_principals', 'uri', 'CASCADE', NULL],
+			['dav_calendarobjects_ibfk_1', 'dav_calendarobjects', 'calendarid', 'dav_calendars', 'id', 'CASCADE', NULL],
+			['dav_cards_ibfk_1', 'dav_cards', 'addressbookid', 'dav_addressbooks', 'id', 'CASCADE', NULL],
+			['i_#__magento_config_ibfk_1', 'i_#__magento_config', 'server_id', 'i_#__magento_servers', 'id', 'CASCADE', NULL],
 			['roundcube_user_id_fk_cache', 'roundcube_cache', 'user_id', 'roundcube_users', 'user_id', 'CASCADE', 'CASCADE'],
 			['roundcube_user_id_fk_cache_index', 'roundcube_cache_index', 'user_id', 'roundcube_users', 'user_id', 'CASCADE', 'CASCADE'],
 			['roundcube_user_id_fk_cache_messages', 'roundcube_cache_messages', 'user_id', 'roundcube_users', 'user_id', 'CASCADE', 'CASCADE'],
@@ -4199,160 +4574,178 @@ class Base1 extends \App\Db\Importers\Base
 			['roundcube_user_id_fk_contactgroups', 'roundcube_contactgroups', 'user_id', 'roundcube_users', 'user_id', 'CASCADE', 'CASCADE'],
 			['roundcube_user_id_fk_contacts', 'roundcube_contacts', 'user_id', 'roundcube_users', 'user_id', 'CASCADE', 'CASCADE'],
 			['roundcube_user_id_fk_dictionary', 'roundcube_dictionary', 'user_id', 'roundcube_users', 'user_id', 'CASCADE', 'CASCADE'],
+			['user_id_fk_filestore', 'roundcube_filestore', 'user_id', 'roundcube_users', 'user_id', 'CASCADE', 'CASCADE'],
 			['roundcube_user_id_fk_identities', 'roundcube_identities', 'user_id', 'roundcube_users', 'user_id', 'CASCADE', 'CASCADE'],
 			['roundcube_user_id_fk_searches', 'roundcube_searches', 'user_id', 'roundcube_users', 'user_id', 'CASCADE', 'CASCADE'],
-			['roundcube_users_autologin_ibfk_1', 'roundcube_users_autologin', 'rcuser_id', 'roundcube_users', 'user_id', 'CASCADE', 'RESTRICT'],
-			['u_#__activity_invitation_ibfk_1', 'u_#__activity_invitation', 'activityid', 'vtiger_activity', 'activityid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__activityregisteractivityregisterid', 'u_#__activityregister', 'activityregisterid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__activityregistercfactivityregisterid', 'u_#__activityregistercf', 'activityregisterid', 'u_#__activityregister', 'activityregisterid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__announcement', 'u_#__announcement', 'announcementid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__announcement_mark_ibfk_1', 'u_#__announcement_mark', 'announcementid', 'u_#__announcement', 'announcementid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__announcementcf', 'u_#__announcementcf', 'announcementid', 'u_#__announcement', 'announcementid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__approvalsapprovalsid', 'u_#__approvals', 'approvalsid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__approvalsregisterapprovalsregisterid', 'u_#__approvalsregister', 'approvalsregisterid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__auditregisterauditregisterid', 'u_#__auditregister', 'auditregisterid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__auditregistercfauditregisterid', 'u_#__auditregistercf', 'auditregisterid', 'u_#__auditregister', 'auditregisterid', 'CASCADE', 'RESTRICT'],
-			['fk_1_vtiger_cfixedassetscfixedassetsid', 'u_#__cfixedassets', 'cfixedassetsid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_vtiger_cfixedassetscfcfixedassetsid', 'u_#__cfixedassetscf', 'cfixedassetsid', 'u_#__cfixedassets', 'cfixedassetsid', 'CASCADE', 'RESTRICT'],
-			['fk_chat_messages', 'u_#__chat_messages_crm', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__chat_messages_global_ibfk_1', 'u_#__chat_messages_global', 'globalid', 'u_#__chat_global', 'global_room_id', 'CASCADE', 'RESTRICT'],
-			['fk_chat_group_messages', 'u_#__chat_messages_group', 'groupid', 'vtiger_groups', 'groupid', 'CASCADE', 'RESTRICT'],
-			['fk_u_#__chat_rooms_crm_crm', 'u_#__chat_rooms_crm', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_u_#__chat_rooms_crm_users', 'u_#__chat_rooms_crm', 'userid', 'vtiger_users', 'id', 'CASCADE', 'RESTRICT'],
-			['fk_u_#__chat_rooms_global_global', 'u_#__chat_rooms_global', 'global_room_id', 'u_#__chat_global', 'global_room_id', 'CASCADE', 'RESTRICT'],
-			['fk_u_#__chat_rooms_global_users', 'u_#__chat_rooms_global', 'userid', 'vtiger_users', 'id', 'CASCADE', 'RESTRICT'],
-			['fk_u_#__chat_rooms_group', 'u_#__chat_rooms_group', 'groupid', 'vtiger_groups', 'groupid', 'CASCADE', 'RESTRICT'],
-			['fk_u_#__chat_rooms_group_users', 'u_#__chat_rooms_group', 'userid', 'vtiger_users', 'id', 'CASCADE', 'RESTRICT'],
-			['fk_1_vtiger_cinternalticketscinternalticketsid', 'u_#__cinternaltickets', 'cinternalticketsid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_vtiger_cinternalticketscfcinternalticketsid', 'u_#__cinternalticketscf', 'cinternalticketsid', 'u_#__cinternaltickets', 'cinternalticketsid', 'CASCADE', 'RESTRICT'],
-			['fk_1_vtiger_cmileagelogbookcmileagelogbookid', 'u_#__cmileagelogbook', 'cmileagelogbookid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_vtiger_cmileagelogbookcfcmileagelogbookid', 'u_#__cmileagelogbookcf', 'cmileagelogbookid', 'u_#__cmileagelogbook', 'cmileagelogbookid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__competition', 'u_#__competition', 'competitionid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__competition_address_ibfk_1', 'u_#__competition_address', 'competitionaddressid', 'u_#__competition', 'competitionid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__competitioncf', 'u_#__competitioncf', 'competitionid', 'u_#__competition', 'competitionid', 'CASCADE', 'RESTRICT'],
-			['u_#__crmentity_last_changes_ibfk_1', 'u_#__crmentity_last_changes', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_u_#__crmentity_showners', 'u_#__crmentity_showners', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__cv_condition_fk', 'u_#__cv_condition', 'group_id', 'u_#__cv_condition_group', 'id', 'CASCADE', 'RESTRICT'],
-			['u_#__cv_condition_group_fk', 'u_#__cv_condition_group', 'cvid', 'vtiger_customview', 'cvid', 'CASCADE', 'RESTRICT'],
-			['u_#__cv_duplicates_cvid_fk', 'u_#__cv_duplicates', 'cvid', 'vtiger_customview', 'cvid', 'CASCADE', 'RESTRICT'],
-			['u_#__cv_duplicates_fieldid_fk', 'u_#__cv_duplicates', 'fieldid', 'vtiger_field', 'fieldid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__datasetregisterdatasetregisterid', 'u_#__datasetregister', 'datasetregisterid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__datasetregistercfdatasetregisterid', 'u_#__datasetregistercf', 'datasetregisterid', 'u_#__datasetregister', 'datasetregisterid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__documents_emailtemplates', 'u_#__documents_emailtemplates', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_2_u_#__documents_emailtemplates', 'u_#__documents_emailtemplates', 'relcrmid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_vtiger_emailtemplatesemailtemplatesid', 'u_#__emailtemplates', 'emailtemplatesid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__faq_faq', 'u_#__faq_faq', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_2_u_#__faq_faq', 'u_#__faq_faq', 'relcrmid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__favorite_owners_tabid_fk', 'u_#__favorite_owners', 'tabid', 'vtiger_tab', 'tabid', 'CASCADE', 'RESTRICT'],
-			['u_#__favorite_owners_userid_fk', 'u_#__favorite_owners', 'userid', 'vtiger_users', 'id', 'CASCADE', 'RESTRICT'],
-			['u_#__favorite_shared_owners_tabid_fk', 'u_#__favorite_shared_owners', 'tabid', 'vtiger_tab', 'tabid', 'CASCADE', 'RESTRICT'],
-			['u_#__favorite_shared_owners_userid_fk', 'u_#__favorite_shared_owners', 'userid', 'vtiger_users', 'id', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__favorites', 'u_#__favorites', 'relcrmid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_u_#__favorites', 'u_#__favorites', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__fbookkeeping_ibfk_1', 'u_#__fbookkeeping', 'fbookkeepingid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__fbookkeepingcf_ibfk_1', 'u_#__fbookkeepingcf', 'fbookkeepingid', 'u_#__fbookkeeping', 'fbookkeepingid', 'CASCADE', 'RESTRICT'],
-			['fk_1_vtiger_fcorectinginvoice', 'u_#__fcorectinginvoice', 'fcorectinginvoiceid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__fcorectinginvoice_address_ibfk_1', 'u_#__fcorectinginvoice_address', 'fcorectinginvoiceaddressid', 'u_#__fcorectinginvoice', 'fcorectinginvoiceid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__fcorectinginvoice_inventory', 'u_#__fcorectinginvoice_inventory', 'crmid', 'u_#__fcorectinginvoice', 'fcorectinginvoiceid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__fcorectinginvoicecf', 'u_#__fcorectinginvoicecf', 'fcorectinginvoiceid', 'u_#__fcorectinginvoice', 'fcorectinginvoiceid', 'CASCADE', 'RESTRICT'],
-			['u_#__featured_filter_ibfk_1', 'u_#__featured_filter', 'cvid', 'vtiger_customview', 'cvid', 'CASCADE', 'RESTRICT'],
-			['fk_1_vtiger_finvoice', 'u_#__finvoice', 'finvoiceid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__finvoice_address_ibfk_1', 'u_#__finvoice_address', 'finvoiceaddressid', 'u_#__finvoice', 'finvoiceid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__finvoice_inventory', 'u_#__finvoice_inventory', 'crmid', 'u_#__finvoice', 'finvoiceid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__finvoicecf', 'u_#__finvoicecf', 'finvoiceid', 'u_#__finvoice', 'finvoiceid', 'CASCADE', 'RESTRICT'],
-			['fk_1_vtiger_finvoicecost', 'u_#__finvoicecost', 'finvoicecostid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__finvoicecost_address_ibfk_1', 'u_#__finvoicecost_address', 'finvoicecostaddressid', 'u_#__finvoicecost', 'finvoicecostid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__finvoicecost_inventory', 'u_#__finvoicecost_inventory', 'crmid', 'u_#__finvoicecost', 'finvoicecostid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__finvoicecostcf', 'u_#__finvoicecostcf', 'finvoicecostid', 'u_#__finvoicecost', 'finvoicecostid', 'CASCADE', 'RESTRICT'],
-			['fk_1_vtiger_finvoiceproforma', 'u_#__finvoiceproforma', 'finvoiceproformaid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__finvoiceproforma_inventory', 'u_#__finvoiceproforma_inventory', 'crmid', 'u_#__finvoiceproforma', 'finvoiceproformaid', 'CASCADE', 'RESTRICT'],
-			['fk_1_vtiger_finvoiceproformacf', 'u_#__finvoiceproformacf', 'finvoiceproformaid', 'u_#__finvoiceproforma', 'finvoiceproformaid', 'CASCADE', 'RESTRICT'],
-			['u_#__igdn_ibfk_1', 'u_#__igdn', 'igdnid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__igdn_inventory', 'u_#__igdn_inventory', 'crmid', 'u_#__igdn', 'igdnid', 'CASCADE', 'RESTRICT'],
-			['u_#__igdnc_ibfk_1', 'u_#__igdnc', 'igdncid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__igdnc_inventory', 'u_#__igdnc_inventory', 'crmid', 'u_#__igdnc', 'igdncid', 'CASCADE', 'RESTRICT'],
-			['u_#__igdnccf_ibfk_1', 'u_#__igdnccf', 'igdncid', 'u_#__igdnc', 'igdncid', 'CASCADE', 'RESTRICT'],
-			['u_#__igdncf_ibfk_1', 'u_#__igdncf', 'igdnid', 'u_#__igdn', 'igdnid', 'CASCADE', 'RESTRICT'],
-			['u_#__igin_ibfk_1', 'u_#__igin', 'iginid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__igin_inventory', 'u_#__igin_inventory', 'crmid', 'u_#__igin', 'iginid', 'CASCADE', 'RESTRICT'],
-			['u_#__igincf_ibfk_1', 'u_#__igincf', 'iginid', 'u_#__igin', 'iginid', 'CASCADE', 'RESTRICT'],
-			['u_#__igrn_ibfk_1', 'u_#__igrn', 'igrnid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__igrn_inventory', 'u_#__igrn_inventory', 'crmid', 'u_#__igrn', 'igrnid', 'CASCADE', 'RESTRICT'],
-			['u_#__igrnc_ibfk_1', 'u_#__igrnc', 'igrncid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__igrnc_inventory', 'u_#__igrnc_inventory', 'crmid', 'u_#__igrnc', 'igrncid', 'CASCADE', 'RESTRICT'],
-			['u_#__igrnccf_ibfk_1', 'u_#__igrnccf', 'igrncid', 'u_#__igrnc', 'igrncid', 'CASCADE', 'RESTRICT'],
-			['u_#__igrncf_ibfk_1', 'u_#__igrncf', 'igrnid', 'u_#__igrn', 'igrnid', 'CASCADE', 'RESTRICT'],
-			['u_#__iidn_ibfk_1', 'u_#__iidn', 'iidnid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__iidn_inventory', 'u_#__iidn_inventory', 'crmid', 'u_#__iidn', 'iidnid', 'CASCADE', 'RESTRICT'],
-			['u_#__iidncf_ibfk_1', 'u_#__iidncf', 'iidnid', 'u_#__iidn', 'iidnid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__incidentregisterincidentregisterid', 'u_#__incidentregister', 'incidentregisterid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__incidentregistercfincidentregisterid', 'u_#__incidentregistercf', 'incidentregisterid', 'u_#__incidentregister', 'incidentregisterid', 'CASCADE', 'RESTRICT'],
-			['u_#__ipreorder_ibfk_1', 'u_#__ipreorder', 'ipreorderid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__ipreorder_inventory', 'u_#__ipreorder_inventory', 'crmid', 'u_#__ipreorder', 'ipreorderid', 'CASCADE', 'RESTRICT'],
-			['u_#__ipreordercf_ibfk_1', 'u_#__ipreordercf', 'ipreorderid', 'u_#__ipreorder', 'ipreorderid', 'CASCADE', 'RESTRICT'],
-			['u_#__istdn_ibfk_1', 'u_#__istdn', 'istdnid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__istdn_inventory', 'u_#__istdn_inventory', 'crmid', 'u_#__istdn', 'istdnid', 'CASCADE', 'RESTRICT'],
-			['u_#__istdncf_ibfk_1', 'u_#__istdncf', 'istdnid', 'u_#__istdn', 'istdnid', 'CASCADE', 'RESTRICT'],
-			['u_#__istn_ibfk_1', 'u_#__istn', 'istnid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__istncf_ibfk_1', 'u_#__istncf', 'istnid', 'u_#__istn', 'istnid', 'CASCADE', 'RESTRICT'],
-			['u_#__istorages_ibfk_1', 'u_#__istorages', 'istorageid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__istorages_address_ibfk_1', 'u_#__istorages_address', 'istorageaddressid', 'u_#__istorages', 'istorageid', 'CASCADE', 'RESTRICT'],
-			['u_#__istorages_products_ibfk_1', 'u_#__istorages_products', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__istorages_products_ibfk_2', 'u_#__istorages_products', 'relcrmid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__istoragescf_ibfk_1', 'u_#__istoragescf', 'istorageid', 'u_#__istorages', 'istorageid', 'CASCADE', 'RESTRICT'],
-			['u_#__istrn_ibfk_1', 'u_#__istrn', 'istrnid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__istrn_inventory', 'u_#__istrn_inventory', 'crmid', 'u_#__istrn', 'istrnid', 'CASCADE', 'RESTRICT'],
-			['u_#__istrncf_ibfk_1', 'u_#__istrncf', 'istrnid', 'u_#__istrn', 'istrnid', 'CASCADE', 'RESTRICT'],
-			['fk_1_vtiger_knowledgebase', 'u_#__knowledgebase', 'knowledgebaseid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__knowledgebase_knowledgebase', 'u_#__knowledgebase_knowledgebase', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_2_u_#__knowledgebase_knowledgebase', 'u_#__knowledgebase_knowledgebase', 'relcrmid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_vtiger_knowledgebasecf', 'u_#__knowledgebasecf', 'knowledgebaseid', 'u_#__knowledgebase', 'knowledgebaseid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__locationregisterlocationregisterid', 'u_#__locationregister', 'locationregisterid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__locationregistercflocationregisterid', 'u_#__locationregistercf', 'locationregisterid', 'u_#__locationregister', 'locationregisterid', 'CASCADE', 'RESTRICT'],
-			['u_#__mail_address_book_ibfk_1', 'u_#__mail_address_book', 'id', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__modentity_sequences_tabid_fk', 'u_#__modentity_sequences', 'tabid', 'vtiger_tab', 'tabid', 'CASCADE', 'RESTRICT'],
-			['u_#__modtracker_inv_id_fk', 'u_#__modtracker_inv', 'id', 'vtiger_modtracker_basic', 'id', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__multicompanymulticompanyid', 'u_#__multicompany', 'multicompanyid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__multicompanycfmulticompanyid', 'u_#__multicompanycf', 'multicompanyid', 'u_#__multicompany', 'multicompanyid', 'CASCADE', 'RESTRICT'],
-			['fk_1_notification', 'u_#__notification', 'notificationid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__partners', 'u_#__partners', 'partnersid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__partners_address_ibfk_1', 'u_#__partners_address', 'partneraddressid', 'u_#__partners', 'partnersid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__partnerscf', 'u_#__partnerscf', 'partnersid', 'u_#__partners', 'partnersid', 'CASCADE', 'RESTRICT'],
-			['fk_u_#__pdf_inv_scheme_crmid', 'u_#__pdf_inv_scheme', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__picklist_close_state', 'u_#__picklist_close_state', 'fieldid', 'vtiger_field', 'fieldid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__reviewed_queue', 'u_#__reviewed_queue', 'userid', 'vtiger_users', 'id', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__scalculations', 'u_#__scalculations', 'scalculationsid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__scalculations_inventory', 'u_#__scalculations_inventory', 'crmid', 'u_#__scalculations', 'scalculationsid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__scalculationscf', 'u_#__scalculationscf', 'scalculationsid', 'u_#__scalculations', 'scalculationsid', 'CASCADE', 'RESTRICT'],
-			['fk_crmid_idx', 'u_#__servicecontracts_sla_policy', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_sla_policy_idx', 'u_#__servicecontracts_sla_policy', 'sla_policy_id', 's_#__sla_policy', 'id', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__squoteenquiries', 'u_#__squoteenquiries', 'squoteenquiriesid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__squoteenquiries_inventory', 'u_#__squoteenquiries_inventory', 'crmid', 'u_#__squoteenquiries', 'squoteenquiriesid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__squoteenquiriescf', 'u_#__squoteenquiriescf', 'squoteenquiriesid', 'u_#__squoteenquiries', 'squoteenquiriesid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__squotes', 'u_#__squotes', 'squotesid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__squotes_address_ibfk_1', 'u_#__squotes_address', 'squotesaddressid', 'u_#__squotes', 'squotesid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__squotes_inventory', 'u_#__squotes_inventory', 'crmid', 'u_#__squotes', 'squotesid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__squotescf', 'u_#__squotescf', 'squotesid', 'u_#__squotes', 'squotesid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__srecurringorders', 'u_#__srecurringorders', 'srecurringordersid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__srecurringorders_address_ibfk_1', 'u_#__srecurringorders_address', 'srecurringordersaddressid', 'u_#__srecurringorders', 'srecurringordersid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__srecurringorders_inventory', 'u_#__srecurringorders_inventory', 'crmid', 'u_#__srecurringorders', 'srecurringordersid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__srecurringorderscf', 'u_#__srecurringorderscf', 'srecurringordersid', 'u_#__srecurringorders', 'srecurringordersid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__srequirementscards', 'u_#__srequirementscards', 'srequirementscardsid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__srequirementscards_inventory', 'u_#__srequirementscards_inventory', 'crmid', 'u_#__srequirementscards', 'srequirementscardsid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__srequirementscardscf', 'u_#__srequirementscardscf', 'srequirementscardsid', 'u_#__srequirementscards', 'srequirementscardsid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__ssalesprocesses', 'u_#__ssalesprocesses', 'ssalesprocessesid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__ssalesprocessescf', 'u_#__ssalesprocessescf', 'ssalesprocessesid', 'u_#__ssalesprocesses', 'ssalesprocessesid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__ssingleorders', 'u_#__ssingleorders', 'ssingleordersid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__ssingleorders_address_ibfk_1', 'u_#__ssingleorders_address', 'ssingleordersaddressid', 'u_#__ssingleorders', 'ssingleordersid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__ssingleorders_inventory', 'u_#__ssingleorders_inventory', 'crmid', 'u_#__ssingleorders', 'ssingleordersid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__ssingleorderscf', 'u_#__ssingleorderscf', 'ssingleordersid', 'u_#__ssingleorders', 'ssingleordersid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__svendorenquiries', 'u_#__svendorenquiries', 'svendorenquiriesid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__svendorenquiries_inventory', 'u_#__svendorenquiries_inventory', 'crmid', 'u_#__svendorenquiries', 'svendorenquiriesid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__svendorenquiriescf', 'u_#__svendorenquiriescf', 'svendorenquiriesid', 'u_#__svendorenquiries', 'svendorenquiriesid', 'CASCADE', 'RESTRICT'],
-			['fk_1_u_#__timeline', 'u_#__timeline', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__users_pinned_fk_1', 'u_#__users_pinned', 'owner_id', 'vtiger_users', 'id', 'CASCADE', 'RESTRICT'],
-			['u_#__watchdog_record_ibfk_1', 'u_#__watchdog_record', 'record', 'vtiger_crmentity', 'crmid', 'CASCADE', 'RESTRICT'],
-			['u_#__watchdog_schedule_ibfk_1', 'u_#__watchdog_schedule', 'userid', 'vtiger_users', 'id', 'CASCADE', 'RESTRICT'],
+			['roundcube_users_autologin_ibfk_1', 'roundcube_users_autologin', 'rcuser_id', 'roundcube_users', 'user_id', 'CASCADE', NULL],
+			['u_#__activity_invitation_ibfk_1', 'u_#__activity_invitation', 'activityid', 'vtiger_activity', 'activityid', 'CASCADE', NULL],
+			['fk_1_u_#__activityregisteractivityregisterid', 'u_#__activityregister', 'activityregisterid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__activityregistercfactivityregisterid', 'u_#__activityregistercf', 'activityregisterid', 'u_#__activityregister', 'activityregisterid', 'CASCADE', NULL],
+			['fk_1_u_#__announcement', 'u_#__announcement', 'announcementid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__announcement_mark_ibfk_1', 'u_#__announcement_mark', 'announcementid', 'u_#__announcement', 'announcementid', 'CASCADE', NULL],
+			['fk_1_u_#__announcementcf', 'u_#__announcementcf', 'announcementid', 'u_#__announcement', 'announcementid', 'CASCADE', NULL],
+			['fk_1_u_#__approvalsapprovalsid', 'u_#__approvals', 'approvalsid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__approvalsregisterapprovalsregisterid', 'u_#__approvalsregister', 'approvalsregisterid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__auditregisterauditregisterid', 'u_#__auditregister', 'auditregisterid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__auditregistercfauditregisterid', 'u_#__auditregistercf', 'auditregisterid', 'u_#__auditregister', 'auditregisterid', 'CASCADE', NULL],
+			['fk_1_u_#__bankaccountsbankaccountsid', 'u_#__bankaccounts', 'bankaccountsid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__bankaccountscfbankaccountsid', 'u_#__bankaccountscf', 'bankaccountsid', 'u_#__bankaccounts', 'bankaccountsid', 'CASCADE', NULL],
+			['fk_1_vtiger_cfixedassetscfixedassetsid', 'u_#__cfixedassets', 'cfixedassetsid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_vtiger_cfixedassetscfcfixedassetsid', 'u_#__cfixedassetscf', 'cfixedassetsid', 'u_#__cfixedassets', 'cfixedassetsid', 'CASCADE', NULL],
+			['fk_chat_messages', 'u_#__chat_messages_crm', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__chat_messages_global_ibfk_1', 'u_#__chat_messages_global', 'globalid', 'u_#__chat_global', 'global_room_id', 'CASCADE', NULL],
+			['fk_chat_group_messages', 'u_#__chat_messages_group', 'groupid', 'vtiger_groups', 'groupid', 'CASCADE', NULL],
+			['fk_u_#__chat_rooms_crm_crm', 'u_#__chat_rooms_crm', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_u_#__chat_rooms_crm_users', 'u_#__chat_rooms_crm', 'userid', 'vtiger_users', 'id', 'CASCADE', NULL],
+			['fk_u_#__chat_rooms_global_global', 'u_#__chat_rooms_global', 'global_room_id', 'u_#__chat_global', 'global_room_id', 'CASCADE', NULL],
+			['fk_u_#__chat_rooms_global_users', 'u_#__chat_rooms_global', 'userid', 'vtiger_users', 'id', 'CASCADE', NULL],
+			['fk_u_#__chat_rooms_group', 'u_#__chat_rooms_group', 'groupid', 'vtiger_groups', 'groupid', 'CASCADE', NULL],
+			['fk_u_#__chat_rooms_group_users', 'u_#__chat_rooms_group', 'userid', 'vtiger_users', 'id', 'CASCADE', NULL],
+			['fk_1_vtiger_cinternalticketscinternalticketsid', 'u_#__cinternaltickets', 'cinternalticketsid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_vtiger_cinternalticketscfcinternalticketsid', 'u_#__cinternalticketscf', 'cinternalticketsid', 'u_#__cinternaltickets', 'cinternalticketsid', 'CASCADE', NULL],
+			['fk_1_vtiger_cmileagelogbookcmileagelogbookid', 'u_#__cmileagelogbook', 'cmileagelogbookid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_vtiger_cmileagelogbookcfcmileagelogbookid', 'u_#__cmileagelogbookcf', 'cmileagelogbookid', 'u_#__cmileagelogbook', 'cmileagelogbookid', 'CASCADE', NULL],
+			['fk_1_u_#__competition', 'u_#__competition', 'competitionid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__competition_address_ibfk_1', 'u_#__competition_address', 'competitionaddressid', 'u_#__competition', 'competitionid', 'CASCADE', NULL],
+			['fk_1_u_#__competitioncf', 'u_#__competitioncf', 'competitionid', 'u_#__competition', 'competitionid', 'CASCADE', NULL],
+			['fk_u_#__crmentity_label', 'u_#__crmentity_label', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_u_#__crmentity_search_label', 'u_#__crmentity_search_label', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_u_#__crmentity_showners', 'u_#__crmentity_showners', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__cv_condition_fk', 'u_#__cv_condition', 'group_id', 'u_#__cv_condition_group', 'id', 'CASCADE', NULL],
+			['u_#__cv_condition_group_fk', 'u_#__cv_condition_group', 'cvid', 'vtiger_customview', 'cvid', 'CASCADE', NULL],
+			['u_#__cv_duplicates_cvid_fk', 'u_#__cv_duplicates', 'cvid', 'vtiger_customview', 'cvid', 'CASCADE', NULL],
+			['u_#__cv_duplicates_fieldid_fk', 'u_#__cv_duplicates', 'fieldid', 'vtiger_field', 'fieldid', 'CASCADE', NULL],
+			['u_#__cv_privileges_cvid_fk', 'u_#__cv_privileges', 'cvid', 'vtiger_customview', 'cvid', 'CASCADE', NULL],
+			['fk_1_u_#__datasetregisterdatasetregisterid', 'u_#__datasetregister', 'datasetregisterid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__datasetregistercfdatasetregisterid', 'u_#__datasetregistercf', 'datasetregisterid', 'u_#__datasetregister', 'datasetregisterid', 'CASCADE', NULL],
+			['fk_1_u_#__documents_emailtemplates', 'u_#__documents_emailtemplates', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_2_u_#__documents_emailtemplates', 'u_#__documents_emailtemplates', 'relcrmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_vtiger_emailtemplatesemailtemplatesid', 'u_#__emailtemplates', 'emailtemplatesid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__faq_faq', 'u_#__faq_faq', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_2_u_#__faq_faq', 'u_#__faq_faq', 'relcrmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__favorite_owners_tabid_fk', 'u_#__favorite_owners', 'tabid', 'vtiger_tab', 'tabid', 'CASCADE', NULL],
+			['u_#__favorite_owners_userid_fk', 'u_#__favorite_owners', 'userid', 'vtiger_users', 'id', 'CASCADE', NULL],
+			['u_#__favorite_shared_owners_tabid_fk', 'u_#__favorite_shared_owners', 'tabid', 'vtiger_tab', 'tabid', 'CASCADE', NULL],
+			['u_#__favorite_shared_owners_userid_fk', 'u_#__favorite_shared_owners', 'userid', 'vtiger_users', 'id', 'CASCADE', NULL],
+			['fk_1_u_#__favorites', 'u_#__favorites', 'relcrmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_u_#__favorites', 'u_#__favorites', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__fbookkeeping_ibfk_1', 'u_#__fbookkeeping', 'fbookkeepingid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__fbookkeepingcf_ibfk_1', 'u_#__fbookkeepingcf', 'fbookkeepingid', 'u_#__fbookkeeping', 'fbookkeepingid', 'CASCADE', NULL],
+			['fk_1_vtiger_fcorectinginvoice', 'u_#__fcorectinginvoice', 'fcorectinginvoiceid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__fcorectinginvoice_address_ibfk_1', 'u_#__fcorectinginvoice_address', 'fcorectinginvoiceaddressid', 'u_#__fcorectinginvoice', 'fcorectinginvoiceid', 'CASCADE', NULL],
+			['fk_1_u_#__fcorectinginvoice_inventory', 'u_#__fcorectinginvoice_inventory', 'crmid', 'u_#__fcorectinginvoice', 'fcorectinginvoiceid', 'CASCADE', NULL],
+			['fk_1_u_#__fcorectinginvoicecf', 'u_#__fcorectinginvoicecf', 'fcorectinginvoiceid', 'u_#__fcorectinginvoice', 'fcorectinginvoiceid', 'CASCADE', NULL],
+			['u_#__featured_filter_ibfk_1', 'u_#__featured_filter', 'cvid', 'vtiger_customview', 'cvid', 'CASCADE', NULL],
+			['fk_1_vtiger_finvoice', 'u_#__finvoice', 'finvoiceid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__finvoice_address_ibfk_1', 'u_#__finvoice_address', 'finvoiceaddressid', 'u_#__finvoice', 'finvoiceid', 'CASCADE', NULL],
+			['fk_1_u_#__finvoice_inventory', 'u_#__finvoice_inventory', 'crmid', 'u_#__finvoice', 'finvoiceid', 'CASCADE', NULL],
+			['fk_1_u_#__finvoicecf', 'u_#__finvoicecf', 'finvoiceid', 'u_#__finvoice', 'finvoiceid', 'CASCADE', NULL],
+			['fk_1_vtiger_finvoicecost', 'u_#__finvoicecost', 'finvoicecostid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__finvoicecost_address_ibfk_1', 'u_#__finvoicecost_address', 'finvoicecostaddressid', 'u_#__finvoicecost', 'finvoicecostid', 'CASCADE', NULL],
+			['fk_1_u_#__finvoicecost_inventory', 'u_#__finvoicecost_inventory', 'crmid', 'u_#__finvoicecost', 'finvoicecostid', 'CASCADE', NULL],
+			['fk_1_u_#__finvoicecostcf', 'u_#__finvoicecostcf', 'finvoicecostid', 'u_#__finvoicecost', 'finvoicecostid', 'CASCADE', NULL],
+			['fk_1_vtiger_finvoiceproforma', 'u_#__finvoiceproforma', 'finvoiceproformaid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__finvoiceproforma_address_fk1', 'u_#__finvoiceproforma_address', 'finvoiceproformaaddressid', 'u_#__finvoiceproforma', 'finvoiceproformaid', 'CASCADE', NULL],
+			['fk_1_u_#__finvoiceproforma_inventory', 'u_#__finvoiceproforma_inventory', 'crmid', 'u_#__finvoiceproforma', 'finvoiceproformaid', 'CASCADE', NULL],
+			['fk_1_vtiger_finvoiceproformacf', 'u_#__finvoiceproformacf', 'finvoiceproformaid', 'u_#__finvoiceproforma', 'finvoiceproformaid', 'CASCADE', NULL],
+			['u_#__igdn_ibfk_1', 'u_#__igdn', 'igdnid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__igdn_inventory', 'u_#__igdn_inventory', 'crmid', 'u_#__igdn', 'igdnid', 'CASCADE', NULL],
+			['u_#__igdnc_ibfk_1', 'u_#__igdnc', 'igdncid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__igdnc_inventory', 'u_#__igdnc_inventory', 'crmid', 'u_#__igdnc', 'igdncid', 'CASCADE', NULL],
+			['u_#__igdnccf_ibfk_1', 'u_#__igdnccf', 'igdncid', 'u_#__igdnc', 'igdncid', 'CASCADE', NULL],
+			['u_#__igdncf_ibfk_1', 'u_#__igdncf', 'igdnid', 'u_#__igdn', 'igdnid', 'CASCADE', NULL],
+			['u_#__igin_ibfk_1', 'u_#__igin', 'iginid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__igin_inventory', 'u_#__igin_inventory', 'crmid', 'u_#__igin', 'iginid', 'CASCADE', NULL],
+			['u_#__igincf_ibfk_1', 'u_#__igincf', 'iginid', 'u_#__igin', 'iginid', 'CASCADE', NULL],
+			['u_#__igrn_ibfk_1', 'u_#__igrn', 'igrnid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__igrn_inventory', 'u_#__igrn_inventory', 'crmid', 'u_#__igrn', 'igrnid', 'CASCADE', NULL],
+			['u_#__igrnc_ibfk_1', 'u_#__igrnc', 'igrncid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__igrnc_inventory', 'u_#__igrnc_inventory', 'crmid', 'u_#__igrnc', 'igrncid', 'CASCADE', NULL],
+			['u_#__igrnccf_ibfk_1', 'u_#__igrnccf', 'igrncid', 'u_#__igrnc', 'igrncid', 'CASCADE', NULL],
+			['u_#__igrncf_ibfk_1', 'u_#__igrncf', 'igrnid', 'u_#__igrn', 'igrnid', 'CASCADE', NULL],
+			['u_#__iidn_ibfk_1', 'u_#__iidn', 'iidnid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__iidn_inventory', 'u_#__iidn_inventory', 'crmid', 'u_#__iidn', 'iidnid', 'CASCADE', NULL],
+			['u_#__iidncf_ibfk_1', 'u_#__iidncf', 'iidnid', 'u_#__iidn', 'iidnid', 'CASCADE', NULL],
+			['fk_1_u_#__incidentregisterincidentregisterid', 'u_#__incidentregister', 'incidentregisterid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__incidentregistercfincidentregisterid', 'u_#__incidentregistercf', 'incidentregisterid', 'u_#__incidentregister', 'incidentregisterid', 'CASCADE', NULL],
+			['u_#__ipreorder_ibfk_1', 'u_#__ipreorder', 'ipreorderid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__ipreorder_inventory', 'u_#__ipreorder_inventory', 'crmid', 'u_#__ipreorder', 'ipreorderid', 'CASCADE', NULL],
+			['u_#__ipreordercf_ibfk_1', 'u_#__ipreordercf', 'ipreorderid', 'u_#__ipreorder', 'ipreorderid', 'CASCADE', NULL],
+			['u_#__istdn_ibfk_1', 'u_#__istdn', 'istdnid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__istdn_inventory', 'u_#__istdn_inventory', 'crmid', 'u_#__istdn', 'istdnid', 'CASCADE', NULL],
+			['u_#__istdncf_ibfk_1', 'u_#__istdncf', 'istdnid', 'u_#__istdn', 'istdnid', 'CASCADE', NULL],
+			['u_#__istn_ibfk_1', 'u_#__istn', 'istnid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__istncf_ibfk_1', 'u_#__istncf', 'istnid', 'u_#__istn', 'istnid', 'CASCADE', NULL],
+			['u_#__istorages_ibfk_1', 'u_#__istorages', 'istorageid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__istorages_address_ibfk_1', 'u_#__istorages_address', 'istorageaddressid', 'u_#__istorages', 'istorageid', 'CASCADE', NULL],
+			['u_#__istorages_products_ibfk_1', 'u_#__istorages_products', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__istorages_products_ibfk_2', 'u_#__istorages_products', 'relcrmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__istoragescf_ibfk_1', 'u_#__istoragescf', 'istorageid', 'u_#__istorages', 'istorageid', 'CASCADE', NULL],
+			['u_#__istrn_ibfk_1', 'u_#__istrn', 'istrnid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__istrn_inventory', 'u_#__istrn_inventory', 'crmid', 'u_#__istrn', 'istrnid', 'CASCADE', NULL],
+			['u_#__istrncf_ibfk_1', 'u_#__istrncf', 'istrnid', 'u_#__istrn', 'istrnid', 'CASCADE', NULL],
+			['fk_1_vtiger_knowledgebase', 'u_#__knowledgebase', 'knowledgebaseid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__knowledgebase_knowledgebase', 'u_#__knowledgebase_knowledgebase', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_2_u_#__knowledgebase_knowledgebase', 'u_#__knowledgebase_knowledgebase', 'relcrmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_vtiger_knowledgebasecf', 'u_#__knowledgebasecf', 'knowledgebaseid', 'u_#__knowledgebase', 'knowledgebaseid', 'CASCADE', NULL],
+			['fk_1_u_#__locationregisterlocationregisterid', 'u_#__locationregister', 'locationregisterid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__locationregistercflocationregisterid', 'u_#__locationregistercf', 'locationregisterid', 'u_#__locationregister', 'locationregisterid', 'CASCADE', NULL],
+			['fk_1_u_#__locations', 'u_#__locations', 'locationsid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__locations_address_ibfk_1', 'u_#__locations_address', 'locationaddressid', 'u_#__locations', 'locationsid', 'CASCADE', NULL],
+			['u_#__mail_address_book_ibfk_1', 'u_#__mail_address_book', 'id', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__mail_quantities_ibfk_1', 'u_#__mail_quantities', 'userid', 'roundcube_users', 'user_id', 'CASCADE', NULL],
+			['u_#__modentity_sequences_tabid_fk', 'u_#__modentity_sequences', 'tabid', 'vtiger_tab', 'tabid', 'CASCADE', NULL],
+			['u_#__modtracker_inv_id_fk', 'u_#__modtracker_inv', 'id', 'vtiger_modtracker_basic', 'id', 'CASCADE', NULL],
+			['fk_1_u_#__multicompanymulticompanyid', 'u_#__multicompany', 'multicompanyid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__multicompanycfmulticompanyid', 'u_#__multicompanycf', 'multicompanyid', 'u_#__multicompany', 'multicompanyid', 'CASCADE', NULL],
+			['fk_1_notification', 'u_#__notification', 'notificationid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__occurrencesoccurrencesid', 'u_#__occurrences', 'occurrencesid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__openstreetmap_ibfk_1', 'u_#__openstreetmap', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__openstreetmap_record_updater_ibfk_1', 'u_#__openstreetmap_record_updater', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__partners', 'u_#__partners', 'partnersid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__partners_address_ibfk_1', 'u_#__partners_address', 'partneraddressid', 'u_#__partners', 'partnersid', 'CASCADE', NULL],
+			['fk_1_u_#__partnerscf', 'u_#__partnerscf', 'partnersid', 'u_#__partners', 'partnersid', 'CASCADE', NULL],
+			['fk_1_u_#__passwordspasswordsid', 'u_#__passwords', 'passwordsid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_u_#__pdf_inv_scheme_crmid', 'u_#__pdf_inv_scheme', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__picklist_close_state', 'u_#__picklist_close_state', 'fieldid', 'vtiger_field', 'fieldid', 'CASCADE', NULL],
+			['fk_1_u_#__productcategoryproductcategoryid', 'u_#__productcategory', 'productcategoryid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__productcategorycfproductcategoryid', 'u_#__productcategorycf', 'productcategoryid', 'u_#__productcategory', 'productcategoryid', 'CASCADE', NULL],
+			['fk_1_u_#__queuequeueid', 'u_#__queue', 'queueid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__recurring_info_fk1', 'u_#__recurring_info', 'srecurringordersid', 'u_#__srecurringorders', 'srecurringordersid', 'CASCADE', NULL],
+			['u_#__relations_members_entity_crmid_fk', 'u_#__relations_members_entity', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__relations_members_entity_relcrmid_fk', 'u_#__relations_members_entity', 'relcrmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__reviewed_queue', 'u_#__reviewed_queue', 'userid', 'vtiger_users', 'id', 'CASCADE', NULL],
+			['fk_1_u_#__scalculations', 'u_#__scalculations', 'scalculationsid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__scalculations_inventory', 'u_#__scalculations_inventory', 'crmid', 'u_#__scalculations', 'scalculationsid', 'CASCADE', NULL],
+			['fk_1_u_#__scalculationscf', 'u_#__scalculationscf', 'scalculationsid', 'u_#__scalculations', 'scalculationsid', 'CASCADE', NULL],
+			['fk_crmid_idx', 'u_#__servicecontracts_sla_policy', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_sla_policy_idx', 'u_#__servicecontracts_sla_policy', 'sla_policy_id', 's_#__sla_policy', 'id', 'CASCADE', NULL],
+			['fk_1_u_#__squoteenquiries', 'u_#__squoteenquiries', 'squoteenquiriesid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__squoteenquiriescf', 'u_#__squoteenquiriescf', 'squoteenquiriesid', 'u_#__squoteenquiries', 'squoteenquiriesid', 'CASCADE', NULL],
+			['fk_1_u_#__squotes', 'u_#__squotes', 'squotesid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__squotes_address_ibfk_1', 'u_#__squotes_address', 'squotesaddressid', 'u_#__squotes', 'squotesid', 'CASCADE', NULL],
+			['fk_1_u_#__squotes_inventory', 'u_#__squotes_inventory', 'crmid', 'u_#__squotes', 'squotesid', 'CASCADE', NULL],
+			['fk_1_u_#__squotescf', 'u_#__squotescf', 'squotesid', 'u_#__squotes', 'squotesid', 'CASCADE', NULL],
+			['fk_1_u_#__srecurringorders', 'u_#__srecurringorders', 'srecurringordersid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__srecurringorders_address_ibfk_1', 'u_#__srecurringorders_address', 'srecurringordersaddressid', 'u_#__srecurringorders', 'srecurringordersid', 'CASCADE', NULL],
+			['fk_1_u_#__srecurringorders_inventory', 'u_#__srecurringorders_inventory', 'crmid', 'u_#__srecurringorders', 'srecurringordersid', 'CASCADE', NULL],
+			['fk_1_u_#__srecurringorderscf', 'u_#__srecurringorderscf', 'srecurringordersid', 'u_#__srecurringorders', 'srecurringordersid', 'CASCADE', NULL],
+			['fk_1_u_#__srequirementscards', 'u_#__srequirementscards', 'srequirementscardsid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__srequirementscards_inventory', 'u_#__srequirementscards_inventory', 'crmid', 'u_#__srequirementscards', 'srequirementscardsid', 'CASCADE', NULL],
+			['fk_1_u_#__srequirementscardscf', 'u_#__srequirementscardscf', 'srequirementscardsid', 'u_#__srequirementscards', 'srequirementscardsid', 'CASCADE', NULL],
+			['fk_1_u_#__ssalesprocesses', 'u_#__ssalesprocesses', 'ssalesprocessesid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__ssalesprocessescf', 'u_#__ssalesprocessescf', 'ssalesprocessesid', 'u_#__ssalesprocesses', 'ssalesprocessesid', 'CASCADE', NULL],
+			['fk_1_u_#__ssingleorders', 'u_#__ssingleorders', 'ssingleordersid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__ssingleorders_address_ibfk_1', 'u_#__ssingleorders_address', 'ssingleordersaddressid', 'u_#__ssingleorders', 'ssingleordersid', 'CASCADE', NULL],
+			['fk_1_u_#__ssingleorders_inventory', 'u_#__ssingleorders_inventory', 'crmid', 'u_#__ssingleorders', 'ssingleordersid', 'CASCADE', NULL],
+			['fk_1_u_#__ssingleorderscf', 'u_#__ssingleorderscf', 'ssingleordersid', 'u_#__ssingleorders', 'ssingleordersid', 'CASCADE', NULL],
+			['fk_1_u_#__svendorenquiries', 'u_#__svendorenquiries', 'svendorenquiriesid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['fk_1_u_#__svendorenquiries_inventory', 'u_#__svendorenquiries_inventory', 'crmid', 'u_#__svendorenquiries', 'svendorenquiriesid', 'CASCADE', NULL],
+			['fk_1_u_#__svendorenquiriescf', 'u_#__svendorenquiriescf', 'svendorenquiriesid', 'u_#__svendorenquiries', 'svendorenquiriesid', 'CASCADE', NULL],
+			['fk_1_u_#__timeline', 'u_#__timeline', 'crmid', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__users_pinned_fk_1', 'u_#__users_pinned', 'owner_id', 'vtiger_users', 'id', 'CASCADE', NULL],
+			['u_#__watchdog_record_ibfk_1', 'u_#__watchdog_record', 'record', 'vtiger_crmentity', 'crmid', 'CASCADE', NULL],
+			['u_#__watchdog_schedule_ibfk_1', 'u_#__watchdog_schedule', 'userid', 'vtiger_users', 'id', 'CASCADE', NULL],
 		];
 	}
 
@@ -4475,7 +4868,7 @@ class Base1 extends \App\Db\Importers\Base
 				'columns' => ['emailtemplatesid', 'name', 'number', 'email_template_type', 'module', 'subject', 'content', 'sys_name', 'email_template_priority'],
 				'values' => [
 					[35, 'Notify Owner On Ticket Change', 'N1', 'PLL_RECORD', 'HelpDesk', '$(translate : HelpDesk|LBL_NOTICE_MODIFICATION)$ $(record : ticket_no)$:$(record : ticket_title)$', '<table border="0" style="width:100%;font-family:Arial, \'Sans-serif\';border:1px solid #ccc;border-width:1px 2px 2px 1px;background-color:#fff;"><tr><td style="background-color:#f6f6f6;color:#888;border-bottom:1px solid #ccc;font-family:Arial, \'Sans-serif\';font-size:11px;">
-			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce Sp. z o.o. </span></h3>
+			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce S.A. </span></h3>
 			</td>
 		</tr><tr><td>
 			<div style="padding:2px;">
@@ -4521,7 +4914,7 @@ class Base1 extends \App\Db\Importers\Base
 			</td>
 		</tr></table>', null, 1],
 					[36, 'Notify Account On Ticket Change', 'N2', 'PLL_RECORD', 'HelpDesk', '$(translate : HelpDesk|LBL_COPY_BILLING_ADDRESS)$  $(record : ticket_no)$:$(record : ticket_title)$', '<table border="0" style="width:100%;font-family:Arial, \'Sans-serif\';border:1px solid #ccc;border-width:1px 2px 2px 1px;background-color:#fff;"><tr><td style="background-color:#f6f6f6;color:#888;border-bottom:1px solid #ccc;font-family:Arial, \'Sans-serif\';font-size:11px;">
-			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce Sp. z o.o. </span></h3>
+			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce S.A. </span></h3>
 			</td>
 		</tr><tr><td>
 			<div style="padding:2px;">
@@ -4567,7 +4960,7 @@ class Base1 extends \App\Db\Importers\Base
 			</td>
 		</tr></table>', null, 1],
 					[37, 'Notify Contact On Ticket Closed', 'N3', 'PLL_RECORD', 'HelpDesk', '$(translate : HelpDesk|LBL_NOTICE_CLOSE)$ $(record : ticket_no)$:$(record : ticket_title)$', '<table border="0" style="width:100%;font-family:Arial, \'Sans-serif\';border:1px solid #ccc;border-width:1px 2px 2px 1px;background-color:#fff;"><tr><td style="background-color:#f6f6f6;color:#888;border-bottom:1px solid #ccc;font-family:Arial, \'Sans-serif\';font-size:11px;">
-			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce Sp. z o.o. </span></h3>
+			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce S.A. </span></h3>
 			</td>
 		</tr><tr><td>
 			<div style="padding:2px;">
@@ -4609,7 +5002,7 @@ class Base1 extends \App\Db\Importers\Base
 			</td>
 		</tr></table>', 'NotifyContactOnTicketClosed', 1],
 					[38, 'Notify Account On Ticket Closed', 'N4', 'PLL_RECORD', 'HelpDesk', '$(translate : HelpDesk|LBL_NOTICE_CLOSE)$ $(record : ticket_no)$:$(record : ticket_title)$', '<table border="0" style="width:100%;font-family:Arial, \'Sans-serif\';border:1px solid #ccc;border-width:1px 2px 2px 1px;background-color:#fff;"><tr><td style="background-color:#f6f6f6;color:#888;border-bottom:1px solid #ccc;font-family:Arial, \'Sans-serif\';font-size:11px;">
-			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce Sp. z o.o. </span></h3>
+			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce S.A. </span></h3>
 			</td>
 		</tr><tr><td>
 			<div style="padding:2px;">
@@ -4651,7 +5044,7 @@ class Base1 extends \App\Db\Importers\Base
 			</td>
 		</tr></table>', null, 1],
 					[39, 'Notify Contact On Ticket Create', 'N5', 'PLL_RECORD', 'HelpDesk', '$(translate : HelpDesk|LBL_NOTICE_CREATE)$ $(record : ticket_no)$:$(record : ticket_title)$', '<table border="0" style="width:100%;font-family:Arial, \'Sans-serif\';border:1px solid #ccc;border-width:1px 2px 2px 1px;background-color:#fff;"><tr><td style="background-color:#f6f6f6;color:#888;border-bottom:1px solid #ccc;font-family:Arial, \'Sans-serif\';font-size:11px;">
-			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce Sp. z o.o. </span></h3>
+			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce S.A. </span></h3>
 			</td>
 		</tr><tr><td>
 			<div style="padding:2px;">
@@ -4689,7 +5082,7 @@ class Base1 extends \App\Db\Importers\Base
 			</td>
 		</tr></table>', 'NotifyContactOnTicketCreate', 1],
 					[40, 'Notify Account On Ticket Create', 'N6', 'PLL_RECORD', 'HelpDesk', '$(translate : HelpDesk|LBL_NOTICE_CREATE)$ $(record : ticket_no)$:$(record : ticket_title)$', '<table border="0" style="width:100%;font-family:Arial, \'Sans-serif\';border:1px solid #ccc;border-width:1px 2px 2px 1px;background-color:#fff;"><tr><td style="background-color:#f6f6f6;color:#888;border-bottom:1px solid #ccc;font-family:Arial, \'Sans-serif\';font-size:11px;">
-			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce Sp. z o.o. </span></h3>
+			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce S.A. </span></h3>
 			</td>
 		</tr><tr><td>
 			<div style="padding:2px;">
@@ -4727,7 +5120,7 @@ class Base1 extends \App\Db\Importers\Base
 			</td>
 		</tr></table>', null, 1],
 					[41, 'Notify Contact On Ticket Change', 'N7', 'PLL_RECORD', 'HelpDesk', '$(translate : HelpDesk|LBL_NOTICE_MODIFICATION)$ $(record : ticket_no)$:$(record : ticket_title)$', '<table border="0" style="width:100%;font-family:Arial, \'Sans-serif\';border:1px solid #ccc;border-width:1px 2px 2px 1px;background-color:#fff;"><tr><td style="background-color:#f6f6f6;color:#888;border-bottom:1px solid #ccc;font-family:Arial, \'Sans-serif\';font-size:11px;">
-			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce Sp. z o.o. </span></h3>
+			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce S.A. </span></h3>
 			</td>
 		</tr><tr><td>
 			<div style="padding:2px;">
@@ -4767,7 +5160,7 @@ class Base1 extends \App\Db\Importers\Base
 			</td>
 		</tr></table>', 'NotifyContactOnTicketChange', 1],
 					[42, 'Notify Owner On Ticket Closed', 'N8', 'PLL_RECORD', 'HelpDesk', '$(translate : HelpDesk|LBL_NOTICE_CLOSE)$ $(record : ticket_no)$:$(record : ticket_title)$', '<table border="0" style="width:100%;font-family:Arial, \'Sans-serif\';border:1px solid #ccc;border-width:1px 2px 2px 1px;background-color:#fff;"><tr><td style="background-color:#f6f6f6;color:#888;border-bottom:1px solid #ccc;font-family:Arial, \'Sans-serif\';font-size:11px;">
-			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce Sp. z o.o. </span></h3>
+			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce S.A. </span></h3>
 			</td>
 		</tr><tr><td>
 			<div style="padding:2px;">
@@ -4809,7 +5202,7 @@ class Base1 extends \App\Db\Importers\Base
 			</td>
 		</tr></table>', null, 1],
 					[43, 'Notify Owner On Ticket Create', 'N9', 'PLL_RECORD', 'HelpDesk', '$(translate : HelpDesk|LBL_NOTICE_CREATE)$ $(record : ticket_no)$:$(record : ticket_title)$', '<table border="0" style="width:100%;font-family:Arial, \'Sans-serif\';border:1px solid #ccc;border-width:1px 2px 2px 1px;background-color:#fff;"><tr><td style="background-color:#f6f6f6;color:#888;border-bottom:1px solid #ccc;font-family:Arial, \'Sans-serif\';font-size:11px;">
-			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce Sp. z o.o. </span></h3>
+			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce S.A. </span></h3>
 			</td>
 		</tr><tr><td>
 			<div style="padding:2px;">
@@ -4846,7 +5239,7 @@ class Base1 extends \App\Db\Importers\Base
 
 		</tr></table>', null, 1],
 					[44, 'Customer Portal Login Details', 'N10', 'PLL_RECORD', 'Contacts', 'Customer Portal Login Details', '<table border="0" style="width:100%;font-family:Arial, \'Sans-serif\';border:1px solid #ccc;border-width:1px 2px 2px 1px;background-color:#fff;"><tr><td style="background-color:#f6f6f6;color:#888;border-bottom:1px solid #ccc;font-family:Arial, \'Sans-serif\';font-size:11px;">
-			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce Sp. z o.o. </span></h3>
+			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce S.A. </span></h3>
 			</td>
 		</tr><tr><td>
 			<div style="padding:2px;">
@@ -5037,7 +5430,7 @@ Created for your account in the customer portal, below sending data access<br />
 			</td>
 		</tr></table>', 'ActivityReminderNotificationEvents', 1],
 					[95, 'Test mail about the mail server configuration.', 'N15', 'PLL_RECORD', 'Users', 'Test mail about the mail server configuration.', '<table border="0" style="width:100%;font-family:Arial, \'Sans-serif\';border:1px solid #ccc;border-width:1px 2px 2px 1px;background-color:#fff;"><tr><td style="background-color:#f6f6f6;color:#888;border-bottom:1px solid #ccc;font-family:Arial, \'Sans-serif\';font-size:11px;">
-			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce Sp. z o.o. </span></h3>
+			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce S.A. </span></h3>
 			</td>
 		</tr><tr><td>
 			<div style="padding:2px;">
@@ -5051,7 +5444,7 @@ Created for your account in the customer portal, below sending data access<br />
 			</td>
 		</tr></table>', 'TestMailAboutTheMailServerConfiguration', 1],
 					[103, 'ForgotPassword', 'N16', 'PLL_RECORD', 'Users', 'Request: ForgotPassword', '<table border="0" style="width:100%;font-family:Arial, \'Sans-serif\';border:1px solid #ccc;border-width:1px 2px 2px 1px;background-color:#fff;"><tr><td style="background-color:#f6f6f6;color:#888;border-bottom:1px solid #ccc;font-family:Arial, \'Sans-serif\';font-size:11px;">
-			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce Sp. z o.o. </span></h3>
+			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce S.A. </span></h3>
 			</td>
 		</tr><tr><td>
 			<div style="padding:2px;">
@@ -5067,7 +5460,7 @@ Created for your account in the customer portal, below sending data access<br />
 			</td>
 		</tr></table>', 'UsersForgotPassword', 1],
 					[104, 'Customer Portal - ForgotPassword', 'N17', 'PLL_RECORD', 'Contacts', 'Request: ForgotPassword', '<table border="0" style="width:100%;font-family:Arial, \'Sans-serif\';border:1px solid #ccc;border-width:1px 2px 2px 1px;background-color:#fff;"><tr><td style="background-color:#f6f6f6;color:#888;border-bottom:1px solid #ccc;font-family:Arial, \'Sans-serif\';font-size:11px;">
-			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce Sp. z o.o. </span></h3>
+			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce S.A. </span></h3>
 			</td>
 		</tr><tr><td>
 			<div style="padding:2px;">
@@ -5086,7 +5479,7 @@ Created for your account in the customer portal, below sending data access<br />
 			</td>
 		</tr></table>', 'YetiPortalForgotPassword', 1],
 					[105, 'Notify Owner On new comment added to ticket from portal', 'N18', 'PLL_RECORD', 'ModComments', '$(translate : ModComments|LBL_ADDED_COMMENT_TO_TICKET)$', '<table border="0" style="width:100%;font-family:Arial, \'Sans-serif\';border:1px solid #ccc;border-width:1px 2px 2px 1px;background-color:#fff;"><tr><td style="background-color:#f6f6f6;color:#888;border-bottom:1px solid #ccc;font-family:Arial, \'Sans-serif\';font-size:11px;">
-			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : ModComments|LBL_NOTICE_WELCOME)$ YetiForce Sp. z o.o.</span></h3>
+			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : ModComments|LBL_NOTICE_WELCOME)$ YetiForce S.A.</span></h3>
 			</td>
 		</tr><tr><td>
 			<div style="padding:2px;">
@@ -5108,7 +5501,7 @@ Created for your account in the customer portal, below sending data access<br />
 			</td>
 		</tr></table>', 'NewCommentAddedToTicketOwner', 1],
 					[106, 'Notify Contact On New comment added to ticket', 'N19', 'PLL_RECORD', 'ModComments', '$(translate : ModComments|LBL_ADDED_COMMENT_TO_TICKET)$', '<table border="0" style="width:100%;font-family:Arial, \'Sans-serif\';border:1px solid #ccc;border-width:1px 2px 2px 1px;background-color:#fff;"><tr><td style="background-color:#f6f6f6;color:#888;border-bottom:1px solid #ccc;font-family:Arial, \'Sans-serif\';font-size:11px;">
-			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : ModComments|LBL_NOTICE_WELCOME)$ YetiForce Sp. z o.o.</span></h3>
+			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : ModComments|LBL_NOTICE_WELCOME)$ YetiForce S.A.</span></h3>
 			</td>
 		</tr><tr><td>
 			<div style="padding:2px;">
@@ -5130,7 +5523,7 @@ Created for your account in the customer portal, below sending data access<br />
 			</td>
 		</tr></table>', 'NewCommentAddedToTicketContact', 1],
 					[107, 'Security risk has been detected - Brute Force', 'N20', 'PLL_RECORD', 'Contacts', 'Security risk has been detected', '<table border="0" style="width:100%;font-family:Arial, \'Sans-serif\';border:1px solid #ccc;border-width:1px 2px 2px 1px;background-color:#fff;"><tr><td style="background-color:#f6f6f6;color:#888;border-bottom:1px solid #ccc;font-family:Arial, \'Sans-serif\';font-size:11px;">
-			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce Sp. z o.o. </span></h3>
+			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce S.A. </span></h3>
 			</td>
 		</tr><tr><td>
 			<div style="padding:2px;">
@@ -5146,7 +5539,7 @@ Created for your account in the customer portal, below sending data access<br />
 			</td>
 		</tr></table>', 'BruteForceSecurityRiskHasBeenDetected', 1],
 					[109, 'Notify Account On New comment added to ticket', 'N21', 'PLL_RECORD', 'ModComments', '$(translate : ModComments|LBL_ADDED_COMMENT_TO_TICKET)$', '<table border="0" style="width:100%;font-family:Arial, \'Sans-serif\';border:1px solid #ccc;border-width:1px 2px 2px 1px;background-color:#fff;"><tr><td style="background-color:#f6f6f6;color:#888;border-bottom:1px solid #ccc;font-family:Arial, \'Sans-serif\';font-size:11px;">
-			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : ModComments|LBL_NOTICE_WELCOME)$ YetiForce Sp. z o.o.</span></h3>
+			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : ModComments|LBL_NOTICE_WELCOME)$ YetiForce S.A.</span></h3>
 			</td>
 		</tr><tr><td>
 			<div style="padding:2px;">
@@ -5168,7 +5561,7 @@ Created for your account in the customer portal, below sending data access<br />
 			</td>
 		</tr></table>', 'NewCommentAddedToTicketAccount', 1],
 					[110, 'Send notifications', 'N22', 'PLL_RECORD', 'Notification', 'Notifications $(general : CurrentDate)$', '<table border="0" style="width:100%;font-family:Arial, \'Sans-serif\';border:1px solid #ccc;border-width:1px 2px 2px 1px;background-color:#fff;"><tr><td style="background-color:#f6f6f6;color:#888;border-bottom:1px solid #ccc;font-family:Arial, \'Sans-serif\';font-size:11px;">
-			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce Sp. z o.o. </span></h3>
+			<h3 style="padding:0 0 6px 0;margin:0;font-family:Arial, \'Sans-serif\';font-size:16px;font-weight:bold;color:#222;"><span>$(translate : HelpDesk|LBL_NOTICE_WELCOME)$ YetiForce S.A. </span></h3>
 			</td>
 		</tr><tr><td>
 			<div style="padding:2px;">

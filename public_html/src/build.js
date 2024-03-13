@@ -1,5 +1,5 @@
 const rollup = require('rollup'),
-	babel = require('rollup-plugin-babel'),
+	{ babel } = require('@rollup/plugin-babel'),
 	finder = require('findit')('../'),
 	path = require('path'),
 	sourcemaps = require('rollup-plugin-sourcemaps'),
@@ -10,12 +10,14 @@ let filesToMin = []
 async function build(fileName) {
 	const inputOptions = {
 			input: fileName,
+			treeshake: false,
 			plugins: [
 				babel({
 					babelrc: false,
+					babelHelpers: 'inline',
 					presets: [
 						[
-							`${dirModules}babel-preset-env`,
+							`${dirModules}@babel/preset-env`,
 							{
 								modules: false
 							}
@@ -30,9 +32,9 @@ async function build(fileName) {
 						]
 					],
 					plugins: [
-						`${dirModules}babel-plugin-external-helpers`,
-						`${dirModules}babel-plugin-transform-object-rest-spread`,
-						`${dirModules}babel-plugin-transform-es2015-classes`
+						`${dirModules}@babel/plugin-proposal-class-properties`,
+						`${dirModules}@babel/plugin-proposal-object-rest-spread`,
+						`${dirModules}@babel/plugin-transform-classes`
 					]
 				}),
 				sourcemaps()
@@ -65,7 +67,6 @@ finder.on('file', (file, stat) => {
 
 finder.on('end', () => {
 	filesToMin.forEach(file => {
-		//log files to minify
 		console.log('Building... ' + file)
 		build(file)
 			.then(_ => {

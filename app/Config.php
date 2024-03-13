@@ -4,8 +4,8 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -327,13 +327,39 @@ class Config
 	{
 		if (4 === \func_num_args()) {
 			[$component, $type, $key, $value] = \func_get_args();
+			$component = ucfirst($component) . 's\\';
 		} else {
 			[$type, $key, $value] = \func_get_args();
+			$type = ucfirst($type);
 		}
-		$class = '\Config\\' . (isset($component) ? ucfirst($component) . 's\\' : '') . ucfirst($type);
+		$class = '\Config\\' . ($component ?? '') . $type;
 		if ($result = (class_exists($class) && isset($class::${$key}))) {
 			$class::${$key} = $value;
 		}
 		return $result;
+	}
+
+	/**
+	 * Get the maximum size of an uploaded file to the server taking into account CRM configuration and server settings.
+	 *
+	 * @param bool $checkMain
+	 * @param bool $returnInMb
+	 *
+	 * @return int
+	 */
+	public static function getMaxUploadSize(bool $checkMain = true, bool $returnInMb = false): int
+	{
+		$size = \vtlib\Functions::parseBytes(ini_get('upload_max_filesize'));
+		$maxPostSize = \vtlib\Functions::parseBytes(ini_get('post_max_size'));
+		if ($maxPostSize < $size) {
+			$size = $maxPostSize;
+		}
+		if ($checkMain && \Config\Main::$upload_maxsize < $size) {
+			$size = (int) \Config\Main::$upload_maxsize;
+		}
+		if ($returnInMb) {
+			$size = floor($size / 1048576);
+		}
+		return $size;
 	}
 }

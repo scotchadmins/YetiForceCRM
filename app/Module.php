@@ -7,8 +7,8 @@ namespace App;
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -85,20 +85,25 @@ class Module
 
 	protected static $isModuleActiveCache = [];
 
-	public static function isModuleActive($moduleName)
+	/**
+	 * Function to check whether the module is active.
+	 *
+	 * @param string $moduleName
+	 *
+	 * @return bool
+	 */
+	public static function isModuleActive(string $moduleName): bool
 	{
 		if (isset(static::$isModuleActiveCache[$moduleName])) {
 			return static::$isModuleActiveCache[$moduleName];
 		}
 		if (\in_array($moduleName, ['CustomView', 'Users', 'Import', 'com_vtiger_workflow', 'PickList'])) {
 			static::$isModuleActiveCache[$moduleName] = true;
-
 			return true;
 		}
 		$moduleId = static::getModuleId($moduleName);
 		$isActive = (isset(static::$tabdataCache['tabPresence'][$moduleId]) && 0 == static::$tabdataCache['tabPresence'][$moduleId]);
 		static::$isModuleActiveCache[$moduleName] = $isActive;
-
 		return $isActive;
 	}
 
@@ -124,6 +129,25 @@ class Module
 	public static function getModuleName($tabId)
 	{
 		return static::$tabdataCache['tabName'][$tabId] ?? false;
+	}
+
+	/**
+	 * Get default module name.
+	 *
+	 * @return string
+	 */
+	public static function getDefaultModule(): string
+	{
+		$moduleName = \App\Config::main('default_module') ?: 'Home';
+		if (!\App\Privilege::isPermitted($moduleName)) {
+			foreach (\vtlib\Functions::getAllModules(true, false, 0) as $module) {
+				if (\App\Privilege::isPermitted($module['name'])) {
+					$moduleName = $module['name'];
+					break;
+				}
+			}
+		}
+		return $moduleName;
 	}
 
 	/**
@@ -280,7 +304,12 @@ class Module
 		}
 		static::initFromDb();
 		register_shutdown_function(function () {
-			YetiForce\Shop::generateCache();
+			try {
+				YetiForce\Shop::generateCache();
+			} catch (\Throwable $e) {
+				\App\Log::error($e->getMessage() . PHP_EOL . $e->__toString());
+				throw $e;
+			}
 		});
 	}
 
@@ -314,6 +343,99 @@ class Module
 			$modules[$value['name']] = Language::translate($value['name'], $value['name']);
 		}
 		return $modules;
+	}
+
+	/**
+	 * Function to get the list of all accessible modules for Quick Create.
+	 *
+	 * @param bool $restrictList
+	 * @param bool $tree
+	 *
+	 * @return array List of Vtiger_Module_Model instances
+	 */
+	public static function getQuickCreateModules($restrictList = false, $tree = false): array
+	{
+		$restrictListString = $restrictList ? 1 : 0;
+		if ($tree) {
+			$userModel = \App\User::getCurrentUserModel();
+			$quickCreateModulesTreeCache = \App\Cache::get('getQuickCreateModules', 'tree' . $restrictListString . $userModel->getDetail('roleid'));
+			if (false !== $quickCreateModulesTreeCache) {
+				return $quickCreateModulesTreeCache;
+			}
+		} else {
+			$quickCreateModules = \App\Cache::get('getQuickCreateModules', $restrictListString);
+			if (false !== $quickCreateModules) {
+				return $quickCreateModules;
+			}
+		}
+
+		$userPrivModel = \Users_Privileges_Model::getCurrentUserPrivilegesModel();
+
+		$query = new \App\Db\Query();
+		$query->select(['vtiger_tab.*'])->from('vtiger_field')
+			->innerJoin('vtiger_tab', 'vtiger_tab.tabid = vtiger_field.tabid')
+			->where(['<>', 'vtiger_tab.presence', 1]);
+		if ($tree) {
+			$query->andWhere(['<>', 'vtiger_tab.name', 'Users']);
+		} else {
+			$query->andWhere(['quickcreate' => [0, 2]])
+				->andWhere(['<>', 'vtiger_tab.type', 1]);
+		}
+		if ($restrictList) {
+			$query->andWhere(['not in', 'vtiger_tab.name', ['ModComments', 'PriceBooks', 'CallHistory', 'OSSMailView']]);
+		}
+		$quickCreateModules = [];
+		$dataReader = $query->distinct()->createCommand()->query();
+		while ($row = $dataReader->read()) {
+			if ($userPrivModel->hasModuleActionPermission($row['tabid'], 'CreateView')) {
+				$moduleModel = \Vtiger_Module_Model::getInstanceFromArray($row);
+				$quickCreateModules[$row['name']] = $moduleModel;
+			}
+		}
+		if ($tree) {
+			$menu = \Vtiger_Menu_Model::getAll();
+			$quickCreateModulesTree = [];
+			foreach ($menu as $parent) {
+				if (!empty($parent['childs'])) {
+					$items = [];
+					foreach ($parent['childs'] as $child) {
+						if (isset($quickCreateModules[$child['mod']])) {
+							$items[$quickCreateModules[$child['mod']]->name] = $quickCreateModules[$child['mod']];
+							unset($quickCreateModules[$child['mod']]);
+						}
+					}
+					if (!empty($items)) {
+						$quickCreateModulesTree[] = ['name' => $parent['name'], 'icon' => $parent['icon'], 'modules' => $items];
+					}
+				}
+			}
+			if (!empty($quickCreateModules)) {
+				$quickCreateModulesTree[] = ['name' => 'LBL_OTHER', 'icon' => 'yfm-Other', 'modules' => $quickCreateModules];
+			}
+			\App\Cache::save('getQuickCreateModules', 'tree' . $restrictListString . $userPrivModel->get('roleid'), $quickCreateModulesTree);
+			return $quickCreateModulesTree;
+		}
+		\App\Cache::save('getQuickCreateModules', $restrictListString, $quickCreateModules);
+		return $quickCreateModules;
+	}
+
+	/**
+	 * Get a list of modules with permissions.
+	 *
+	 * @param bool $isEntityType   Only entity type
+	 * @param bool $showRestricted Show restricted
+	 * @param bool $hasPermission  Must have access to the module
+	 *
+	 * @return \Generator
+	 */
+	public static function getModulesList(bool $isEntityType = true, bool $showRestricted = false, bool $hasPermission = true): \Generator
+	{
+		$userPrivModel = \Users_Privileges_Model::getCurrentUserPrivilegesModel();
+		foreach (\vtlib\Functions::getAllModules($isEntityType, $showRestricted, 0) as $module) {
+			if (!$hasPermission || ($hasPermission && $userPrivModel->hasModuleActionPermission($module['name'], 'DetailView'))) {
+				yield $module;
+			}
+		}
 	}
 }
 

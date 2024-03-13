@@ -3,15 +3,24 @@
 /**
  * Settings CronTasks Module Model class.
  *
- * @copyright YetiForce Sp. z o.o.
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Rafal Pospiech <r.pospiech@yetiforce.com>
  */
 class Settings_CronTasks_Module_Model extends Settings_Vtiger_Module_Model
 {
 	public $baseTable = 'vtiger_cron_task';
 	public $baseIndex = 'id';
-	public $listFields = ['sequence' => 'Sequence', 'name' => 'Cron Job', 'frequency' => 'Frequency(H:M)', 'status' => 'Status', 'laststart' => 'Last Start', 'lastend' => 'Last End', 'duration' => 'LBL_DURATION'];
+	public $listFields = [
+		'sequence' => 'Sequence',
+		'name' => 'Cron Job',
+		'frequency' => 'Frequency(H:M)',
+		'status' => 'Status',
+		'laststart' => 'Last Start',
+		'last_update' => 'Last update',
+		'lastend' => 'Last End',
+		'duration' => 'LBL_DURATION',
+	];
 	public $nameFields = [''];
 	public $name = 'CronTasks';
 
@@ -71,7 +80,6 @@ class Settings_CronTasks_Module_Model extends Settings_Vtiger_Module_Model
 		$cronConfigFileName = ROOT_DIRECTORY . '/app_data/cron.php';
 		if (file_exists($cronConfigFileName)) {
 			$cronConfig = include $cronConfigFileName;
-
 			if ($cronConfig && isset($cronConfig['last_start'])) {
 				return $this->lastCronStart = (int) $cronConfig['last_start'];
 			}
@@ -96,7 +104,7 @@ class Settings_CronTasks_Module_Model extends Settings_Vtiger_Module_Model
 				Settings_CronTasks_Record_Model::$STATUS_ENABLED,
 				Settings_CronTasks_Record_Model::$STATUS_RUNNING,
 				Settings_CronTasks_Record_Model::$STATUS_COMPLETED,
-			]
+			],
 			])
 			->where(['>=', 'laststart', $lastStart])
 			->createCommand()

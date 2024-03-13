@@ -20,8 +20,6 @@
     "LBL_DOCUMENT_WATERMARK": "Watermark",
     "LBL_VARIABLES": "Variables to copy",
     "Module": "Module",
-    "PLL_ACTIVE": "Active",
-    "PLL_INACTIVE": "Inactive",
     "LBL_PRIMARY_NAME": "Primary name",
     "LBL_SECONDARY_NAME": "Additional name",
     "LBL_FOLDER_NAME": "Folder name",
@@ -51,6 +49,7 @@
     "LBL_VISIBILITY": "Available in views",
     "PLL_LISTVIEW": "List",
     "PLL_DETAILVIEW": "Record",
+    "PLL_RELATEDLISTVIEW": "From related list",
     "LBL_DEFAULT_TPL": "Selected by default",
     "LBL_DOCUMENT_SETTINGS_DETAILS": "Document settings",
     "LBL_MAIN_MODULE_FIELDS": "Main module fields",
@@ -158,7 +157,14 @@
     "B": "B",
     "A": "A",
     "DEMY": "Demy",
-    "ROYAL": "Royal"
+    "ROYAL": "Royal",
+    "PLL_ACTIVE": "Active",
+    "PLL_INACTIVE": "Inactive",
+    "LBL_GENERATOR_ENGINE": "Generating engine",
+    "LBL_GENERATOR_ENGINE_DESC": "YetiForcePDF - free pdf generator\nChromium/Chrome - paid PDF file generator, requires purchase of YetiForce PDF Premium",
+    "LBL_CUSTOM_STYLES": "Custom styles",
+    "LBL_CHROMIUM_PDF": "Chromium/Chrome",
+    "LBL_YETIFORCE_PDF": "YetiFore PDF"
   },
   "js": {
     "JS_PDF_SAVED_SUCCESSFULLY": "PDF template saved.",

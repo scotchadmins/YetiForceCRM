@@ -4,8 +4,8 @@
  *
  * @package Model
  *
- * @copyright YetiForce Sp. z o.o.
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Arkadiusz Adach <a.adach@yetiforce.com>
  */
 
@@ -14,29 +14,22 @@
  */
 class PaymentsIn_SSingleOrdersPaymentStatus_Model extends PaymentsIn_PaymentStatus_Model
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	protected static $moduleName = 'SSingleOrders';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	protected static $fieldPaymentStatusName = 'payment_status';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	protected static $relatedRecordIdName = 'ssingleordersid';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	protected static function canUpdatePaymentStatus(Vtiger_Record_Model $recordModel): bool
 	{
 		$returnValue = parent::canUpdatePaymentStatus($recordModel);
-		if ($returnValue && (int) $recordModel->get('currency_id') !== \App\Record::getCurrencyIdFromInventory($recordModel->get('ssingleordersid'), 'SSingleOrders')) {
-			\App\Log::warning('The payment is in a different currency than the order. SSingleOrdersId: ' . $recordModel->get('ssingleordersid'));
+		if (($returnValue || false !== $recordModel->getPreviousValue(static::$relatedRecordIdName)) && (int) $recordModel->get('currency_id') !== \App\Record::getCurrencyIdFromInventory($recordModel->get(static::$relatedRecordIdName), static::$moduleName)
+		) {
+			\App\Log::warning('The payment is in a different currency than the related record: ' . $recordModel->get(static::$relatedRecordIdName));
 			$returnValue = false;
 		}
 		return $returnValue;

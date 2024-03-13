@@ -1,16 +1,21 @@
 <?php
 /**
- * TextParser test class.
+ * Purifier test file.
  *
  * @package   Tests
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Sławomir Kłos <s.klos@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 namespace Tests\App;
 
+/**
+ * Purifier test class.
+ */
 class Purifier extends \Tests\Base
 {
 	/**
@@ -105,10 +110,10 @@ class Purifier extends \Tests\Base
 			['DateInUserFormat', 'NotSame', date('Y.m.d'), date('Y.m.d'), 'Sample text should be purified', \App\Exceptions\IllegalValue::class],
 			['DateRangeUserFormat', 'Same', [date('Y-m-d'), date('Y-m-d', \strtotime('+1 day'))], date('Y-m-d') . ',' . date('Y-m-d', \strtotime('+1 day')), 'Sample text should be unchanged', null],
 			['DateRangeUserFormat', 'NotSame', date('Y.m.d') . ',' . date('Y.m.d', \strtotime('+1 day')), date('Y.m.d') . ',' . date('Y.m.d', \strtotime('+1 day')), 'Sample text should be purified', \App\Exceptions\IllegalValue::class],
-			['Date', 'Same', date('Y-m-d'), date('Y-m-d'), 'Sample text should be unchanged', null],
-			['Date', 'NotSame', '201X-07-26', '201X-07-26', 'Sample text should be purified', \App\Exceptions\IllegalValue::class],
-			['Time', 'Same', date('H:i:s'), date('H:i:s'), 'Sample text should be unchanged', null],
-			['Time', 'NotSame', '24:12:20', '24:12:20', 'Sample text should be unchanged', \App\Exceptions\IllegalValue::class],
+			['date', 'Same', date('Y-m-d'), date('Y-m-d'), 'Sample text should be unchanged', null],
+			['date', 'NotSame', '201X-07-26', '201X-07-26', 'Sample text should be purified', \App\Exceptions\IllegalValue::class],
+			['time', 'Same', date('H:i:s'), date('H:i:s'), 'Sample text should be unchanged', null],
+			['time', 'NotSame', '24:12:20', '24:12:20', 'Sample text should be unchanged', \App\Exceptions\IllegalValue::class],
 			['TimeInUserFormat', 'Same', date('H:i'), date('H:i'), 'Sample text should be unchanged', null],
 			['Bool', 'Same', true, true, 'Sample text should be unchanged', null],
 			['Bool', 'NotSame', 'Test-text', 'Test-text', 'Sample text should be purified', \App\Exceptions\IllegalValue::class],
@@ -116,8 +121,8 @@ class Purifier extends \Tests\Base
 			['NumberInUserFormat', 'NotSame', '12345X7890', '12345X7890', 'Sample text should be purified', \App\Exceptions\IllegalValue::class],
 			['Integer', 'Same', 1234, 1234, 'Sample integer should be unchanged', null],
 			['Integer', 'NotSame', '12X4', '12X4', 'Sample integer should be purified', \App\Exceptions\IllegalValue::class],
-			['Digital', 'Same', '43453453', '43453453', 'Sample number should be unchanged', null],
-			['Digital', 'NotSame', '43453C53', '43453C53', 'Sample number should be purified', \App\Exceptions\IllegalValue::class],
+			['Digits', 'Same', '43453453', '43453453', 'Sample number should be unchanged', null],
+			['Digits', 'NotSame', '43453C53', '43453C53', 'Sample number should be purified', \App\Exceptions\IllegalValue::class],
 			['Color', 'Same', '#3A13F5', '#3A13F5', 'Sample number should be unchanged', null],
 			['Color', 'NotSame', '#3A13FZ', '#3A13FZ', 'Sample number should be purified', \App\Exceptions\IllegalValue::class],
 			['Year', 'Same', date('Y'), date('Y'), 'Sample number should be unchanged', null],
@@ -126,9 +131,12 @@ class Purifier extends \Tests\Base
 			['Text', 'NotSame', 'ę€ółśążźćń23{}":?>><>?:"{}+_)(*&^%$#@!) &lt;svg/onabort=alert(3)//  <svg/onload=alert(1) onfocus=alert(2)//', 'ę€ółśążźćń23{}":?>><>?:"{}+_)(*&^%$#@!) &lt;svg/onabort=alert(3)//  <svg/onload=alert(1) onfocus=alert(2)//', 'Sample number should be purified', \App\Exceptions\IllegalValue::class],
 			['Default', 'Same', 'Test-text-string-for-purifier', 'Test-text-string-for-purifier', 'Sample number should be unchanged', null],
 			['Default', 'NotSame', 'ę€ółśążźćń23{}":?>><>?:"{}+_)(*&^%$#@!) &lt;svg/onabort=alert(3)//  <svg/onload=alert(1) onfocus=alert(2)//', 'ę€ółśążźćń23{}":?>><>?:"{}+_)(*&^%$#@!) &lt;svg/onabort=alert(3)//  <svg/onload=alert(1) onfocus=alert(2)//', 'Sample number should be purified', \App\Exceptions\IllegalValue::class],
-			['MailId', 'Same', '<5FB2B5EF@xx.cc.it> (added by postmaster@cc.it)', '<5FB2B5EF@xx.cc.it> (added by postmaster@cc.it)', 'Sample text should be unchanged', null],
-			['MailId', 'Same', '<30.123.12.JavaMail."admin.azure"@A-PROXY01>', '<30.123.12.JavaMail."admin.azure"@A-PROXY01>', 'Sample text should be unchanged', null],
-			['MailId', 'Same', '<CAK01GN-UtTiM90_wQNB07OnE6aBm=w@mail.g.c>', '<CAK01GN-UtTiM90_wQNB07OnE6aBm=w@mail.g.c>', 'Sample text should be unchanged', null],
+			['MailId', 'Same',  '5FB2B5EF@xx.cc.it> (added by postmaster@cc.it)', '<5FB2B5EF@xx.cc.it> (added by postmaster@cc.it)', 'Sample text should be unchanged', null],
+			['MailId', 'Same',  '30.123.12.JavaMail."admin.azure"@A-PROXY01', '<30.123.12.JavaMail."admin.azure"@A-PROXY01>', 'Sample text should be unchanged', null],
+			['MailId', 'Same',  'CAK01GN-UtTiM90_wQNB07OnE6aBm=w@mail.g.c', '<CAK01GN-UtTiM90_wQNB07OnE6aBm=w@mail.g.c>', 'Sample text should be unchanged', null],
+			['MailId', 'Same',  'AM9F9@AM9PR.eurprd01.prod.exchangelabs.com', ' <AM9F9@AM9PR.eurprd01.prod.exchangelabs.com', 'Sample text should be unchanged', null],
+			[\App\Purifier::PATH, 'NotSame', '../Test', '../Test', 'Path should be discarded', \App\Exceptions\IllegalValue::class],
+			[\App\Purifier::PATH, 'Same', '/Test/test', '/Test/test', 'Path should be unchanged', null],
 		];
 	}
 
@@ -137,8 +145,7 @@ class Purifier extends \Tests\Base
 	 */
 	public function testEmptyValues()
 	{
-		$logToFile = \App\Log::$logToFile;
-		\App\Log::$logToFile = false;
+		$this->disableLogs();
 		$this->assertSame('', \App\Purifier::purify(''), 'Empty text should be unchanged');
 		$this->assertSame('', \App\Purifier::purifyHtml(''), 'Empty text should be unchanged');
 		$this->assertNull(\App\Purifier::purifyHtmlEventAttributes(''), 'Empty text should not throw exception');
@@ -146,8 +153,12 @@ class Purifier extends \Tests\Base
 		$this->assertSame('', \App\Purifier::encodeHtml(''), 'Empty text should be unchanged');
 		$this->assertSame('', \App\Purifier::decodeHtml(''), 'Empty text should be unchanged');
 		$this->expectException(\App\Exceptions\IllegalValue::class);
-		$this->assertSame('', \App\Purifier::purifySql('', false), 'Empty text should be unchanged');
-		\App\Log::$logToFile = $logToFile;
+		try {
+			$this->assertSame('', \App\Purifier::purifySql('', false), 'Empty text should be unchanged');
+		} catch (\Throwable $th) {
+			$this->enableLogs();
+			throw $th;
+		}
 	}
 
 	/**
@@ -155,14 +166,13 @@ class Purifier extends \Tests\Base
 	 */
 	public function testTextValues()
 	{
-		$logToFile = \App\Log::$logToFile;
-		\App\Log::$logToFile = false;
+		$this->disableLogs();
 		$this->assertSame('Test text string for purifier', \App\Purifier::purify('Test text string for purifier'), 'Sample text should be unchanged');
 		$this->assertSame('Test text string for purifier', \App\Purifier::purify('Test text string for purifier'), 'Sample text should be unchanged(cached)');
 		$this->assertSame(['Test text string for purifier', 'Test text string for purifier'], \App\Purifier::purify(['Test text string for purifier', 'Test text string for purifier']), 'Sample text should be unchanged(array)');
 		$this->assertSame('Test text string for purifier', \App\Purifier::purifyHtml('Test text string for purifier'), 'Sample text should be unchanged');
 		$this->assertNull(\App\Purifier::purifyHtmlEventAttributes('Test text string for purifier'), 'Sample text should be unchanged');
-		\App\Log::$logToFile = $logToFile;
+		$this->enableLogs();
 	}
 
 	/**
@@ -177,14 +187,13 @@ class Purifier extends \Tests\Base
 	 */
 	public function testPurifyByType($type, $assertion, $expected, $text, string $message, ?string $exception): void
 	{
-		$logToFile = \App\Log::$logToFile;
-		\App\Log::$logToFile = false;
+		$this->disableLogs();
 		$assertion = 'assert' . $assertion;
 		if ($exception) {
 			$this->expectException($exception);
 		}
 		$this->{$assertion}($expected, \App\Purifier::purifyByType($text, $type), $message);
-		\App\Log::$logToFile = $logToFile;
+		$this->enableLogs();
 	}
 
 	/**
@@ -197,7 +206,6 @@ class Purifier extends \Tests\Base
 		$rows = [];
 		$file = \App\Fields\File::loadFromUrl('https://raw.githubusercontent.com/YetiForceCompany/YetiForceCRM-Tests/main/xss-payload.txt');
 		$fileRows = explode("\n", $file->getContents());
-		// $fileRows = explode("\n", file_get_contents('c:\www\YetiForceCRM-Tests\xss-payload.txt'));
 		foreach ($fileRows as $row) {
 			if ($row) {
 				$rows[] = [$row];
@@ -216,19 +224,16 @@ class Purifier extends \Tests\Base
 	public function testPurifyHtmlFailure(string $text): void
 	{
 		$this->expectException(\App\Exceptions\IllegalValue::class);
-		$logToFile = \App\Log::$logToFile;
-		\App\Log::$logToFile = false;
+		$this->disableLogs();
 		try {
 			$purifyHtml = \App\Purifier::purifyHtml($text);
 			if ($purifyHtml !== $text) {
 				throw new \App\Exceptions\IllegalValue('ERR_NOT_ALLOWED_VALUE');
 			}
-			throw new \Exception('Illegal value !!! ' . $text);
 		} catch (\Throwable $th) {
-			// echo \get_class($th);
+			$this->enableLogs();
 			throw $th;
 		}
-		\App\Log::$logToFile = $logToFile;
 	}
 
 	/**
@@ -242,6 +247,8 @@ class Purifier extends \Tests\Base
 			['<div>Test-text-string-for-purifier</div>', '<div>Test-text-string-for-purifier</div>', true],
 			['ę€ółśążźćń23{}":?>><>?:"{}+_)', 'ę€ółśążźćń23{}":?&gt;&gt;&lt;&gt;?:"{}+_)', true],
 			['ę€ółśążźćń23{}":?>><>?:"{}+_)(*&^%$#@!)', 'ę€ółśążźćń23{}":?&gt;&gt;&lt;&gt;?:"{}+_)(*&amp;^%$#@!)', true],
+			[\file_get_contents(ROOT_DIRECTORY . '/tests/data/phpFile1.html'), \file_get_contents(ROOT_DIRECTORY . '/tests/data/phpFile2.html'), true],
+			['<p><yetiforce type="Documents" crm-id="70521" attachment-id="22855"></yetiforce></p>', '<p><yetiforce type="Documents" crm-id="70521" attachment-id="22855"></yetiforce></p>', true],
 		];
 	}
 
@@ -260,8 +267,6 @@ class Purifier extends \Tests\Base
 
 	/**
 	 * Restore current user preferences.
-	 *
-	 * @codeCoverageIgnore
 	 *
 	 * @throws \Exception
 	 */

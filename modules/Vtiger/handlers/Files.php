@@ -5,8 +5,8 @@
  *
  * @package Handler
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 /**
@@ -22,7 +22,7 @@ class Vtiger_Files_Handler
 	public function entityAfterSave(App\EventHandler $eventHandler)
 	{
 		$recordModel = $eventHandler->getRecordModel();
-		foreach ($recordModel->getModule()->getFieldsByType(['image', 'multiImage'], true) as $fieldName => $fieldModel) {
+		foreach ($recordModel->getModule()->getFieldsByType(['image', 'multiImage', 'multiAttachment'], true) as $fieldName => $fieldModel) {
 			$currentData = [];
 			if ($recordModel->get($fieldName) && ($recordModel->isNew() || false !== $recordModel->getPreviousValue($fieldName))) {
 				$currentData = \App\Fields\File::parse(\App\Json::decode($recordModel->get($fieldName)));

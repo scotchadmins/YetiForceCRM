@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce Sp. z o.o.
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
 class Settings_Currency_Record_Model extends Settings_Vtiger_Record_Model
@@ -48,12 +48,8 @@ class Settings_Currency_Record_Model extends Settings_Vtiger_Record_Model
 		return ('-11' != $this->get('defaultid')) ? false : true;
 	}
 
-	/**
-	 * Return record actions links.
-	 *
-	 * @return array
-	 */
-	public function getRecordLinks()
+	/** {@inheritdoc} */
+	public function getRecordLinks(): array
 	{
 		$links = $recordLinks = [];
 		if ($this->isBaseCurrency()) {
@@ -99,9 +95,7 @@ class Settings_Currency_Record_Model extends Settings_Vtiger_Record_Model
 		return 0;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function set($key, $value)
 	{
 		if (null !== $this->getId() && $this->value[$key] !== $value) {

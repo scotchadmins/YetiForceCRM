@@ -6,23 +6,34 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce Sp. z o.o.
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
-class Settings_Picklist_Field_Model extends Vtiger_Field_Model
+class Settings_Picklist_Field_Model extends Settings_Vtiger_Field_Model
 {
-	/**
-	 * Function to check whether the current field is editable.
-	 *
-	 * @return bool
-	 */
-	public function isEditable()
+	/** {@inheritdoc} */
+	public function isEditable(string $viewName = 'Edit'): bool
 	{
-		$nonEditablePickListValues = ['duration_minutes', 'payment_duration', 'recurring_frequency', 'visibility'];
-		if (!\in_array($this->get('displaytype'), [1, 10]) || !\in_array($this->get('presence'), [0, 2]) || \in_array($this->getName(), $nonEditablePickListValues) || ('picklist' !== $this->getFieldDataType() && 'multipicklist' !== $this->getFieldDataType()) || 'Users' === $this->getModuleName()) {
-			return false;
+		if ($this->get('sourceFieldModel')) {
+			$permissions = $this->get('sourceFieldModel')->isEditable();
+		} else {
+			$nonEditablePickListValues = ['duration_minutes', 'payment_duration', 'recurring_frequency', 'visibility'];
+			$permissions = \in_array($this->get('displaytype'), [1, 10]) && \in_array($this->get('presence'), [0, 2]) && !\in_array($this->getName(), $nonEditablePickListValues) && \in_array($this->getFieldDataType(), ['picklist', 'multipicklist', 'multipicklistTags']) && 'Users' !== $this->getModuleName();
 		}
-		return true;
+
+		return $permissions;
+	}
+
+	/**
+	 * Get picklist value model.
+	 *
+	 * @param int|null $itemId
+	 *
+	 * @return App\Fields\Picklist\Item
+	 */
+	public function getItemModel(?int $itemId = null): App\Fields\Picklist\Item
+	{
+		return \App\Fields\Picklist\Item::getInstance($this, $itemId);
 	}
 
 	/**
@@ -37,7 +48,6 @@ class Settings_Picklist_Field_Model extends Vtiger_Field_Model
 	{
 		if (!$this->isRoleBased()) {
 			$fieldModel = new Vtiger_Field_Model();
-
 			return $fieldModel->getPicklistValues();
 		}
 		$intersectionMode = false;
@@ -67,7 +77,6 @@ class Settings_Picklist_Field_Model extends Vtiger_Field_Model
 			$pickListValues[] = \App\Purifier::decodeHtml(\App\Purifier::decodeHtml($row[$fieldName]));
 		}
 		$dataReader->close();
-
 		return $pickListValues;
 	}
 
@@ -105,6 +114,12 @@ class Settings_Picklist_Field_Model extends Vtiger_Field_Model
 		return $fieldModel;
 	}
 
+	/** {@inheritdoc} */
+	public function getValidator()
+	{
+		return $this->validator ?? parent::getValidator();
+	}
+
 	/**
 	 * Verification of data.
 	 *
@@ -118,105 +133,29 @@ class Settings_Picklist_Field_Model extends Vtiger_Field_Model
 		if (preg_match('/[\<\>\"\#]/', $value)) {
 			throw new \App\Exceptions\AppException(\App\Language::translateArgs('ERR_SPECIAL_CHARACTERS_NOT_ALLOWED', 'Other.Exceptions', '<>"#'), 512);
 		}
-		if ($this->get('maximumlength') && \strlen($value) > $this->get('maximumlength')) {
+		if ($this->getMaxValue() && \strlen($value) > $this->getMaxValue()) {
 			throw new \App\Exceptions\AppException(\App\Language::translate('ERR_EXCEEDED_NUMBER_CHARACTERS', 'Other.Exceptions'), 512);
 		}
-		$picklistValues = \App\Fields\Picklist::getValuesName($this->getName());
-		if ($id) {
-			unset($picklistValues[$id]);
-		}
-		if (\in_array(strtolower($value), array_map('strtolower', $picklistValues))) {
+		if ($this->isDuplicateValue($value, $id)) {
 			throw new \App\Exceptions\AppException(\App\Language::translateArgs('ERR_DUPLICATES_VALUES_FOUND', 'Other.Exceptions', $value), 513);
 		}
 	}
 
 	/**
-	 * Is process status field.
+	 * Check if picklist value exists.
+	 *
+	 * @param string   $value
+	 * @param int|null $id
 	 *
 	 * @return bool
 	 */
-	public function isProcessStatusField(): bool
+	public function isDuplicateValue(string $value, ?int $id = null): bool
 	{
-		return $this->getFieldParams()['isProcessStatusField'] ?? false;
-	}
+		$picklistValues = \App\Fields\Picklist::getValuesName($this->getName());
+		if ($id) {
+			unset($picklistValues[$id]);
+		}
 
-	/**
-	 * Update record status.
-	 *
-	 * @param int $id
-	 * @param int $recordState
-	 * @param int $timeCounting
-	 *
-	 * @throws \App\Exceptions\AppException
-	 *
-	 * @return bool
-	 */
-	public function updateRecordStatus(int $id, int $recordState, ?int $timeCounting): bool
-	{
-		if (!$this->isProcessStatusField()) {
-			throw new \App\Exceptions\AppException(\App\Language::translate('LBL_IS_NOT_A_PROCESS_STATUS_FIELD', 'Settings:Picklist'), 406);
-		}
-		if (!$this->isEditable()) {
-			throw new \App\Exceptions\AppException(\App\Language::translate('LBL_NON_EDITABLE_PICKLIST_VALUE', 'Settings:Picklist'), 406);
-		}
-		$db = \App\Db::getInstance();
-		$pickListFieldName = $this->getName();
-		$primaryKey = \App\Fields\Picklist::getPickListId($pickListFieldName);
-		$tableName = \App\Fields\Picklist::getPickListTableName($pickListFieldName);
-		$tabId = $this->get('tabid');
-		$moduleName = \App\Module::getModuleName($tabId);
-		if (!isset($db->getTableSchema($tableName)->columns['record_state'])) {
-			$db->createCommand()->addColumn(
-				$tableName,
-				'record_state',
-				$db->getSchema()->createColumnSchemaBuilder(\yii\db\Schema::TYPE_TINYINT, 1)->notNull()->defaultValue(0)
-			)->execute();
-		}
-		$oldTimeCounting = \App\RecordStatus::getTimeCountingIds($moduleName, false)[$id] ?? null;
-		$oldStateValue = \App\RecordStatus::getStates($moduleName)[$id] ?? null;
-		if ($recordState === $oldStateValue && $timeCounting === $oldTimeCounting) {
-			return true;
-		}
-		$updateData = ['record_state' => $recordState];
-		if (null !== $timeCounting) {
-			$updateData['time_counting'] = $timeCounting;
-		}
-		$result = $db->createCommand()->update($tableName, $updateData, [$primaryKey => $id])->execute();
-		if ($result) {
-			\App\Fields\Picklist::clearCache($pickListFieldName, $moduleName);
-		}
-		return (bool) $result;
-	}
-
-	/**
-	 * Update close state table.
-	 *
-	 * @param int       $valueId
-	 * @param string    $value
-	 * @param bool|null $closeState
-	 *
-	 * @throws \yii\db\Exception
-	 * @throws \App\Exceptions\AppException
-	 *
-	 * @return bool
-	 */
-	public function updateCloseState(int $valueId, string $value, $closeState = null): bool
-	{
-		$dbCommand = \App\Db::getInstance()->createCommand();
-		$tabId = $this->get('tabid');
-		$moduleName = \App\Module::getModuleName($tabId);
-		$oldValue = \App\RecordStatus::getLockStatus($moduleName, false)[$valueId] ?? false;
-		if ($closeState === $oldValue) {
-			return true;
-		}
-		if (null === $closeState && $oldValue !== $value) {
-			$dbCommand->update('u_#__picklist_close_state', ['value' => $value], ['fieldid' => $this->getId(), 'valueid' => $valueId])->execute();
-		} elseif (false === $closeState && false !== $oldValue) {
-			$dbCommand->delete('u_#__picklist_close_state', ['fieldid' => $this->getId(), 'valueid' => $valueId])->execute();
-		} elseif ($closeState && false === $oldValue) {
-			$dbCommand->insert('u_#__picklist_close_state', ['fieldid' => $this->getId(), 'valueid' => $valueId, 'value' => $value])->execute();
-		}
-		\App\Cache::delete('getLockStatus', $tabId);
-		return true;
+		return \in_array(strtolower($value), array_map('strtolower', $picklistValues));
 	}
 }

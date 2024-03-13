@@ -1,16 +1,20 @@
 <?php
 /**
- * Zip test class.
+ * Zip test file.
  *
  * @package   Tests
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Sławomir Kłos <s.klos@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
 namespace Tests\App;
 
+/**
+ * Zip test class.
+ */
 class Zip extends \Tests\Base
 {
 	/**
@@ -72,19 +76,5 @@ class Zip extends \Tests\Base
 		$this->assertFileExists('tests/tmp/TestLinux/manifest.xml');
 		$this->assertFileExists('tests/tmp/TestLinux/languages/pl-PL/TestLinux.json');
 		\vtlib\Functions::recurseDelete('tests' . \DIRECTORY_SEPARATOR . 'tmp' . \DIRECTORY_SEPARATOR . 'TestLinux');
-	}
-
-	/**
-	 * Testing file creation in not existent directory.
-	 *
-	 * @throws \App\Exceptions\AppException
-	 */
-	public function testCreateFileBadDir(): void
-	{
-		$zip = \App\Zip::createFile('tests/data/NxDir/NxFile.zip');
-		$zip->addFromString('filename.txt', '<minimal content>');
-		$this->expectWarning();
-		$this->assertFalse($zip->close());
-		$this->assertFileDoesNotExist('tests/data/NxDir/NxFile.zip');
 	}
 }

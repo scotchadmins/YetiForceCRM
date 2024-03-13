@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Rss_Save_Action extends Vtiger_Save_Action
@@ -23,7 +23,7 @@ class Rss_Save_Action extends Vtiger_Save_Action
 	{
 		$response = new Vtiger_Response();
 		$moduleName = $request->getModule();
-		$url = $request->getByType('feedurl', 'Text');
+		$url = $request->getByType('feedurl', \App\Purifier::URL);
 		$recordModel = Rss_Record_Model::getCleanInstance($moduleName);
 		$result = $recordModel->validateRssUrl($url);
 		if ($result) {

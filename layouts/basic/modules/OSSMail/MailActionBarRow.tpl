@@ -1,11 +1,11 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
 	<div class="tpl-OSSMail-MailActionBarRow rowRelatedRecord mb-1 pr-2 d-flex align-items-center" data-id="{$RELATED['id']}" data-module="{$RELATED['module']}">
 		{if \App\Privilege::isPermitted($RELATED['module'], 'DetailView', $RELATED['id'])}
 			<a class="modCT_{$RELATED['module']} js-popover-tooltip--record" href="{$URL}index.php?module={$RELATED['module']}&amp;view=Detail&amp;record={$RELATED['id']}" target="_blank">
 				<span class="relatedModuleIcon yfm-{$RELATED['module']}" aria-hidden="true"></span>
 				<span class="relatedName">
-					{App\TextParser::textTruncate($RELATED['label'],38)}
+					{App\TextUtils::textTruncate($RELATED['label'],38)}
 				</span>
 			</a>
 			<div class="rowActions">
@@ -34,11 +34,6 @@
 						<span class="yfm-Services" aria-hidden="true"></span>
 					</button>
 				{/if}
-				{if $RELATED['is_related_to_documents'] && \App\Privilege::isPermitted('Documents', 'DetailView')}
-					<button class="addAttachments" data-type="1" title="{\App\Language::translate('LBL_ADD_DOCUMENTS', $MODULE_NAME)}">
-						<span class="yfm-Documents" aria-hidden="true"></span>
-					</button>
-				{/if}
 				<button class="removeRecord " title="{\App\Language::translate('LBL_REMOVE_RELATION',$MODULE_NAME)} {$RELATED['label']}">
 					<span class="fas fa-times"></span>
 				</button>
@@ -47,7 +42,7 @@
 			<a class="modCT_{$RELATED['module']}">
 				<span class="relatedModuleIcon yfm-{$RELATED['module']}" aria-hidden="true"></span>
 				<span class="relatedName">
-					{App\TextParser::textTruncate($RELATED['label'],38)}
+					{App\TextUtils::textTruncate($RELATED['label'],38)}
 				</span>
 			</a>
 		{/if}

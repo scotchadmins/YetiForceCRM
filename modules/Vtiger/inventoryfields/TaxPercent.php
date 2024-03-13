@@ -5,8 +5,8 @@
  *
  * @package   InventoryField
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
@@ -23,9 +23,7 @@ class Vtiger_TaxPercent_InventoryField extends Vtiger_Tax_InventoryField
 	protected $dbType = 'decimal(12,8) DEFAULT 0';
 	protected $maximumLength = '9999';
 	protected $purifyType = \App\Purifier::NUMBER;
-	/**
-	 * @var array List of shared fields
-	 */
+	/** @var array List of shared fields */
 	public $shared = ['taxparam' => 'tax'];
 
 	/** {@inheritdoc} */
@@ -50,5 +48,28 @@ class Vtiger_TaxPercent_InventoryField extends Vtiger_Tax_InventoryField
 			$value = $userFormat ? $this->getDBValue($item[$column]) : $item[$column];
 		}
 		return $value;
+	}
+
+	/** {@inheritdoc} */
+	public function compare($value, $prevValue, string $column): bool
+	{
+		return \App\Validator::floatIsEqual((float) $value, (float) $prevValue, 8);
+	}
+
+	/** {@inheritdoc} */
+	public function getConfigFieldsData(): array
+	{
+		$data = parent::getConfigFieldsData();
+		$data['summary_enabled'] = [
+			'name' => 'summary_enabled',
+			'label' => 'LBL_INV_SUMMARY_ENABLED',
+			'uitype' => 56,
+			'maximumlength' => '1',
+			'typeofdata' => 'C~O',
+			'purifyType' => \App\Purifier::INTEGER,
+			'defaultvalue' => 1
+		];
+
+		return $data;
 	}
 }

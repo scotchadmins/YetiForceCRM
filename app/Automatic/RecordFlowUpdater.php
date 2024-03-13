@@ -4,8 +4,8 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Adach <a.adach@yetiforce.com>
  */
 
@@ -285,7 +285,7 @@ class RecordFlowUpdater
 		if (false !== $config) {
 			(new \App\BatchMethod([
 				'method' => static::class . '::update',
-				'params' => [\App\Module::getModuleName($config['source_module']), $recordId]
+				'params' => [\App\Module::getModuleName($config['source_module']), $recordId],
 			]))->save();
 		}
 	}

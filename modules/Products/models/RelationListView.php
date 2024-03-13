@@ -6,14 +6,12 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Products_RelationListView_Model extends Vtiger_RelationListView_Model
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getLinks(): array
 	{
 		$relationModel = $this->getRelationModel();
@@ -28,9 +26,7 @@ class Products_RelationListView_Model extends Vtiger_RelationListView_Model
 		return [];
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getHeaders()
 	{
 		$headerFields = parent::getHeaders();

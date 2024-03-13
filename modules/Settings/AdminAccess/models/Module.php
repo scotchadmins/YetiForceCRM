@@ -5,8 +5,8 @@
  *
  * @package Settings.Model
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 /**
@@ -14,38 +14,45 @@
  */
 class Settings_AdminAccess_Module_Model extends Settings_Vtiger_Module_Model
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $name = 'AdminAccess';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $baseTable = 'a_#__settings_modules';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $baseIndex = 'id';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public $listFields = [
 		'name' => 'FL_MODULE_NAME',
 		'user' => 'FL_USER',
 		'status' => 'FL_ACTIVE'
 	];
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** @var Vtiger_Field_Model Field instance. */
+	private $fields;
+
+	/** {@inheritdoc} */
 	public function getListFields(): array
 	{
 		$fields = [];
 		foreach (array_keys($this->listFields) as $fieldName) {
 			$fields[$fieldName] = $this->getFieldInstanceByName($fieldName);
+		}
+		return $fields;
+	}
+
+	/**
+	 * Function returns list of fields available in edit view.
+	 *
+	 * @return \Vtiger_Field_Model[]
+	 */
+	public function getEditFields(): array
+	{
+		$fields = [];
+		foreach (array_keys($this->listFields) as $fieldName) {
+			$fields[$fieldName] = $this->getFieldInstanceByName($fieldName, true);
 		}
 		return $fields;
 	}
@@ -78,6 +85,13 @@ class Settings_AdminAccess_Module_Model extends Settings_Vtiger_Module_Model
 				'labelDesc' => 'LBL_LOGIN_ADMIN_VISIT_PURPOSE_DESC',
 				'fieldvalue' => $config['askAdminAboutVisitPurpose'] ?? ''
 			],
+			'askAdminAboutVisitSwitchUsers' => [
+				'purifyType' => 'bool',
+				'uitype' => 56,
+				'label' => 'LBL_LOGIN_ADMIN_VISIT_SWITCH_USERS',
+				'labelDesc' => 'LBL_LOGIN_ADMIN_VISIT_SWITCH_USERS_DESC',
+				'fieldvalue' => $config['askAdminAboutVisitSwitchUsers'] ?? ''
+			],
 		];
 		foreach ($fields as $key => $value) {
 			$fields[$key] = \Vtiger_Field_Model::init($moduleName, $value, $key);
@@ -89,10 +103,11 @@ class Settings_AdminAccess_Module_Model extends Settings_Vtiger_Module_Model
 	 * Gets field instance by name.
 	 *
 	 * @param string $name
+	 * @param bool   $edit
 	 *
 	 * @return \Vtiger_Field_Model
 	 */
-	public function getFieldInstanceByName($name)
+	public function getFieldInstanceByName($name, $edit = false)
 	{
 		if (!isset($this->fields[$name])) {
 			$moduleName = $this->getName(true);
@@ -101,6 +116,7 @@ class Settings_AdminAccess_Module_Model extends Settings_Vtiger_Module_Model
 				case 'name':
 					$params['uitype'] = 16;
 					$params['table'] = $this->getBaseTable();
+					$params['picklistValues'] = [];
 					$modules = (new \App\Db\Query())->from($this->getBaseTable())->select(['name'])->column();
 					foreach ($modules as $module) {
 						$params['picklistValues'][$module] = \App\Language::translate($module, "Settings:{$module}");
@@ -115,8 +131,10 @@ class Settings_AdminAccess_Module_Model extends Settings_Vtiger_Module_Model
 					$params['uitype'] = 33;
 					$params['typeofdata'] = 'V~O';
 					$params['sort'] = 'false';
-					$params['table'] = 'a_#__settings_access';
-					foreach ($this->getUsers() as $userId) {
+					$params['table'] = \App\Security\AdminAccess::ACCESS_TABLE_NAME;
+					$params['picklistValues'] = [];
+					$users = $edit ? $this->getUsers() : (new \App\Db\Query())->from($params['table'])->select([$name])->column();
+					foreach ($users as $userId) {
 						$params['picklistValues'][$userId] = \App\Fields\Owner::getUserLabel($userId);
 					}
 					break;
@@ -139,7 +157,9 @@ class Settings_AdminAccess_Module_Model extends Settings_Vtiger_Module_Model
 					$params['typeofdata'] = 'V~O';
 					$params['sort'] = 'false';
 					$params['table'] = 'l_#__users_login_purpose';
-					foreach ($this->getUsers() as $userId) {
+					$params['picklistValues'] = [];
+					$users = (new \App\Db\Query())->from($params['table'])->select([$name])->column();
+					foreach ($users as $userId) {
 						$params['picklistValues'][$userId] = \App\Fields\Owner::getUserLabel($userId);
 					}
 					break;
@@ -175,17 +195,20 @@ class Settings_AdminAccess_Module_Model extends Settings_Vtiger_Module_Model
 			case 'datetime':
 				$value = $this->getFieldInstanceByName($fieldName)->getUITypeModel()->getDbConditionBuilderValue($request->getByType($fieldName, 'Text'), 'bw');
 				break;
+			case 'purpose':
+				$value = $this->getFieldInstanceByName($fieldName)->getUITypeModel()->getDbConditionBuilderValue($request->getByType($fieldName, 'Text'), 'c');
+				break;
 			default: break;
 		}
 		return $value;
 	}
 
 	/**
-	 * Gets admin users.
+	 * Gets users.
 	 *
 	 * @return int[]
 	 */
-	public static function getUsers(): array
+	public function getUsers(): array
 	{
 		return (new \App\QueryGenerator('Users'))->setFields(['id'])
 			->addCondition('is_admin', 'on', 'n')->createQuery()->column();
@@ -246,7 +269,9 @@ class Settings_AdminAccess_Module_Model extends Settings_Vtiger_Module_Model
 			case 'purpose':
 				$value = $this->getFieldInstanceByName($key)->getUITypeModel()->getListViewDisplayValue($value);
 				break;
-			default: break;
+			default:
+				$value = \App\Purifier::encodeHtml($value);
+				break;
 		}
 		return $value;
 	}

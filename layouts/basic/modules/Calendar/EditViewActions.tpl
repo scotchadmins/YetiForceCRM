@@ -1,4 +1,4 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
 	<div class="tpl-EditViewActions c-form__action-panel d-flex justify-content-center">
 		<div class="btn-group-toggle mr-1" data-toggle="buttons">
@@ -7,7 +7,7 @@
 					<span class="far fa-square fa-lg mr-1 c-btn-checkbox--unchecked"></span>
 					<span class="far fa-check-square fa-lg mr-1 c-btn-checkbox--checked"></span>
 					<input type="checkbox" checked
-						   autocomplete="off">{\App\Language::translate('LBL_MARK_AS_HELD', $MODULE)}</strong>
+						autocomplete="off">{\App\Language::translate('LBL_MARK_AS_HELD', $MODULE)}</strong>
 			</label>
 		</div>
 		<button class="btn btn-success mr-1 js-form-submit-btn" type="submit" disabled="disabled" data-js="disabled">

@@ -6,7 +6,7 @@
 * The Initial Developer of the Original Code is vtiger.
 * Portions created by vtiger are Copyright (C) vtiger.
 * All Rights Reserved.
-* Contributor(s): YetiForce.com
+* Contributor(s): YetiForce S.A.
 ********************************************************************************/
 -->*}
 {strip}
@@ -22,7 +22,7 @@
 			{foreach key=$index item=record from=$LIST}
 				<tr>
 					{foreach from=$record item=item key=key}
-						<td>{$item}</td>
+						<td>{\App\Purifier::encodeHtml($item)}</td>
 					{/foreach}
 				</tr>
 			{/foreach}

@@ -7,12 +7,18 @@ namespace App;
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Mail
 {
+	/** @var int Default smtp ID */
+	public const SMTP_DEFAULT = 0;
+	/** @var string Table name for configuration */
+	public const TABLE_NAME_CONFIG = 'yetiforce_mail_config';
+
 	/**
 	 * Get smtp server by id.
 	 *
@@ -20,19 +26,9 @@ class Mail
 	 *
 	 * @return array
 	 */
-	public static function getSmtpById($smtpId)
+	public static function getSmtpById(int $smtpId): array
 	{
-		if (Cache::has('SmtpServer', $smtpId)) {
-			return Cache::get('SmtpServer', $smtpId);
-		}
-		$servers = static::getAll();
-		$smtp = false;
-		if (isset($servers[$smtpId])) {
-			$smtp = $servers[$smtpId];
-		}
-		Cache::save('SmtpServer', $smtpId, $smtp, Cache::LONG);
-
-		return $smtp;
+		return static::getSmtpServers()[$smtpId] ?? [];
 	}
 
 	/**
@@ -51,23 +47,37 @@ class Mail
 		return $all;
 	}
 
+	public static function getSmtpServers(bool $skipDefault = false): array
+	{
+		$all = [];
+		if (Cache::has('SmtpServers', 'all')) {
+			$all = Cache::get('SmtpServers', 'all');
+		} else {
+			$dataReader = (new Db\Query())->from('s_#__mail_smtp')->createCommand(Db::getInstance('admin'))->query();
+			while ($row = $dataReader->read()) {
+				$all[$row['id']] = $row;
+				if ($row['default']) {
+					$all[self::SMTP_DEFAULT] = $row;
+				}
+			}
+			ksort($all);
+			Cache::save('SmtpServers', 'all', $all, Cache::LONG);
+		}
+		if ($skipDefault && !empty($all[self::SMTP_DEFAULT])) {
+			unset($all[self::SMTP_DEFAULT]);
+		}
+
+		return $all;
+	}
+
 	/**
-	 * Get default smtp Id.
+	 * Get default smtp ID.
 	 *
 	 * @return int
 	 */
 	public static function getDefaultSmtp()
 	{
-		if (Cache::has('DefaultSmtp', '')) {
-			return Cache::get('DefaultSmtp', '');
-		}
-		$id = (new Db\Query())->select(['id'])->from('s_#__mail_smtp')->where(['default' => 1])->scalar(Db::getInstance('admin'));
-		if (!$id) {
-			$id = (new Db\Query())->select(['id'])->from('s_#__mail_smtp')->limit(1)->scalar(Db::getInstance('admin'));
-		}
-		Cache::save('DefaultSmtp', '', $id, Cache::LONG);
-
-		return $id;
+		return static::getSmtpById(static::SMTP_DEFAULT)['id'] ?? key(static::getSmtpServers());
 	}
 
 	/**
@@ -194,5 +204,116 @@ class Mail
 		}
 		Cache::save('MailAttachmentsFromDocument', $cacheId, $attachments, Cache::LONG);
 		return $attachments;
+	}
+
+	/**
+	 * Get attr form send mail button.
+	 *
+	 * @param string      $email
+	 * @param int|null    $record
+	 * @param string|null $view
+	 * @param string|null $type
+	 *
+	 * @return string
+	 */
+	public static function getComposeAttr(string $email, ?int $record = null, ?string $view = null, ?string $type = null): string
+	{
+		$return = '';
+		foreach ([
+			'email' => $email,
+			'record' => $record,
+			'view' => $view,
+			'type' => $type,
+		] as $key => $value) {
+			if (null !== $value) {
+				$return .= 'data-' . $key . '="' . Purifier::encodeHtml($value) . '" ';
+			}
+		}
+		return $return;
+	}
+
+	/**
+	 * Get user composer.
+	 *
+	 * @return string
+	 */
+	public static function getMailComposer(): string
+	{
+		if (Cache::staticHas('MailMailComposer')) {
+			return Cache::staticGet('MailMailComposer');
+		}
+		$composer = \App\User::getCurrentUserModel()->getDetail('internal_mailer');
+		if (!\Config\Main::$isActiveSendingMails || 1 == $composer || 'Base' !== $composer && ($composerInstance = self::getComposerInstance($composer)) && !$composerInstance->isActive()) {
+			$composer = 'Base';
+		}
+		Cache::staticSave('MailMailComposer', '', $composer);
+		return $composer;
+	}
+
+	/**
+	 * Get composer instance.
+	 *
+	 * @param string $name
+	 *
+	 * @return \App\Mail\Composers\Base|null
+	 */
+	public static function getComposerInstance(string $name): ?Mail\Composers\Base
+	{
+		if (Cache::staticHas('MailComposerInstance', $name)) {
+			return Cache::staticGet('MailComposerInstance', $name);
+		}
+		$className = '\App\Mail\Composers\\' . $name;
+		if (!class_exists($className)) {
+			\App\Log::warning('Not found composer class: ' . $className);
+			return null;
+		}
+		$composer = new $className();
+		Cache::staticSave('MailComposerInstance', $name, $composer);
+		return $composer;
+	}
+
+	/**
+	 * Check if the user has access to the internal mail client.
+	 *
+	 * @return bool
+	 */
+	public static function checkInternalMailClient(): bool
+	{
+		return 'InternalClient' === self::getMailComposer();
+	}
+
+	/**
+	 * Get mail configuration by type.
+	 *
+	 * @param string $type
+	 * @param string $field
+	 *
+	 * @return string|array
+	 */
+	public static function getConfig(string $type, string $field = '')
+	{
+		if (Cache::has('MailConfiguration', $type)) {
+			$config = Cache::get('MailConfiguration', $type);
+		} else {
+			$config = (new \App\Db\Query())->from(self::TABLE_NAME_CONFIG)->indexBy('name')->where(['type' => $type])->all();
+			Cache::save('MailConfiguration', $type, $config);
+		}
+		return $field ? $config[$field]['value'] ?? '' : $config;
+	}
+
+	/**
+	 * Get signatures.
+	 *
+	 * @return array
+	 */
+	public static function getSignatures(): array
+	{
+		if (Cache::has('MailSignatures', 'all')) {
+			$rows = Cache::get('MailSignatures', 'all');
+		} else {
+			$rows = (new \App\Db\Query())->from('s_#__mail_signature')->indexBy('name')->where(['status' => 1])->all();
+			Cache::save('MailSignatures', 'all', $rows);
+		}
+		return $rows;
 	}
 }

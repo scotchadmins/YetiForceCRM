@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
 namespace vtlib;
@@ -67,7 +67,7 @@ class PackageExport
 
 	public function __write($value)
 	{
-		fwrite($this->_export_modulexml_file, $value);
+		fwrite($this->_export_modulexml_file, $value ?? '');
 	}
 
 	/**
@@ -248,7 +248,9 @@ class PackageExport
 	{
 		foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator('languages', \RecursiveDirectoryIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST) as $item) {
 			if ($item->isFile() && $item->getFilename() === $module . '.json') {
-				$zip->addFile($item->getPath() . \DIRECTORY_SEPARATOR . $item->getFilename());
+				$filePath = $item->getRealPath();
+				$zipPath = str_replace(\DIRECTORY_SEPARATOR, '/', $item->getPath() . \DIRECTORY_SEPARATOR . $item->getFilename());
+				$zip->addFile($filePath, $zipPath);
 			}
 		}
 	}

@@ -4,8 +4,8 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -39,27 +39,7 @@ class Log extends Logger
 	 *
 	 * @var array
 	 */
-	public static $logsViewerColumnMapping = [
-		'magento' => [
-			'label' => 'LBL_MAGENTO',
-			'labelModule' => 'Settings:Magento',
-			'table' => 'l_#__magento',
-			'icon' => 'yfi-magento',
-			'columns' => [
-				'time' => ['type' => 'DateTime', 'label' => 'LBL_TIME'],
-				'category' => ['type' => 'Text', 'label' => 'LBL_CATEGORY'],
-				'message' => ['type' => 'Text', 'label' => 'LBL_MESSAGE'],
-				'code' => ['type' => 'Text', 'label' => 'LBL_CODE'],
-				'trace' => ['type' => 'Text', 'label' => 'LBL_BACKTRACE'],
-			],
-			'filter' => [
-				'time' => 'DateTimeRange',
-				'category' => 'Text',
-				'message' => 'Text',
-				'code' => 'Text',
-				'trace' => 'Text',
-			],
-		],
+	const LOGS_VIEWER_COLUMN_MAP = [
 		'switchUsers' => [
 			'label' => 'LBL_SWITCH_USERS',
 			'labelModule' => 'Settings:Users',
@@ -139,6 +119,106 @@ class Log extends Logger
 				'duration' => 'Text',
 			],
 		],
+		'pbx' => [
+			'label' => 'LBL_PBX',
+			'labelModule' => 'Settings:PBX',
+			'table' => 'l_#__pbx',
+			'icon' => 'yfi yfi-pbx',
+			'columns' => [
+				'time' => ['type' => 'DateTime', 'label' => 'LBL_TIME'],
+				'driver' => ['type' => 'Text', 'label' => 'LBL_CATEGORY'],
+				'error' => ['type' => 'Boolean', 'label' => 'LBL_ERROR'],
+				'message' => ['type' => 'Text', 'label' => 'LBL_MESSAGE'],
+				'params' => ['type' => 'Text', 'label' => 'LBL_PARAMS'],
+			],
+			'filter' => [
+				'time' => 'DateTimeRange',
+				'driver' => 'Text',
+				'error' => 'Boolean',
+				'message' => 'Text',
+				'params' => 'Text',
+			],
+		],
+		'magento' => [
+			'label' => 'LBL_MAGENTO',
+			'labelModule' => 'Settings:Magento',
+			'table' => 'l_#__magento',
+			'icon' => 'yfi-magento',
+			'columns' => [
+				'time' => ['type' => 'DateTime', 'label' => 'LBL_TIME'],
+				'category' => ['type' => 'Text', 'label' => 'LBL_CATEGORY'],
+				'message' => ['type' => 'Text', 'label' => 'LBL_MESSAGE'],
+				'code' => ['type' => 'Text', 'label' => 'LBL_CODE'],
+				'trace' => ['type' => 'Text', 'label' => 'LBL_BACKTRACE'],
+			],
+			'filter' => [
+				'time' => 'DateTimeRange',
+				'category' => 'Text',
+				'message' => 'Text',
+				'code' => 'Text',
+				'trace' => 'Text',
+			],
+		],
+		'woocommerce' => [
+			'label' => 'LBL_WOOCOMMERCE',
+			'labelModule' => 'Settings:WooCommerce',
+			'table' => Integrations\WooCommerce::LOG_TABLE_NAME,
+			'icon' => 'fa-solid fa-cash-register',
+			'columns' => [
+				'time' => ['type' => 'DateTime', 'label' => 'LBL_TIME'],
+				'error' => ['type' => 'Boolean', 'label' => 'LBL_ERROR'],
+				'message' => ['type' => 'Text', 'label' => 'LBL_MESSAGE'],
+				'params' => ['type' => 'Text', 'label' => 'LBL_PARAMS'],
+				'trace' => ['type' => 'Text', 'label' => 'LBL_BACKTRACE'],
+			],
+			'filter' => [
+				'time' => 'DateTimeRange',
+				'error' => 'Boolean',
+				'message' => 'Text',
+				'params' => 'Text',
+				'trace' => 'Text',
+			],
+		],
+		'wapro' => [
+			'label' => 'LBL_WAPRO_ERP',
+			'labelModule' => 'Settings:Wapro',
+			'table' => Integrations\Wapro::LOG_TABLE_NAME,
+			'icon' => 'fab fa-connectdevelop',
+			'columns' => [
+				'time' => ['type' => 'DateTime', 'label' => 'LBL_TIME'],
+				'category' => ['type' => 'Text', 'label' => 'LBL_CATEGORY'],
+				'message' => ['type' => 'Text', 'label' => 'LBL_MESSAGE'],
+				'error' => ['type' => 'Boolean', 'label' => 'LBL_ERROR'],
+				'trace' => ['type' => 'Text', 'label' => 'LBL_BACKTRACE'],
+			],
+			'filter' => [
+				'time' => 'DateTimeRange',
+				'category' => 'Text',
+				'message' => 'Text',
+				'error' => 'Boolean',
+				'trace' => 'Text',
+			],
+		],
+		'comarch' => [
+			'label' => 'LBL_COMARCH',
+			'labelModule' => 'Settings:Comarch',
+			'table' => Integrations\Comarch::LOG_TABLE_NAME,
+			'icon' => 'fa-brands fa-connectdevelop',
+			'columns' => [
+				'time' => ['type' => 'DateTime', 'label' => 'LBL_TIME'],
+				'error' => ['type' => 'Boolean', 'label' => 'LBL_ERROR'],
+				'message' => ['type' => 'Text', 'label' => 'LBL_MESSAGE'],
+				'params' => ['type' => 'Text', 'label' => 'LBL_PARAMS'],
+				'trace' => ['type' => 'Text', 'label' => 'LBL_BACKTRACE'],
+			],
+			'filter' => [
+				'time' => 'DateTimeRange',
+				'error' => 'Boolean',
+				'message' => 'Text',
+				'params' => 'Text',
+				'trace' => 'Text',
+			],
+		],
 	];
 	public static $levelMap = [
 		'error' => Logger::LEVEL_ERROR,
@@ -175,9 +255,7 @@ class Log extends Logger
 				}
 			}
 		} else {
-			$bitmapValues = array_reduce(self::$levelMap, function ($carry, $item) {
-				return $carry | $item;
-			});
+			$bitmapValues = array_reduce(self::$levelMap, fn ($carry, $item) => $carry | $item);
 			if (!($bitmapValues & $levels) && 0 !== $levels) {
 				throw new Exceptions\AppException("Incorrect $levels value");
 			}

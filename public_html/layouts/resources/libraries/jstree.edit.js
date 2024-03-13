@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 /*globals jQuery, define, exports, require, document */
 (function (factory) {
 	'use strict';
@@ -50,10 +50,9 @@
 							App.Components.QuickCreate.createRecord(module, QuickCreateParams);
 						} else {
 							app.hideModalWindow();
-							Vtiger_Helper_Js.showConfirmationBox({
-								message: app.vtranslate('JS_LBL_ARE_YOU_SURE_YOU_WANT_TO_DELETE')
-							})
-								.done(function (e) {
+							app.showConfirmModal({
+								title: app.vtranslate('JS_LBL_ARE_YOU_SURE_YOU_WANT_TO_DELETE'),
+								confirmedCallback: () => {
 									AppConnector.request({
 										module: module,
 										action: 'State',
@@ -63,10 +62,11 @@
 										$('.showModal[data-module="OutsourcedProducts"]').trigger('click');
 										Vtiger_Detail_Js.getInstance().loadWidgets();
 									});
-								})
-								.fail(function () {
+								},
+								rejectedCallback: () => {
 									$('.showModal[data-module="OutsourcedProducts"]').trigger('click');
-								});
+								}
+							});
 						}
 					}
 				}, this)

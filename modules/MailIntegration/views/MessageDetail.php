@@ -4,9 +4,10 @@
  *
  * @package   View
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  *
  * @see https://support.microsoft.com/en-us/help/4482725/custom-add-ins-may-not-display-all-fields-correctly-in-outlook
  * @see https://docs.microsoft.com/en-us/office/dev/add-ins/concepts/browsers-used-by-office-web-add-ins
@@ -24,17 +25,13 @@ class MailIntegration_MessageDetail_View extends \App\Controller\View\Base
 	 */
 	protected $error;
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function loginRequired()
 	{
 		return false;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		if ((explode('-', $request->getByType('query', 'AlnumExtended'))[0] ?? '') !== substr(\App\YetiForce\Register::getInstanceKey(), 0, 30)) {
@@ -42,15 +39,14 @@ class MailIntegration_MessageDetail_View extends \App\Controller\View\Base
 			\App\Log::error("Incorrect integration key: {$request->getByType('query', 'AlnumExtended')}.");
 			new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
 		}
-		if ('outlook' === $request->getByType('source')) {
+		if ('outlook' !== $request->getByType('source')) {
+			$this->error = 'LBL_PERMISSION_DENIED';
 			new \App\Exceptions\NoPermitted('ERR_PAID_FUNCTIONALITY||YetiForceOutlook', 406);
 		}
 		\CsrfMagic\Csrf::$frameBreaker = \Config\Security::$csrfFrameBreaker = false;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$moduleName = $request->getModule();
@@ -68,13 +64,11 @@ class MailIntegration_MessageDetail_View extends \App\Controller\View\Base
 			$viewer->assign('MESSAGE', \App\Language::translate($this->error));
 			$viewer->assign('MESSAGE_EXPANDED', false);
 			$viewer->assign('HEADER_MESSAGE', \App\Language::translate('LBL_ERROR'));
-			$viewer->view('ExceptionError.tpl', 'Vtiger');
+			$viewer->view('Exceptions/ExceptionError.tpl', 'Vtiger');
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getHeaderScripts(App\Request $request)
 	{
 		return array_merge(parent::getHeaderScripts($request), $this->checkAndConvertJsScripts([
@@ -82,13 +76,11 @@ class MailIntegration_MessageDetail_View extends \App\Controller\View\Base
 		]));
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getFooterScripts(App\Request $request)
 	{
 		return array_merge(parent::getFooterScripts($request), $this->checkAndConvertJsScripts([
-			"modules.{$request->getModule()}.resources.{$request->getByType('source')}{$request->getByType('view')}"
+			"modules.{$request->getModule()}.resources.{$request->getByType('source')}{$request->getByType('view')}",
 		]));
 	}
 }

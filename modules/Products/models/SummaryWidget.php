@@ -3,8 +3,8 @@
 /**
  * Products SummaryWidget model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class Products_SummaryWidget_Model
 {
@@ -32,7 +32,7 @@ class Products_SummaryWidget_Model
 			$limit = $request->getInteger('limit');
 		}
 		$pagingModel = new Vtiger_Paging_Model();
-		$pagingModel->set('page', 0);
+		$pagingModel->set('page', 1);
 		$pagingModel->set('limit', $limit);
 
 		$orderBy = $request->getArray('orderby', \App\Purifier::STANDARD, [], \App\Purifier::SQL);

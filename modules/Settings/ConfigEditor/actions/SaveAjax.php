@@ -4,8 +4,8 @@
  *
  * @package   Settings.Action
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 /**
  * Config editor basic action class.
@@ -23,23 +23,25 @@ class Settings_ConfigEditor_SaveAjax_Action extends Settings_Vtiger_Basic_Action
 	{
 		$response = new Vtiger_Response();
 		$qualifiedModuleName = $request->getModule(false);
-		$moduleModel = Settings_ConfigEditor_Module_Model::getInstance();
+		$type = $request->has('type') ? $request->getByType('type', \App\Purifier::STANDARD) : 'Main';
+		$moduleModel = Settings_ConfigEditor_Module_Model::getInstance()->init($type);
 		try {
 			$configFiles = [];
-			foreach (array_keys($moduleModel->listFields) as $fieldName) {
+			foreach (array_keys($moduleModel->getEditFields()) as $fieldName) {
 				if ($request->has($fieldName)) {
 					$fieldModel = $moduleModel->getFieldInstanceByName($fieldName);
+					$fieldValue = $request->getByType($fieldName, $fieldModel->get('purifyType'));
 					$source = $fieldModel->get('source');
 					if (!isset($configFiles[$source])) {
 						$configFiles[$source] = new \App\ConfigFile($source);
 					}
-					$configFiles[$source]->set($fieldName, $request->getRaw($fieldName));
+					$configFiles[$source]->set($fieldName, $fieldModel->getUITypeModel()->getDBValue($fieldValue));
 				}
 			}
 			foreach ($configFiles as $configFile) {
 				$configFile->create();
 			}
-			$response->setResult(true);
+			$response->setResult(['notify' => ['type' => 'success', 'text' => \App\Language::translate('LBL_CHANGES_SAVED')]]);
 		} catch (\Throwable $e) {
 			$response->setError(\App\Language::translate('LBL_ERROR', $qualifiedModuleName));
 		}

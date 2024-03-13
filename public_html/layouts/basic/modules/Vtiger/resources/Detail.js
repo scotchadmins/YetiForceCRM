@@ -5,7 +5,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  *************************************************************************************/
 'use strict';
 
@@ -55,12 +55,11 @@ jQuery.Class(
 				})
 				.fail(function (error, err) {});
 		},
-		/*
-		 * function to trigger send Sms
-		 * @params: send sms url , module name.
+		/**
+		 * Function to trigger SMS quick view actions
 		 */
-		triggerSendSms: function (detailActionUrl, module) {
-			Vtiger_Detail_Js.triggerDetailViewAction(detailActionUrl);
+		triggerSMSmodal: () => {
+			App.Components.QuickCreate.createRecord('SMSNotifier', { noCache: true });
 		},
 		triggerTransferOwnership: function (massActionUrl) {
 			let thisInstance = this;
@@ -74,7 +73,7 @@ jQuery.Class(
 			AppConnector.request(actionParams).done(function (data) {
 				if (data) {
 					let callback = function (data) {
-						let params = app.validationEngineOptions;
+						let params = { ...app.validationEngineOptions };
 						params.onValidationComplete = function (form, valid) {
 							if (valid) {
 								if (form.attr('name') == 'changeOwner') {
@@ -83,7 +82,7 @@ jQuery.Class(
 							}
 							return false;
 						};
-						jQuery('#changeOwner').validationEngine(app.validationEngineOptions);
+						jQuery('#changeOwner').validationEngine(params);
 					};
 					app.showModalWindow(data, function (data) {
 						let selectElement = thisInstance.getRelatedModuleContainer();
@@ -114,13 +113,13 @@ jQuery.Class(
 						text: app.vtranslate('JS_RECORDS_TRANSFERRED_SUCCESSFULLY'),
 						type: 'info'
 					};
-					let oldvalue = jQuery('.assigned_user_id').val();
+					let oldValue = jQuery('.assigned_user_id').val();
 					let element = jQuery('.assigned_user_id ');
 
-					element.find('option[value="' + oldvalue + '"]').removeAttr('selected');
+					element.find('option[value="' + oldValue + '"]').removeAttr('selected');
 					element.find('option[value="' + transferOwner + '"]').attr('selected', 'selected');
 					element.trigger('liszt:updated');
-					let Fieldname = element.find('option[value="' + transferOwner + '"]').data('picklistvalue');
+					let fieldName = element.find('option[value="' + transferOwner + '"]').data('picklistvalue');
 					element
 						.closest('.row-fluid')
 						.find('.value')
@@ -128,7 +127,7 @@ jQuery.Class(
 							'<a href="index.php?module=Users&amp;parent=Settings&amp;view=Detail&amp;record=' +
 								transferOwner +
 								'">' +
-								Fieldname +
+								fieldName +
 								'</a>'
 						);
 
@@ -172,7 +171,8 @@ jQuery.Class(
 				});
 		},
 		showWorkflowTriggerView: function (instance) {
-			$(instance).popover('hide');
+			let element = $(instance);
+			element.popover('hide');
 			const detailInstance = Vtiger_Detail_Js.getInstance(),
 				callback = function (data) {
 					let treeInstance = data.find('#treeWorkflowContents');
@@ -216,11 +216,11 @@ jQuery.Class(
 								type: 'info'
 							});
 							AppConnector.request({
-								module: app.getModuleName(),
+								module: element.data('module') || app.getModuleName(),
 								action: 'Workflow',
 								mode: 'execute',
 								user: data.find('[name="user"]').val(),
-								record: detailInstance.getRecordId(),
+								record: element.data('id') || detailInstance.getRecordId(),
 								tasks: JSON.stringify(tasks)
 							})
 								.done(function () {
@@ -244,9 +244,9 @@ jQuery.Class(
 					});
 				};
 			AppConnector.request({
-				module: app.getModuleName(),
+				module: element.data('module') || app.getModuleName(),
 				view: 'WorkflowTrigger',
-				record: detailInstance.getRecordId()
+				record: element.data('id') || detailInstance.getRecordId()
 			}).done(function (data) {
 				if (data) {
 					app.showModalWindow(data, '', callback);
@@ -271,37 +271,6 @@ jQuery.Class(
 		//Event that will triggered before saving the ajax edit of fields
 		fieldPreSave: 'Vtiger.Field.PreSave',
 		tempData: [],
-		referenceFieldNames: {
-			Calendar: {
-				Accounts: 'link',
-				Leads: 'link',
-				Vendors: 'link',
-				OSSEmployees: 'link',
-				Contacts: 'linkextend',
-				Campaigns: 'process',
-				HelpDesk: 'process',
-				Projects: 'process',
-				ServiceContracts: 'process'
-			},
-			OutsourcedProducts: {
-				Leads: 'parent_id',
-				Accounts: 'parent_id',
-				Contacts: 'parent_id'
-			},
-			Assets: {
-				Accounts: 'parent_id',
-				Contacts: 'parent_id'
-			},
-			OSSOutsourcedServices: {
-				Leads: 'parent_id',
-				Accounts: 'parent_id',
-				Contacts: 'parent_id'
-			},
-			OSSSoldServices: {
-				Accounts: 'parent_id',
-				Contacts: 'parent_id'
-			}
-		},
 		//constructor
 		init: function () {},
 		loadWidgetsEvents: function () {
@@ -400,7 +369,7 @@ jQuery.Class(
 						if (chart.length && typeof window['Vtiger_Widget_Js'] !== 'undefined') {
 							let widgetInstance = Vtiger_Widget_Js.getInstance(contentContainer, chart.val());
 							widgetInstance.init(contentContainer);
-							widgetInstance.loadChart();
+							widgetInstance.postLoadWidget();
 						}
 					}
 					app.event.trigger('DetailView.Widget.AfterLoad', contentContainer, relatedModuleName, thisInstance);
@@ -412,6 +381,36 @@ jQuery.Class(
 				});
 			return aDeferred.promise();
 		},
+
+		/**
+		 * Adding relationships in the products and services widget.
+		 */
+		registerWidgetProductAndServices: function () {
+			let thisInstance = this;
+			this.getForm().on('click', '.js-widget-products-services', (e) => {
+				let currentTarget = $(e.currentTarget);
+				let params = {
+					module: app.getModuleName(),
+					action: 'RelationAjax',
+					mode: 'updateRelation',
+					recordsToAdd: [],
+					src_record: app.getRecordId(),
+					related_module: currentTarget.closest('.js-detail-widget-header').find('[name="relatedModule"]').val()
+				};
+				let url = currentTarget.data('url');
+				app.showRecordsList(url, (_, instance) => {
+					instance.setSelectEvent((data) => {
+						for (let i in data) {
+							params.recordsToAdd.push(i);
+						}
+						AppConnector.request(params).done(function () {
+							thisInstance.reloadTabContent();
+						});
+					});
+				});
+			});
+		},
+
 		widgetRelatedRecordView: function (container, load) {
 			let cacheKey = this.getRecordId() + '_' + container.data('id');
 			let relatedRecordCacheID = app.moduleCacheGet(cacheKey);
@@ -601,92 +600,8 @@ jQuery.Class(
 				return jQuery('.relatedModuleName', this.getContentHolder()).val();
 			}
 		},
-		saveFieldValues: function (fieldDetailList) {
-			let aDeferred = jQuery.Deferred();
-
-			let recordId = this.getRecordId();
-
-			let data = {};
-			if (typeof fieldDetailList !== 'undefined') {
-				data = fieldDetailList;
-			}
-			data['record'] = recordId;
-			data['module'] = app.getModuleName();
-			data['action'] = 'SaveAjax';
-
-			const params = {};
-			params.data = data;
-			params.async = false;
-			params.dataType = 'json';
-			this.preSaveValidation(JSON.parse(JSON.stringify(params)), this.getForm()).then((response) => {
-				if (response === true) {
-					AppConnector.request(params)
-						.done(function (responseData) {
-							aDeferred.resolve(responseData);
-						})
-						.fail((jqXHR, textStatus, errorThrown) => {
-							aDeferred.reject(jqXHR, textStatus, errorThrown);
-							app.errorLog(jqXHR, textStatus, errorThrown);
-						});
-				} else {
-					aDeferred.resolve({ success: false });
-				}
-			});
-
-			return aDeferred.promise();
-		},
-		preSaveValidation: function (params, form) {
-			const aDeferred = $.Deferred();
-			if (form.find('#preSaveValidation').val()) {
-				document.progressLoader = $.progressIndicator({
-					message: app.vtranslate('JS_SAVE_LOADER_INFO'),
-					position: 'html',
-					blockInfo: {
-						enabled: true
-					}
-				});
-				params.data.mode = 'preSaveValidation';
-				AppConnector.request(params)
-					.done((data) => {
-						document.progressLoader.progressIndicator({ mode: 'hide' });
-						let response = data.result;
-						for (let i = 0; i < response.length; i++) {
-							if (response[i].result !== true) {
-								app.showNotify({
-									text: response[i].message ? response[i].message : app.vtranslate('JS_ERROR'),
-									type: 'error'
-								});
-							}
-						}
-						if (data.result.length <= 0) {
-							aDeferred.resolve(true);
-						} else {
-							aDeferred.resolve(false);
-						}
-					})
-					.fail((textStatus, errorThrown) => {
-						document.progressLoader.progressIndicator({ mode: 'hide' });
-						app.showNotify({
-							text: app.vtranslate('JS_ERROR'),
-							type: 'error'
-						});
-						app.errorLog(textStatus, errorThrown);
-						aDeferred.resolve(false);
-					});
-			} else {
-				aDeferred.resolve(true);
-			}
-
-			return aDeferred.promise();
-		},
 		getRelatedListCurrentPageNum: function () {
 			return jQuery('input[name="currentPageNum"]', this.getContentHolder()).val();
-		},
-		/**
-		 * function to hide comment block.
-		 */
-		removeCommentBlock: function () {
-			$('.js-add-comment-block', $('.js-comments-body', this.getContentHolder())).remove();
 		},
 
 		/**
@@ -694,13 +609,6 @@ jQuery.Class(
 		 */
 		hideButtonAction: function () {
 			$('.js-hb__container').removeClass('u-hidden-block__opened');
-		},
-
-		/**
-		 * function to show comment block.
-		 */
-		showCommentBlock: function () {
-			$('.js-add-comment-block', $('.js-comments-body', this.getContentHolder())).show();
 		},
 
 		/**
@@ -736,20 +644,18 @@ jQuery.Class(
 				relatedTo = thisInstance.getRecordId();
 			}
 			let postData = {
+				action: 'SaveAjax',
 				commentcontent: commentContentValue,
 				related_to: relatedTo,
 				module: 'ModComments'
 			};
-
 			if (commentMode == 'edit') {
+				postData['fromView'] = 'QuickEdit';
 				postData['record'] = commentId;
 				postData['reasontoedit'] = editCommentReason;
 				postData['parent_comments'] = parentCommentId;
-				postData['mode'] = 'edit';
-				postData['action'] = 'Save';
 			} else if (commentMode == 'add') {
 				postData['parent_comments'] = commentId;
-				postData['action'] = 'SaveAjax';
 			}
 			AppConnector.request(postData)
 				.done(function (data) {
@@ -757,7 +663,7 @@ jQuery.Class(
 					if (commentMode == 'add') {
 						thisInstance.addRelationBetweenRecords(
 							'ModComments',
-							data.result.id,
+							data.result._recordId,
 							thisInstance.getTabByLabel(thisInstance.detailViewRecentCommentsTabLabel),
 							{ relationId: null }
 						);
@@ -850,9 +756,7 @@ jQuery.Class(
 				.find('.commentcontenthidden')
 				.removeClass('commentcontenthidden')
 				.addClass('js-comment-content');
-			new App.Fields.Text.Completions(clonedCommentBlock.find('.js-completions'), {
-				emojiPanel: false
-			});
+			new App.Fields.Text.Completions(clonedCommentBlock.find('.js-completions'));
 			return clonedCommentBlock;
 		},
 		/*
@@ -968,24 +872,6 @@ jQuery.Class(
 			}
 		},
 		/*
-		 * Function to register the click event of email field
-		 */
-		registerEmailFieldClickEvent: function () {
-			let detailContentsHolder = this.getContentHolder();
-			detailContentsHolder.on('click', '.emailField', function (e) {
-				e.stopPropagation();
-			});
-		},
-		/*
-		 * Function to register the click event of phone field
-		 */
-		registerPhoneFieldClickEvent: function () {
-			let detailContentsHolder = this.getContentHolder();
-			detailContentsHolder.on('click', '.phoneField', function (e) {
-				e.stopPropagation();
-			});
-		},
-		/*
 		 * Function to register the click event of url field
 		 */
 		registerUrlFieldClickEvent: function () {
@@ -1035,39 +921,21 @@ jQuery.Class(
 		 * Function to register Event for Sorting
 		 */
 		registerEventForRelatedList: function () {
-			let thisInstance = this;
+			const self = this;
 			let detailContentsHolder = this.getContentHolder();
-			let relatedModuleName = thisInstance.getRelatedModuleName();
+			let relatedModuleName = self.getRelatedModuleName();
 			if (relatedModuleName) {
 				let relatedController = Vtiger_RelatedList_Js.getInstance(
-					thisInstance.getRecordId(),
+					self.getRecordId(),
 					app.getModuleName(),
-					thisInstance.getSelectedTab(),
+					self.getSelectedTab(),
 					relatedModuleName
 				);
 				relatedController.setRelatedContainer(detailContentsHolder);
 				relatedController.registerRelatedEvents();
 			}
 			detailContentsHolder.find('.detailViewBlockLink').each(function (n, block) {
-				block = $(block);
-				let blockContent = block.find('.blockContent');
-
-				if (blockContent.is(':visible')) {
-					AppConnector.request({
-						type: 'GET',
-						dataType: 'html',
-						data: {},
-						url: block.data('url')
-					}).done(function (response) {
-						blockContent.html(response);
-						let relatedController = Vtiger_RelatedList_Js.getInstanceByUrl(
-							block.data('url'),
-							thisInstance.getSelectedTab()
-						);
-						relatedController.setRelatedContainer(blockContent);
-						relatedController.registerRelatedEvents();
-					});
-				}
+				self.reloadDetailViewBlock($(block), false);
 			});
 			detailContentsHolder.find('.detailViewBlockLink .blockHeader').on('click', function (e) {
 				const target = $(e.target);
@@ -1080,25 +948,34 @@ jQuery.Class(
 				) {
 					return false;
 				}
-				const block = $(this).closest('.js-toggle-panel');
-				const blockContent = block.find('.blockContent');
-				const isEmpty = blockContent.is(':empty');
-				let url = block.data('url');
-				if (blockContent.is(':visible') && url) {
-					blockContent.progressIndicator();
-					AppConnector.request(url).done(function (response) {
-						blockContent.html(response);
-						const relatedController = Vtiger_RelatedList_Js.getInstanceByUrl(url, thisInstance.getSelectedTab());
-						relatedController.setRelatedContainer(blockContent);
-						if (isEmpty) {
-							relatedController.registerRelatedEvents();
-						} else {
-							relatedController.registerPostLoadEvents();
-							relatedController.registerListEvents();
-						}
-					});
-				}
+				self.reloadDetailViewBlock($(this).closest('.js-toggle-panel'));
 			});
+		},
+		/**
+		 * Function to reload detail view block
+		 * @param {$} block - Jquery container.
+		 */
+		reloadDetailViewBlock: function (block, progressIndicator = true) {
+			const self = this;
+			const blockContent = block.find('.blockContent');
+			const isEmpty = blockContent.is(':empty');
+			let url = block.data('url');
+			if (blockContent.is(':visible') && url) {
+				if (progressIndicator) {
+					blockContent.progressIndicator();
+				}
+				AppConnector.request(url).done(function (response) {
+					blockContent.html(response);
+					const relatedController = Vtiger_RelatedList_Js.getInstanceByUrl(url, self.getSelectedTab());
+					relatedController.setRelatedContainer(blockContent);
+					if (isEmpty) {
+						relatedController.registerRelatedEvents();
+					} else {
+						relatedController.registerPostLoadEvents();
+						relatedController.registerListEvents();
+					}
+				});
+			}
 		},
 		registerBlockStatusCheckOnLoad: function () {
 			let blocks = this.getContentHolder().find('.js-toggle-panel');
@@ -1154,7 +1031,7 @@ jQuery.Class(
 							? fieldName + '[]'
 							: fieldName;
 				let fieldElement = $('[name="' + elementName + '"]:not([type="hidden"])', editElement);
-				if (fieldElement.attr('disabled') == 'disabled') {
+				if (fieldElement.attr('disabled') == 'disabled' && fieldElement.attr('type') !== 'password') {
 					return;
 				}
 				if (editElement.length <= 0) {
@@ -1184,6 +1061,7 @@ jQuery.Class(
 					}
 					if (
 						element.closest('.fieldValue').is(currentTdElement) ||
+						element.closest('.pnotify-modal').length ||
 						element.hasClass('select2-selection__choice__remove') ||
 						element.closest('.select2-container--open').length ||
 						element.parents('.clockpicker-popover').length
@@ -1238,8 +1116,7 @@ jQuery.Class(
 						readRecord.prop('disabled', false);
 						editElement.off('clickoutside');
 					} else {
-						let preFieldSaveEvent = jQuery.Event(thisInstance.fieldPreSave),
-							fieldNameValueMap = {};
+						let preFieldSaveEvent = jQuery.Event(thisInstance.fieldPreSave);
 						fieldElement.trigger(preFieldSaveEvent, {
 							fieldValue: ajaxEditNewValue,
 							recordId: thisInstance.getRecordId()
@@ -1248,17 +1125,16 @@ jQuery.Class(
 							readRecord.prop('disabled', false);
 							return;
 						}
-						currentTdElement.progressIndicator();
 						editElement.addClass('d-none');
-						fieldNameValueMap['value'] = ajaxEditNewValue;
-						fieldNameValueMap['field'] = fieldName;
-						fieldNameValueMap = thisInstance.getCustomFieldNameValueMap(fieldNameValueMap);
-						thisInstance
-							.saveFieldValues(fieldNameValueMap)
+						Vtiger_Edit_Js.saveAjax(
+							thisInstance.getCustomFieldNameValueMap({
+								field: fieldName,
+								value: ajaxEditNewValue
+							})
+						)
 							.done(function (response) {
 								editElement.off('clickoutside');
 								readRecord.prop('disabled', false);
-								currentTdElement.progressIndicator({ mode: 'hide' });
 								detailViewValue.removeClass('d-none');
 								actionElement.removeClass('d-none');
 								if (!response.success) {
@@ -1336,10 +1212,7 @@ jQuery.Class(
 									let detailContentsHolder = thisInstance.getContentHolder();
 									thisInstance.reloadTabContent();
 									thisInstance.registerSummaryViewContainerEvents(detailContentsHolder);
-									thisInstance.registerEventForPicklistDependencySetup(thisInstance.getForm());
 									thisInstance.registerEventForRelatedList();
-								} else if (selectedTabElement.data('linkKey') == thisInstance.detailViewDetailsTabLabel) {
-									thisInstance.registerEventForPicklistDependencySetup(thisInstance.getForm());
 								}
 								thisInstance.updateRecordsPDFTemplateBtn(thisInstance.getForm());
 							})
@@ -1349,7 +1222,6 @@ jQuery.Class(
 								actionElement.removeClass('d-none');
 								editElement.off('clickoutside');
 								readRecord.prop('disabled', false);
-								currentTdElement.progressIndicator({ mode: 'hide' });
 								app.showNotify({
 									type: 'error',
 									title: app.vtranslate('JS_SAVE_NOTIFY_FAIL'),
@@ -1389,15 +1261,6 @@ jQuery.Class(
 				let customParams = {};
 				customParams['sourceModule'] = module;
 				customParams['sourceRecord'] = recordId;
-				if (
-					module != '' &&
-					referenceModuleName != '' &&
-					typeof thisInstance.referenceFieldNames[referenceModuleName] !== 'undefined' &&
-					typeof thisInstance.referenceFieldNames[referenceModuleName][module] !== 'undefined'
-				) {
-					let relField = thisInstance.referenceFieldNames[referenceModuleName][module];
-					customParams[relField] = recordId;
-				}
 				let fullFormUrl = element.data('url');
 				let preQuickCreateSave = function (data) {
 					thisInstance.addElementsToQuickCreateForCreatingRelation(data, customParams);
@@ -1418,61 +1281,6 @@ jQuery.Class(
 				QuickCreateParams['data'] = Object.assign({}, customParams);
 				QuickCreateParams['noCache'] = false;
 				App.Components.QuickCreate.createRecord(referenceModuleName, QuickCreateParams);
-			});
-		},
-		getEndDate: function (startDate) {
-			let dateTab = startDate.split('-');
-			let date = new Date(dateTab[0], dateTab[1], dateTab[2]);
-			let newDate = new Date();
-
-			newDate.setDate(date.getDate() + 2);
-			return app.getStringDate(newDate);
-		},
-		getSingleEventType: function (modDay, id, type) {
-			let dateStartEl = jQuery('[name="date_start"]');
-			let dateStartVal = jQuery(dateStartEl).val();
-			let dateStartFormat = jQuery(dateStartEl).data('date-format');
-			let validDateFromat = Vtiger_Helper_Js.convertToDateString(dateStartVal, dateStartFormat, modDay, type);
-			let map = jQuery.extend({}, ['#b6a996,black']);
-
-			let params = {
-				module: 'Calendar',
-				action: 'Feed',
-				start: validDateFromat,
-				end: this.getEndDate(validDateFromat),
-				type: type,
-				mapping: map
-			};
-
-			AppConnector.request(params).done(function (events) {
-				let testDate = Vtiger_Helper_Js.convertToDateString(dateStartVal, dateStartFormat, modDay);
-				if (!jQuery.isEmptyObject(events)) {
-					if (events[0]['activitytype'] === 'Task') {
-						for (let ev in events) {
-							if (events[ev]['start'].indexOf(testDate) > -1) {
-								jQuery('#' + id + ' .table').append(
-									'<tr><td><a target="_blank" href="' +
-										events[ev]['url'] +
-										'">' +
-										events[ev]['title'] +
-										'</a></td></tr>'
-								);
-							}
-						}
-					} else {
-						for (let i = 0; i < events[0].length; i++) {
-							if (events[0][i]['start'].indexOf(testDate) > -1) {
-								jQuery('#' + id + ' .table').append(
-									'<tr><td><a target="_blank" href="' +
-										events[0][i]['url'] +
-										'">' +
-										events[0][i]['title'] +
-										'</a></td></tr>'
-								);
-							}
-						}
-					}
-				}
 			});
 		},
 		/**
@@ -1520,7 +1328,7 @@ jQuery.Class(
 						quickCreate = App.Components.QuickCreate;
 					}
 					quickCreate.getForm(quickcreateUrl, moduleName, quickCreateParams).done(function (data) {
-						quickCreate.showModal(data, quickCreateParams);
+						quickCreate.showModal(data, quickCreateParams, currentElement);
 						progress.progressIndicator({ mode: 'hide' });
 					});
 				});
@@ -1542,13 +1350,13 @@ jQuery.Class(
 						params['search_key'] = restrictionsField.key;
 						params['search_value'] = restrictionsField.name;
 					}
-					app.showRecordsList(params, (modal, instance) => {
+					app.showRecordsList(params, (_modal, instance) => {
 						instance.setSelectEvent((responseData) => {
 							thisInstance
-								.addRelationBetweenRecords(referenceModuleName, Object.keys(responseData), null, {
+								.addRelationBetweenRecords(referenceModuleName, Object.keys(responseData.selectedRecords), null, {
 									relationId: params.relationId
 								})
-								.done(function (data) {
+								.done(function () {
 									thisInstance.loadWidget(summaryWidgetContainer.find('.widgetContentBlock'));
 								});
 						});
@@ -1574,17 +1382,18 @@ jQuery.Class(
 			this.getContentHolder()
 				.find('.resetRelationsEmail')
 				.on('click', function (e) {
-					Vtiger_Helper_Js.showConfirmationBox({
-						message: app.vtranslate('JS_EMAIL_RESET_RELATIONS_CONFIRMATION')
-					}).done(function (data) {
-						AppConnector.request({
-							module: 'OSSMailView',
-							action: 'Relation',
-							moduleName: app.getModuleName(),
-							record: app.getRecordId()
-						}).done(function (d) {
-							Vtiger_Helper_Js.showMessage({ text: d.result });
-						});
+					app.showConfirmModal({
+						title: app.vtranslate('JS_EMAIL_RESET_RELATIONS_CONFIRMATION'),
+						confirmedCallback: () => {
+							AppConnector.request({
+								module: 'OSSMailView',
+								action: 'Relation',
+								moduleName: app.getModuleName(),
+								record: app.getRecordId()
+							}).done(function (d) {
+								Vtiger_Helper_Js.showMessage({ text: d.result });
+							});
+						}
 					});
 				});
 		},
@@ -1708,21 +1517,25 @@ jQuery.Class(
 							quickCreate = window.parent.App.Components.QuickCreate;
 						}
 						quickCreate.getForm(url, 'Calendar', { noCache: true }).done((data) => {
-							quickCreate.showModal(data, {
-								callbackFunction: () => {
-									let widget = currentTarget.closest('.widgetContentBlock');
-									if (widget.length) {
-										thisInstance.loadWidget(widget);
-										let updatesWidget = thisInstance.getContentHolder().find("[data-type='Updates']");
-										if (updatesWidget.length > 0) {
-											thisInstance.loadWidget(updatesWidget);
+							quickCreate.showModal(
+								data,
+								{
+									callbackFunction: () => {
+										let widget = currentTarget.closest('.widgetContentBlock');
+										if (widget.length) {
+											thisInstance.loadWidget(widget);
+											let updatesWidget = thisInstance.getContentHolder().find("[data-type='Updates']");
+											if (updatesWidget.length > 0) {
+												thisInstance.loadWidget(updatesWidget);
+											}
+										} else {
+											thisInstance.loadRelatedList();
 										}
-									} else {
-										thisInstance.loadRelatedList();
+										thisInstance.registerRelatedModulesRecordCount();
 									}
-									thisInstance.registerRelatedModulesRecordCount();
-								}
-							});
+								},
+								currentTarget
+							);
 						});
 					} else {
 						app.showModalWindow(null, url);
@@ -1811,53 +1624,13 @@ jQuery.Class(
 			 * to add record from widget
 			 */
 
-			jQuery('.changeDetailViewMode').on('click', function (e) {
+			$('.changeDetailViewMode').on('click', function (e) {
 				thisInstance
 					.getTabs()
 					.filter('[data-link-key="' + thisInstance.detailViewDetailsTabLabel + '"]:not(.d-none)')
 					.trigger('click');
 			});
-
-			/*
-			 * Register click event for add button in Related widgets
-			 * to add record from widget
-			 */
-			jQuery('.createRecord').on('click', function (e) {
-				let currentElement = jQuery(e.currentTarget);
-				let summaryWidgetContainer = currentElement.closest('.js-detail-widget');
-				let widgetHeaderContainer = summaryWidgetContainer.find('.js-detail-widget-header');
-				let referenceModuleName = widgetHeaderContainer.find('[name="relatedModule"]').val();
-				let recordId = thisInstance.getRecordId();
-				let module = app.getModuleName();
-				let customParams = {};
-				customParams['sourceModule'] = module;
-				customParams['sourceRecord'] = recordId;
-				if (
-					module != '' &&
-					referenceModuleName != '' &&
-					typeof thisInstance.referenceFieldNames[referenceModuleName] !== 'undefined' &&
-					typeof thisInstance.referenceFieldNames[referenceModuleName][module] !== 'undefined'
-				) {
-					let fieldName = thisInstance.referenceFieldNames[referenceModuleName][module];
-					customParams[fieldName] = recordId;
-				}
-
-				let postQuickCreateSave = function (data) {
-					thisInstance.postSummaryWidgetAddRecord(data, currentElement);
-				};
-
-				let goToFullFormcallback = function (data) {
-					thisInstance.addElementsToQuickCreateForCreatingRelation(data, customParams);
-				};
-
-				let QuickCreateParams = {};
-				QuickCreateParams['callbackFunction'] = postQuickCreateSave;
-				QuickCreateParams['goToFullFormcallback'] = goToFullFormcallback;
-				QuickCreateParams['data'] = customParams;
-				QuickCreateParams['noCache'] = false;
-				App.Components.QuickCreate.createRecord(referenceModuleName, QuickCreateParams);
-			});
-			this.registerFastEditingFiels();
+			this.registerFastEditingFields();
 		},
 		addRelationBetweenRecords: function (relatedModule, relatedModuleRecordId, selectedTabElement, params = {}, url) {
 			let aDeferred = jQuery.Deferred();
@@ -1898,22 +1671,16 @@ jQuery.Class(
 		 * summary view widget
 		 */
 		postSummaryWidgetAddRecord: function (data, currentElement) {
-			let thisInstance = this;
 			let summaryWidgetContainer = currentElement.closest('.js-detail-widget');
 			let widgetContainer = summaryWidgetContainer.find('[class^="widgetContainer_"]');
-			let widgetHeaderContainer = summaryWidgetContainer.find('.js-detail-widget-header');
-			let referenceModuleName = widgetHeaderContainer.find('[name="relatedModule"]').val();
-			let idList = [];
-			idList.push(data.result._recordId);
-			let params = {};
-			if (summaryWidgetContainer.data('relationId')) {
-				params.relationId = summaryWidgetContainer.data('relationId');
+
+			this.loadWidget(widgetContainer);
+			let updatesWidget = this.getContentHolder().find("[data-type='Updates']");
+			if (updatesWidget.length > 0) {
+				let params = this.getFiltersData(updatesWidget);
+				updatesWidget.find('.btnChangesReviewedOn').parent().remove();
+				this.loadWidget(updatesWidget, params['params']);
 			}
-			this.addRelationBetweenRecords(referenceModuleName, idList, null, params, widgetContainer.data('url')).done(
-				function (data) {
-					thisInstance.loadWidget(widgetContainer);
-				}
-			);
 		},
 		registerChangeEventForModulesList: function () {
 			jQuery('#tagSearchModulesList').on('change', function (e) {
@@ -1975,90 +1742,6 @@ jQuery.Class(
 						});
 				}
 			});
-		},
-		/**
-		 * Function to register event for setting up picklistdependency
-		 * for a module if exist on change of picklist value
-		 */
-		registerEventForPicklistDependencySetup: function (container) {
-			let thisInstance = this;
-			let picklistDependcyElemnt = jQuery('[name="picklistDependency"]', container);
-			if (picklistDependcyElemnt.length <= 0) {
-				return;
-			}
-			let picklistDependencyMapping = JSON.parse(picklistDependcyElemnt.val());
-			let sourcePicklists = Object.keys(picklistDependencyMapping);
-			if (sourcePicklists.length <= 0) {
-				return;
-			}
-
-			let sourcePickListNames = [];
-			for (let i = 0; i < sourcePicklists.length; i++) {
-				sourcePickListNames.push('[name="' + sourcePicklists[i] + '"]');
-			}
-			sourcePickListNames = sourcePickListNames.join(',');
-			let sourcePickListElements = container.find(sourcePickListNames);
-			sourcePickListElements.on('change', function (e) {
-				let currentElement = jQuery(e.currentTarget);
-				let sourcePicklistname = currentElement.attr('name');
-
-				let configuredDependencyObject = picklistDependencyMapping[sourcePicklistname];
-				let selectedValue = currentElement.val();
-				let targetObjectForSelectedSourceValue = configuredDependencyObject[selectedValue];
-				let picklistmap = configuredDependencyObject['__DEFAULT__'];
-
-				if (typeof targetObjectForSelectedSourceValue === 'undefined') {
-					targetObjectForSelectedSourceValue = picklistmap;
-				}
-				jQuery.each(picklistmap, function (targetPickListName, targetPickListValues) {
-					let targetPickListMap = targetObjectForSelectedSourceValue[targetPickListName];
-					if (typeof targetPickListMap === 'undefined') {
-						targetPickListMap = targetPickListValues;
-					}
-					let targetPickList = jQuery('[name="' + targetPickListName + '"]', container);
-					if (targetPickList.length <= 0) {
-						return;
-					}
-
-					//On change of SourceField value, If TargetField value is not there in mapping, make user to select the new target value also.
-					let selectedValue = targetPickList.data('selectedValue');
-					if (jQuery.inArray(selectedValue, targetPickListMap) == -1) {
-						thisInstance.targetPicklistChange = true;
-						thisInstance.targetPicklist = targetPickList.closest('td');
-					} else {
-						thisInstance.targetPicklistChange = false;
-						thisInstance.targetPicklist = false;
-					}
-
-					let listOfAvailableOptions = targetPickList.data('availableOptions');
-					if (typeof listOfAvailableOptions === 'undefined') {
-						listOfAvailableOptions = jQuery('option', targetPickList);
-						targetPickList.data('available-options', listOfAvailableOptions);
-					}
-
-					let targetOptions = new jQuery();
-					let optionSelector = [];
-					optionSelector.push('');
-					for (let i = 0; i < targetPickListMap.length; i++) {
-						optionSelector.push(targetPickListMap[i]);
-					}
-
-					jQuery.each(listOfAvailableOptions, function (i, e) {
-						let picklistValue = jQuery(e).val();
-						if (jQuery.inArray(picklistValue, optionSelector) != -1) {
-							targetOptions = targetOptions.add(jQuery(e));
-						}
-					});
-					let targetPickListSelectedValue = '';
-					targetPickListSelectedValue = targetOptions.filter('[selected]').val();
-					if (targetPickListMap.length == 1) {
-						targetPickListSelectedValue = targetPickListMap[0]; // to automatically select picklist if only one picklistmap is present.
-					}
-					targetPickList.html(targetOptions).val(targetPickListSelectedValue).trigger('change');
-				});
-			});
-			//To Trigger the change on load
-			sourcePickListElements.trigger('change');
 		},
 		/**
 		 * Function to get child comments
@@ -2172,7 +1855,7 @@ jQuery.Class(
 				});
 			});
 		},
-		registerFastEditingFiels: function () {
+		registerFastEditingFields: function () {
 			let thisInstance = this;
 			let fastEditingFiels = jQuery('.summaryWidgetFastEditing select');
 			fastEditingFiels.on('change', function (e) {
@@ -2198,18 +1881,20 @@ jQuery.Class(
 					fieldValue: fieldValue,
 					recordId: thisInstance.getRecordId()
 				});
-				let fieldNameValueMap = {};
-				fieldNameValueMap['value'] = fieldValue;
-				fieldNameValueMap['field'] = fieldName;
-				fieldNameValueMap = thisInstance.getCustomFieldNameValueMap(fieldNameValueMap);
-				thisInstance.saveFieldValues(fieldNameValueMap);
-				progressIndicatorElement.progressIndicator({ mode: 'hide' });
-				let params = {
-					title: app.vtranslate('JS_SAVE_NOTIFY_OK'),
-					type: 'success'
-				};
-				app.showNotify(params);
-				thisInstance.reloadTabContent();
+				Vtiger_Edit_Js.saveAjax(
+					thisInstance.getCustomFieldNameValueMap({
+						field: fieldName,
+						value: fieldValue
+					}),
+					false
+				).always(() => {
+					progressIndicatorElement.progressIndicator({ mode: 'hide' });
+					app.showNotify({
+						title: app.vtranslate('JS_SAVE_NOTIFY_OK'),
+						type: 'success'
+					});
+					thisInstance.reloadTabContent();
+				});
 			});
 		},
 		registerHelpInfo: function (form) {
@@ -2268,8 +1953,7 @@ jQuery.Class(
 				commentInfoBlock = currentTarget.closest('.js-comment-single');
 			commentTextAreaElement.html('');
 			if (mode == 'add') {
-				let commentId = data['result']['id'],
-					commentHtml = self.getCommentUI(commentId);
+				let commentHtml = self.getCommentUI(data['result']['_recordId']);
 				commentHtml.done(function (data) {
 					let commentBlock = closestAddCommentBlock.closest('.js-comment-details'),
 						detailContentsHolder = self.getContentHolder(),
@@ -2308,14 +1992,14 @@ jQuery.Class(
 					commentInfoContent = commentInfoBlock.find('.js-comment-info'),
 					commentEditStatus = commentInfoBlock.find('.js-edited-status'),
 					commentReason = commentInfoBlock.find('.js-edit-reason-span');
-				commentInfoContent.html(data.result.commentcontent);
-				commentReason.html(data.result.reasontoedit);
-				modifiedTime.html(data.result.modifiedtime);
-				modifiedTime.attr('title', data.result.modifiedtimetitle);
+				commentInfoContent.html(data['result']['commentcontent']['display_value']);
+				commentReason.html(data['result']['reasontoedit']['display_value']);
+				modifiedTime.html(data['result']['modifiedtime']['formatToViewDate']);
+				modifiedTime.attr('title', data['result']['modifiedtime']['formatToDay']);
 				if (commentEditStatus.hasClass('d-none')) {
 					commentEditStatus.removeClass('d-none');
 				}
-				if (data.result.reasontoedit != '') {
+				if (data['result']['reasontoedit']['display_value'] != '') {
 					commentInfoBlock.find('.js-edit-reason').removeClass('d-none');
 				}
 				commentInfoContent.show();
@@ -2334,20 +2018,20 @@ jQuery.Class(
 				let commentInfoBlock = $(e.currentTarget.closest('.js-comment-single'));
 				commentInfoBlock.find('.js-comment-container').show();
 				commentInfoBlock.find('.js-comment-info').show();
-				self.removeCommentBlock();
+				commentInfoBlock.find('.js-add-comment-block').remove();
 			});
 			detailContentsHolder.on('click', '.js-reply-comment', function (e) {
-				self.removeCommentBlock();
-				self.hideButtonAction();
 				let commentInfoBlock = $(e.currentTarget).closest('.js-comment-single');
-				commentInfoBlock.find('.js-comment-container').hide();
+				commentInfoBlock.find('.js-add-comment-block').remove();
+				self.hideButtonAction();
+				commentInfoBlock.find('.js-comment-info').show();
 				self.getCommentBlock().appendTo(commentInfoBlock).show();
 			});
 			detailContentsHolder.on('click', '.js-edit-comment', function (e) {
-				self.removeCommentBlock();
+				let commentInfoBlock = $(e.currentTarget).closest('.js-comment-single');
+				commentInfoBlock.find('.js-add-comment-block').remove();
 				self.hideButtonAction();
-				let commentInfoBlock = $(e.currentTarget).closest('.js-comment-single'),
-					commentInfoContent = commentInfoBlock.find('.js-comment-info'),
+				let commentInfoContent = commentInfoBlock.find('.js-comment-info'),
 					editCommentBlock = self.getEditCommentBlock();
 				editCommentBlock.find('.js-comment-content').html(commentInfoContent.html());
 				editCommentBlock.find('.js-reason-to-edit').html(commentInfoBlock.find('.js-edit-reason-span').text());
@@ -2386,7 +2070,6 @@ jQuery.Class(
 							element.removeAttr('disabled');
 							app.errorLog(error, err);
 						});
-					self.showCommentBlock();
 				}
 			});
 			detailContentsHolder.on('click', '.js-more-recent-comments ', function () {
@@ -2468,7 +2151,7 @@ jQuery.Class(
 		 * @param {jQuery} widgetContainer
 		 */
 		registerCommentEventsInDetail(widgetContainer) {
-			new App.Fields.Text.Completions($('.js-completions').eq(0), { emojiPanel: false });
+			new App.Fields.Text.Completions($('.js-completions').eq(0));
 			widgetContainer.on('change', '.js-hierarchy-comments', function (e) {
 				let hierarchy = [];
 				widgetContainer.find('.js-hierarchy-comments').each(function () {
@@ -2582,11 +2265,6 @@ jQuery.Class(
 				mapView.registerDetailView(container);
 			}
 		},
-		registerSocialMediaEvents(container) {
-			let socialMediaContainer = container.find('.tpl-Detail-SocialMedia');
-			if (socialMediaContainer.length) {
-			}
-		},
 		registerShowSummary: function (container) {
 			container.on('click', '.showSummaryRelRecord', function (e) {
 				let currentTarget = $(e.currentTarget);
@@ -2607,26 +2285,24 @@ jQuery.Class(
 		 * @param {string} picklistName
 		 */
 		showProgressConfirmation(element, picklistName) {
-			const self = this;
-			let picklistValue = $(element).data('picklistValue');
-			Vtiger_Helper_Js.showConfirmationBox({
+			const picklistValue = $(element).data('picklistValue');
+			app.showConfirmModal({
 				title: $(element).data('picklistLabel'),
-				message: app.vtranslate('JS_CHANGE_VALUE_CONFIRMATION')
-			}).done(() => {
-				const progressIndicatorElement = $.progressIndicator();
-				self
-					.saveFieldValues({
+				text: app.vtranslate('JS_CHANGE_VALUE_CONFIRMATION'),
+				confirmedCallback: () => {
+					Vtiger_Edit_Js.saveAjax({
 						value: picklistValue,
 						field: picklistName
 					})
-					.done(() => {
-						progressIndicatorElement.progressIndicator({ mode: 'hide' });
-						window.location.reload();
-					})
-					.fail(function (error, err) {
-						progressIndicatorElement.progressIndicator({ mode: 'hide' });
-						app.errorLog(error, err);
-					});
+						.done((response) => {
+							if (!response || response.success !== false) {
+								window.location.reload();
+							}
+						})
+						.fail(function (error, err) {
+							app.errorLog(error, err);
+						});
+				}
 			});
 		},
 		/**
@@ -2673,21 +2349,20 @@ jQuery.Class(
 			//register all the events for summary view container
 
 			if (this.getSelectedTab().data('labelKey') === 'ModComments') {
-				new App.Fields.Text.Completions(detailContentsHolder.find('.js-completions'), {
-					emojiPanel: false
-				});
+				new App.Fields.Text.Completions(detailContentsHolder.find('.js-completions'));
 			}
 			app.registerBlockAnimationEvent(this.getForm());
 			thisInstance.registerSummaryViewContainerEvents(detailContentsHolder);
 			thisInstance.registerCommentEvents(detailContentsHolder);
 			thisInstance.registerEmailEvents(detailContentsHolder);
 			thisInstance.registerMapsEvents(detailContentsHolder);
-			thisInstance.registerSocialMediaEvents(detailContentsHolder);
 			thisInstance.registerSubProducts(detailContentsHolder);
 			thisInstance.registerCollapsiblePanels(detailContentsHolder);
 			App.Fields.Date.register(detailContentsHolder);
 			App.Fields.DateTime.register(detailContentsHolder);
 			App.Fields.MultiImage.register(detailContentsHolder);
+			App.Fields.Password.register(detailContentsHolder);
+			App.Fields.MultiAttachment.register(detailContentsHolder);
 			//Attach time picker event to time fields
 			app.registerEventForClockPicker();
 			this.registerHelpInfo(detailContentsHolder);
@@ -2982,6 +2657,7 @@ jQuery.Class(
 					tabElement.trigger('click');
 				});
 			app.registerIframeEvents(detailContentsHolder);
+			app.registerBlockToggleEvent(detailContentsHolder);
 		},
 		reloadWidgetActivitesStats: function (container) {
 			let countElement = container.find('.countActivities');
@@ -3126,13 +2802,32 @@ jQuery.Class(
 				}
 			});
 		},
+		/**
+		 * Register keyboard shortcuts events
+		 * @param {jQuery} container
+		 */
+		registerKeyboardShortcutsEvent: function (container) {
+			document.addEventListener('keydown', (event) => {
+				if (event.shiftKey && event.ctrlKey && event.code === 'KeyD') {
+					container.find('.js-duplicate-btn').trigger('click');
+				}
+				if (event.shiftKey && event.ctrlKey && event.code === 'KeyE' && container.find('.js-edit-btn').length) {
+					container.find('.js-edit-btn').trigger('click');
+				}
+				if (event.shiftKey && event.ctrlKey && event.code === 'KeyW' && container.find('.js-edit-btn').length) {
+					App.Components.QuickEdit.showModal({
+						module: app.getModuleName(),
+						record: app.getRecordId(),
+						removeFromUrl: 'step'
+					});
+				}
+			});
+		},
 		registerEvents: function () {
 			this.registerSendSmsSubmitEvent();
 			this.registerAjaxEditEvent();
 			this.registerRelatedRowClickEvent();
 			this.registerBlockStatusCheckOnLoad();
-			this.registerEmailFieldClickEvent();
-			this.registerPhoneFieldClickEvent();
 			this.registerEventForRelatedTabClick();
 			Vtiger_Helper_Js.showHorizontalTopScrollBar();
 			this.registerUrlFieldClickEvent();
@@ -3141,8 +2836,9 @@ jQuery.Class(
 				// Not detail view page
 				return;
 			}
+			App.Fields.Text.registerCopyClipboard(detailViewContainer);
+			this.registerWidgetProductAndServices();
 			this.registerSetReadRecord(detailViewContainer);
-			this.registerEventForPicklistDependencySetup(this.getForm());
 			this.getForm().validationEngine(app.validationEngineOptionsForRecord);
 			this.loadWidgetsEvents();
 			this.loadWidgets();
@@ -3151,6 +2847,8 @@ jQuery.Class(
 			this.registerProgress();
 			this.registerChat(detailViewContainer);
 			this.registerSendPdfFromPdfViewer(detailViewContainer);
+			this.registerKeyboardShortcutsEvent(detailViewContainer);
+			App.Components.ActivityNotifier.register(detailViewContainer);
 		}
 	}
 );

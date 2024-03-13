@@ -4,8 +4,8 @@
  *
  * @package   Model
  *
- * @copyright YetiForce Sp. z o.o.
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Rafal Pospiech <r.pospiech@yetiforce.com>
  */
 class Settings_SlaPolicy_Module_Model extends Settings_Vtiger_Module_Model
@@ -46,17 +46,13 @@ class Settings_SlaPolicy_Module_Model extends Settings_Vtiger_Module_Model
 	 */
 	public $name = 'SlaPolicy';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getDefaultUrl()
 	{
 		return 'index.php?module=SlaPolicy&parent=Settings&view=List';
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getCreateRecordUrl()
 	{
 		return 'index.php?module=SlaPolicy&parent=Settings&view=Edit';

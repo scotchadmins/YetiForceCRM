@@ -7,16 +7,13 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com.
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Install_Index_View extends \App\Controller\View\Base
 {
 	use \App\Controller\ExposeMethod;
-	/**
-	 * {@inheritdoc}
-	 */
-	public $csrfActive = false;
+
 	/**
 	 * @var bool
 	 */
@@ -34,6 +31,7 @@ class Install_Index_View extends \App\Controller\View\Base
 	 */
 	protected $stepNumber = 1;
 
+	/** {@inheritdoc} */
 	public function __construct()
 	{
 		parent::__construct();
@@ -49,10 +47,12 @@ class Install_Index_View extends \App\Controller\View\Base
 		$this->exposeMethod('step7');
 	}
 
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 	}
 
+	/** {@inheritdoc} */
 	public function loginRequired()
 	{
 		return false;
@@ -75,9 +75,9 @@ class Install_Index_View extends \App\Controller\View\Base
 					$data = Locale::getPrimaryLanguage($code);
 				}
 				foreach (explode(',', $_SERVER['HTTP_ACCEPT_LANGUAGE']) as $code) {
-					if (isset($languages[$code]) ||
-						(($code = str_replace('_', '-', Locale::acceptFromHttp($code))) && isset($languages[$code])) ||
-						false !== ($code = array_search(Locale::acceptFromHttp($code), $languages))
+					if (isset($languages[$code])
+						|| (($code = str_replace('_', '-', Locale::acceptFromHttp($code))) && isset($languages[$code]))
+						|| false !== ($code = array_search(Locale::acceptFromHttp($code), $languages))
 					) {
 						$lang = $code;
 						break;
@@ -92,6 +92,7 @@ class Install_Index_View extends \App\Controller\View\Base
 		return $request;
 	}
 
+	/** {@inheritdoc} */
 	public function preProcess(App\Request $request, $display = true)
 	{
 		if (preg_match('|^step([0-9])|i', $request->getMode(), $m)) {
@@ -109,7 +110,7 @@ class Install_Index_View extends \App\Controller\View\Base
 			$defaultView = $defaultModuleInstance->getDefaultViewName();
 			header('location: ../index.php?module=' . $defaultModule . '&view=' . $defaultView);
 		}
-		$_SESSION['language'] = $defaultLanguage = ($request->getByType('lang', 1)) ? $request->getByType('lang', 1) : \App\Language::DEFAULT_LANG;
+		$_SESSION['language'] = $defaultLanguage = ($request->getByType('lang', 1)) ?: \App\Language::DEFAULT_LANG;
 		App\Language::setTemporaryLanguage($defaultLanguage);
 		$this->loadJsConfig($request);
 		$this->viewer = new Vtiger_Viewer();
@@ -129,6 +130,7 @@ class Install_Index_View extends \App\Controller\View\Base
 		$this->viewer->display('InstallPreProcess.tpl');
 	}
 
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$mode = $request->getMode();
@@ -138,6 +140,7 @@ class Install_Index_View extends \App\Controller\View\Base
 		$this->step1($request);
 	}
 
+	/** {@inheritdoc} */
 	public function postProcess(App\Request $request, $display = true)
 	{
 		$this->viewer->assign('FOOTER_SCRIPTS', $this->getFooterScripts($request));
@@ -201,7 +204,7 @@ class Install_Index_View extends \App\Controller\View\Base
 			'product' => $request->getByType('product'),
 			'module' => 'YetiForce',
 			'parent' => 'Settings',
-			'installation' => true
+			'installation' => true,
 		], false);
 		$instance = new Settings_YetiForce_BuyModal_View();
 		$instance->preProcessAjax($request);
@@ -222,7 +225,7 @@ class Install_Index_View extends \App\Controller\View\Base
 			'product' => $request->getByType('product'),
 			'module' => 'YetiForce',
 			'parent' => 'Settings',
-			'installation' => true
+			'installation' => true,
 		], false);
 		$instance = new Settings_YetiForce_ProductModal_View();
 		$instance->preProcessAjax($request);
@@ -233,7 +236,7 @@ class Install_Index_View extends \App\Controller\View\Base
 	public function step3(App\Request $request)
 	{
 		$this->viewer->assign('ALL', \App\Utils\ConfReport::getByType([
-			'stability', 'security', 'libraries', 'performance', 'environment', 'publicDirectoryAccess', 'writableFilesAndFolders'
+			'stability', 'security', 'libraries', 'performance', 'environment', 'publicDirectoryAccess', 'writableFilesAndFolders',
 		]));
 		$this->viewer->display('StepVerifyServerConfiguration.tpl');
 	}
@@ -272,6 +275,7 @@ class Install_Index_View extends \App\Controller\View\Base
 				} catch (\Throwable $e) {
 					$_SESSION['config_file_info'][$name] = '';
 					$error = true;
+					\App\Log::error($e->__toString(), 'Install');
 				}
 			}
 		}
@@ -292,10 +296,11 @@ class Install_Index_View extends \App\Controller\View\Base
 				} catch (\Throwable $e) {
 					$_SESSION['config_file_info'][$name] = '';
 					$error = true;
+					\App\Log::error($e->__toString(), 'Install');
 				}
 			}
 		}
-		$webRoot = ($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : $_SERVER['SERVER_NAME'] . ':' . $_SERVER['SERVER_PORT'];
+		$webRoot = ($_SERVER['HTTP_HOST']) ?: $_SERVER['SERVER_NAME'] . ':' . $_SERVER['SERVER_PORT'];
 		$webRoot .= $_SERVER['REQUEST_URI'];
 		$webRoot = str_replace('index.php', '', $webRoot);
 		$webRoot = (isset($_SERVER['HTTPS']) && !empty($_SERVER['HTTPS']) ? 'https://' : 'http://') . $webRoot;
@@ -309,6 +314,7 @@ class Install_Index_View extends \App\Controller\View\Base
 		} catch (\Throwable $e) {
 			$_SESSION['config_file_info'][$name] = '';
 			$error = true;
+			\App\Log::error($e->__toString(), 'Install');
 		}
 		foreach (['user_name', 'password', 'retype_password', 'firstname', 'lastname', 'admin_email', 'dateformat', 'currency_name'] as $name) {
 			if ($request->has($name)) {
@@ -372,14 +378,20 @@ class Install_Index_View extends \App\Controller\View\Base
 	 */
 	public function step6(App\Request $request)
 	{
-		$configFile = new \App\ConfigFile('main');
-		foreach ($configFile->getTemplate() as $name => $data) {
-			if (isset($_SESSION['config_file_info'][$name])) {
-				$configFile->set($name, $_SESSION['config_file_info'][$name]);
+		if (empty($_SESSION['config_file_info'])) {
+			\App\Log::error('Error generating configuration files, no data in the session', 'Install');
+			$this->viewer->assign('ERROR', 'LBL_NO_NO_DATA_IN_SESSION');
+		} else {
+			$configFile = new \App\ConfigFile('main');
+			foreach ($configFile->getTemplate() as $name => $data) {
+				if (isset($_SESSION['config_file_info'][$name])) {
+					$configFile->set($name, $_SESSION['config_file_info'][$name]);
+				}
 			}
+			$configFile->set('application_unique_key', '');
+			$configFile->create();
 		}
-		$configFile->set('application_unique_key', '');
-		$configFile->create();
+
 		$this->viewer->display('StepCompanyDetails.tpl');
 	}
 
@@ -413,9 +425,10 @@ class Install_Index_View extends \App\Controller\View\Base
 	{
 	}
 
+	/** {@inheritdoc} */
 	public function validateRequest(App\Request $request)
 	{
-		return $request->validateWriteAccess(true);
+		$request->validateWriteAccess(true);
 	}
 
 	/**
@@ -433,7 +446,7 @@ class Install_Index_View extends \App\Controller\View\Base
 			'~libraries/datatables.net-responsive-bs4/css/responsive.bootstrap4.css',
 			'~libraries/@fortawesome/fontawesome-free/css/all.css',
 			'~install/tpl/resources/css/style.css',
-			'~install/tpl/resources/css/mkCheckbox.css'
+			'~install/tpl/resources/css/mkCheckbox.css',
 		];
 		$cssInstances = $this->checkAndConvertCssStyles($cssFileNames);
 
@@ -443,7 +456,7 @@ class Install_Index_View extends \App\Controller\View\Base
 	public function getHeaderScripts(App\Request $request)
 	{
 		return $this->checkAndConvertJsScripts([
-			'libraries.jquery.dist.jquery'
+			'libraries.jquery.dist.jquery',
 		]);
 	}
 
@@ -465,7 +478,7 @@ class Install_Index_View extends \App\Controller\View\Base
 				'~layouts/resources/Field.js',
 				'~layouts/resources/validator/BaseValidator.js',
 				'~layouts/resources/validator/FieldValidator.js',
-				'modules.Settings.YetiForce.resources.Shop'
+				'modules.Settings.YetiForce.resources.Shop',
 			]);
 		}
 		return array_merge(parent::getFooterScripts($request), $viewScripts, $this->checkAndConvertJsScripts([

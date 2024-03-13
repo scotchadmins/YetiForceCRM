@@ -4,7 +4,7 @@
  * @package     Edit
  *
  * @description SlaPolicy Edit View scripts
- * @license     YetiForce Public License 3.0
+ * @license     YetiForce Public License 5.0
  * @author      Rafal Pospiech <r.pospiech@yetiforce.com>
  */
 'use strict';

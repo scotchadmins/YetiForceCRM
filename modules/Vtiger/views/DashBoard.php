@@ -6,14 +6,25 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
 class Vtiger_DashBoard_View extends Vtiger_Index_View
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
+	public function checkPermission(App\Request $request)
+	{
+		$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
+		$moduleName = $request->getModule();
+		if ('Home' === $moduleName && !$userPrivilegesModel->hasModulePermission($moduleName)) {
+			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
+		}
+		if ('Home' !== $moduleName && !$userPrivilegesModel->hasModuleActionPermission($moduleName, 'Dashboard')) {
+			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
+		}
+	}
+
+	/** {@inheritdoc} */
 	public function preProcessAjax(App\Request $request)
 	{
 		$viewer = $this->getViewer($request);
@@ -22,7 +33,7 @@ class Vtiger_DashBoard_View extends Vtiger_Index_View
 		if (empty($sourceModule)) {
 			$sourceModule = $moduleName;
 		}
-		$currentDashboard = $this->getDashboardId($request);
+		$currentDashboard = Vtiger_Widget_Model::getDashboardId($request);
 		$dashBoardModel = Vtiger_DashBoard_Model::getInstance($moduleName);
 		$dashBoardModel->set('dashboardId', $currentDashboard);
 		//check profile permissions for Dashboards
@@ -47,15 +58,13 @@ class Vtiger_DashBoard_View extends Vtiger_Index_View
 		$viewer->view('dashboards/DashBoardPreProcessAjax.tpl', $moduleName);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function preProcess(App\Request $request, $display = true)
 	{
 		parent::preProcess($request, false);
 		$viewer = $this->getViewer($request);
 		$moduleName = $request->getModule();
-		$currentDashboard = $this->getDashboardId($request);
+		$currentDashboard = Vtiger_Widget_Model::getDashboardId($request);
 		$dashBoardModel = Vtiger_DashBoard_Model::getInstance($moduleName);
 		$dashBoardModel->set('dashboardId', $currentDashboard);
 		//check profile permissions for Dashboards
@@ -81,22 +90,18 @@ class Vtiger_DashBoard_View extends Vtiger_Index_View
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function preProcessTplName(App\Request $request)
 	{
 		return 'dashboards/DashBoardPreProcess.tpl';
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$viewer = $this->getViewer($request);
 		$moduleName = $request->getModule();
-		$currentDashboard = $this->getDashboardId($request);
+		$currentDashboard = Vtiger_Widget_Model::getDashboardId($request);
 		$_SESSION['DashBoard'][$moduleName]['LastDashBoardId'] = $currentDashboard;
 		$dashBoardModel = Vtiger_DashBoard_Model::getInstance($moduleName);
 		$dashBoardModel->set('dashboardId', $currentDashboard);
@@ -112,35 +117,10 @@ class Vtiger_DashBoard_View extends Vtiger_Index_View
 		$viewer->view('dashboards/DashBoardContents.tpl', $moduleName);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function postProcess(App\Request $request, $display = true)
 	{
 		parent::postProcess($request);
-	}
-
-	/**
-	 * Get dashboard id.
-	 *
-	 * @param \App\Request $request
-	 *
-	 * @return int
-	 */
-	public function getDashboardId(App\Request $request)
-	{
-		$dashboardId = false;
-		if (!$request->isEmpty('dashboardId', true)) {
-			$dashboardId = $request->getInteger('dashboardId');
-		} elseif (isset($_SESSION['DashBoard'][$request->getModule()]['LastDashBoardId'])) {
-			$dashboardId = $_SESSION['DashBoard'][$request->getModule()]['LastDashBoardId'];
-		}
-		if (!$dashboardId) {
-			$dashboardId = Settings_WidgetsManagement_Module_Model::getDefaultDashboard();
-		}
-		$request->set('dashboardId', $dashboardId);
-
-		return $dashboardId;
 	}
 
 	/**
@@ -155,20 +135,17 @@ class Vtiger_DashBoard_View extends Vtiger_Index_View
 		$moduleName = $request->getModule();
 		$jsFileNames = [
 			'~libraries/lodash/lodash.js',
-			'~libraries/jquery-ui-touch-punch/jquery.ui.touch-punch.min.js',
-			'~libraries/gridstack/dist/gridstack.js',
-			'~libraries/gridstack/dist/gridstack.jQueryUI.js',
+			'~libraries/gridstack/dist/gridstack-h5.js',
 			'~libraries/css-element-queries/src/ResizeSensor.js',
 			'~libraries/css-element-queries/src/ElementQueries.js',
-			'~libraries/chart.js/dist/Chart.js',
-			'~libraries/hammerjs/hammer.js',
-			'~libraries/chartjs-plugin-funnel/dist/chart.funnel.js',
-			'~libraries/chartjs-plugin-datalabels/dist/chartjs-plugin-datalabels.js',
+			'~libraries/echarts/dist/echarts.js',
 			'~libraries/jquery-lazy/jquery.lazy.js',
+			'~layouts/resources/Calendar.js',
+			'modules.Vtiger.resources.dashboards.Widget',
+			'modules.Vtiger.resources.dashboards.Chart',
 			'modules.Vtiger.resources.DashBoard',
 			'modules.' . $moduleName . '.resources.DashBoard',
-			'modules.Vtiger.resources.dashboards.Widget',
-			'~libraries/fullcalendar/dist/fullcalendar.js',
+			'~libraries/fullcalendar/main.js',
 		];
 
 		return array_merge(parent::getFooterScripts($request), $this->checkAndConvertJsScripts($jsFileNames));
@@ -185,7 +162,7 @@ class Vtiger_DashBoard_View extends Vtiger_Index_View
 	{
 		$headerCss = [
 			'~libraries/gridstack/dist/gridstack.css',
-			'~libraries/fullcalendar/dist/fullcalendar.css',
+			'~libraries/fullcalendar/main.css',
 		];
 
 		return array_merge(parent::getHeaderCss($request), $this->checkAndConvertCssStyles($headerCss));

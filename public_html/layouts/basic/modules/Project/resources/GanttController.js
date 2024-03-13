@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 $.Class(
@@ -59,7 +59,7 @@ $.Class(
 			const projectId = container.parent().find('input[name="projectId"]').val();
 			if (!ganttData) {
 				this.gantt.loadProjectFromAjax({
-					module: 'Project',
+					module: app.getModuleName(),
 					action: 'GanttData',
 					projectId: projectId
 				});
@@ -107,26 +107,29 @@ $.Class(
 			return jQuery('#filterOptionId_' + currentOptionId);
 		},
 		changeCustomFilterElementView: function () {
-			var thisInstance = this;
-			var filterSelectElement = this.getFilterSelectElement();
+			const self = this,
+				filterSelectElement = this.getFilterSelectElement();
 			if (filterSelectElement.length > 0 && filterSelectElement.is('select')) {
 				App.Fields.Picklist.showSelect2ElementView(filterSelectElement, {
 					templateSelection: function (data) {
-						var resultContainer = jQuery('<span></span>');
-						resultContainer.append(jQuery(jQuery('.filterImage').clone().get(0)).show());
-						resultContainer.append(data.text);
+						const resultContainer = document.createElement('span'),
+							span = document.createElement('span'),
+							image = $('.filterImage').clone();
+						image.removeAttr('style');
+						span.innerText = data.text;
+						resultContainer.appendChild(image.get(0));
+						resultContainer.appendChild(span);
 						return resultContainer;
 					},
 					customSortOptGroup: true,
 					closeOnSelect: true
 				});
-
-				var select2Instance = filterSelectElement.data('select2');
+				const select2Instance = filterSelectElement.data('select2');
 				jQuery('.filterActionsDiv')
 					.appendTo(select2Instance.$dropdown.find('.select2-dropdown:last'))
 					.removeClass('d-none')
 					.on('click', function (e) {
-						thisInstance.registerCreateFilterClickEvent(e);
+						self.registerCreateFilterClickEvent(e);
 					});
 			}
 		},

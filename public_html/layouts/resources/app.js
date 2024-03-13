@@ -5,11 +5,11 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  *************************************************************************************/
 'use strict';
 
-var App = (window.App = {
+const App = (window.App = {
 	Components: {
 		Tree: {
 			Basic: class {
@@ -20,17 +20,17 @@ var App = (window.App = {
 				}
 
 				generateTree(container) {
-					const slef = this;
-					if (slef.treeInstance === false) {
-						slef.treeInstance = container;
-						slef.treeInstance
-							.on('select_node.jstree', function (e, data) {
+					const self = this;
+					if (self.treeInstance === false) {
+						self.treeInstance = container;
+						self.treeInstance
+							.on('select_node.jstree', function (_e, data) {
 								if (data.event !== undefined && $(data.event.target).hasClass('jstree-checkbox')) {
 									return;
 								}
 								data.instance.select_node(data.node.children_d);
 							})
-							.on('deselect_node.jstree', function (e, data) {
+							.on('deselect_node.jstree', function (_e, data) {
 								if (data.event !== undefined && $(data.event.target).hasClass('jstree-checkbox')) {
 									return;
 								}
@@ -38,7 +38,7 @@ var App = (window.App = {
 							})
 							.jstree({
 								core: {
-									data: slef.getRecords(container),
+									data: self.getRecords(container),
 									themes: {
 										name: 'proton',
 										responsive: true
@@ -107,7 +107,7 @@ var App = (window.App = {
 							progress.progressIndicator({
 								mode: 'hide'
 							});
-							App.Components.QuickCreate.showModal(data, params);
+							App.Components.QuickCreate.showModal(data, params, element);
 							app.registerEventForClockPicker();
 						});
 					}
@@ -130,7 +130,8 @@ var App = (window.App = {
 				}
 				if (
 					(app.getViewName() === 'Detail' || (app.getViewName() === 'Edit' && app.getRecordId() !== undefined)) &&
-					app.getParentModuleName() != 'Settings'
+					app.getParentModuleName() != 'Settings' &&
+					(!params['data'] || !('sourceModule' in params['data']))
 				) {
 					url += '&sourceModule=' + app.getModuleName();
 					url += '&sourceRecord=' + app.getRecordId();
@@ -182,34 +183,40 @@ var App = (window.App = {
 			 *
 			 * @param   {string}  html
 			 * @param   {object}  params
+			 * @param   {jQuery}  element
 			 */
-			showModal(html, params = {}) {
+			showModal(html, params = {}, element = null) {
 				app.showModalWindow(html, (container) => {
 					const quickCreateForm = container.find('form.js-form');
 					const moduleName = quickCreateForm.find('[name="module"]').val();
+					if (typeof params.callbackBeforeRegister !== 'undefined') {
+						params.callbackBeforeRegister(container);
+					}
 					const editViewInstance = Vtiger_Edit_Js.getInstanceByModuleName(moduleName);
-					const moduleClassName = moduleName + '_QuickCreate_Js';
 					editViewInstance.setForm(quickCreateForm);
 					editViewInstance.registerBasicEvents(quickCreateForm);
+					const moduleClassName = moduleName + '_QuickCreate_Js';
 					if (typeof window[moduleClassName] !== 'undefined') {
 						new window[moduleClassName]().registerEvents(container);
 					}
 					quickCreateForm.validationEngine(app.validationEngineOptionsForRecord);
+					quickCreateForm.find('.js-form-submit-btn').prop('disabled', false);
 					if (typeof params.callbackPostShown !== 'undefined') {
 						params.callbackPostShown(quickCreateForm);
 					}
-					this.registerPostLoadEvents(quickCreateForm, params);
+					this.registerPostLoadEvents(quickCreateForm, params, element);
 				});
 			},
 			/**
 			 * Register post load events
 			 *
-			 * @param   {object}  form jQuery
+			 * @param   {jQuery}  form
 			 * @param   {object}  params
+			 * @param   {jQuery}  element
 			 *
 			 * @return  {boolean}
 			 */
-			registerPostLoadEvents(form, params) {
+			registerPostLoadEvents(form, params, element) {
 				const submitSuccessCallback = params.callbackFunction || function () {};
 				const goToFullFormCallBack = params.goToFullFormcallback || function () {};
 				form.on('submit', (e) => {
@@ -263,20 +270,12 @@ var App = (window.App = {
 											text: app.vtranslate('JS_SAVE_NOTIFY_SUCCESS'),
 											type: 'success'
 										});
-										if ('List' === app.getViewName()) {
-											let listInstance = new Vtiger_List_Js();
-											listInstance.getListViewRecords();
-										} else if ('Detail' === app.getViewName()) {
-											if (app.getUrlVar('mode') === 'showRelatedList') {
-												Vtiger_Detail_Js.getInstance().loadRelatedList();
-											} else {
-												window.location.reload();
-											}
-										}
 									}
+									app.reloadAfterSave(data, params, form, element);
 								})
-								.fail(function (textStatus, errorThrown) {
+								.fail(function (_, errorThrown) {
 									app.showNotify({
+										textTrusted: false,
 										text: errorThrown,
 										title: app.vtranslate('JS_ERROR'),
 										type: 'error'
@@ -313,7 +312,7 @@ var App = (window.App = {
 					$(data).removeAttr('data-validation-engine');
 				});
 				form.addClass('not_validation');
-				form.submit();
+				form.trigger('submit');
 			},
 			/**
 			 * Register tab events
@@ -385,6 +384,7 @@ var App = (window.App = {
 				AppConnector.request(params).done(function (html) {
 					app.showModalWindow(html, (container) => {
 						let form = container.find('form[name="QuickEdit"]');
+						form.find('.js-form-submit-btn').prop('disabled', false);
 						let moduleName = form.find('[name="module"]').val();
 						let editViewInstance = Vtiger_Edit_Js.getInstanceByModuleName(moduleName);
 						let moduleClassName = moduleName + '_QuickEdit_Js';
@@ -404,16 +404,14 @@ var App = (window.App = {
 			/**
 			 * Register post load events
 			 *
-			 * @param   {object}  form jQuery
+			 * @param   {jQuery}  form jQuery
 			 * @param   {object}  params
-			 *
-			 * @return  {boolean}
+			 * @param   {jQuery}  element
 			 */
 			registerPostLoadEvents(form, params, element) {
 				const submitSuccessCallback = params.callbackFunction || function () {};
 				const goToFullFormCallBack = params.goToFullFormcallback || function () {};
 				form.on('submit', (e) => {
-					const form = $(e.currentTarget);
 					if (form.hasClass('not_validation')) {
 						return true;
 					}
@@ -451,17 +449,12 @@ var App = (window.App = {
 							});
 							saveHandler(form).done((data) => {
 								const modalContainer = form.closest('.modalContainer');
-								const parentModuleName = app.getModuleName();
-								const viewName = app.getViewName();
 								if (modalContainer.length) {
 									app.hideModalWindow(false, modalContainer[0].id);
 								}
-								if (moduleName === parentModuleName && 'List' === viewName) {
-									const listInstance = new Vtiger_List_Js();
-									listInstance.getListViewRecords();
-								}
 								submitSuccessCallback(data);
 								app.event.trigger('QuickEdit.AfterSaveFinal', data, form, element);
+								delete window.popoverCache[data.result._recordId];
 								progress.progressIndicator({ mode: 'hide' });
 								if (data.success) {
 									app.showNotify({
@@ -469,21 +462,7 @@ var App = (window.App = {
 										type: 'success'
 									});
 								}
-								if ('Detail' === viewName && app.getRecordId() === form.find('[name="record"]').val()) {
-									if (data.result._isViewable == false) {
-										if (window !== window.parent) {
-											window.parent.location.href = 'index.php?module=' + moduleName + '&view=ListPreview';
-										} else {
-											window.location.href = 'index.php?module=' + moduleName + '&view=List';
-										}
-									} else if (params.removeFromUrl) {
-										let searchParams = new URLSearchParams(window.location.search);
-										searchParams.delete('step');
-										window.location.href = 'index.php?' + searchParams.toString();
-									} else {
-										window.location.reload();
-									}
-								}
+								app.reloadAfterSave(data, params, form, element);
 							});
 						} else {
 							//If validation fails in recordPreSaveEvent, form should submit again
@@ -512,7 +491,7 @@ var App = (window.App = {
 					$(data).removeAttr('data-validation-engine');
 				});
 				form.addClass('not_validation');
-				form.submit();
+				form.trigger('submit');
 			},
 			/**
 			 * Save quick create form
@@ -665,12 +644,219 @@ var App = (window.App = {
 									app.errorLog(error, err);
 								});
 						};
-					app.showConfirmModal(app.vtranslate('JS_CHANGE_CONFIRMATION'), (result) => {
-						if (result) {
+					app.showConfirmModal({
+						text: app.vtranslate('JS_CHANGE_CONFIRMATION'),
+						confirmedCallback: () => {
 							params.callback(e, this);
 						}
 					});
 				});
+			}
+		},
+		ActivityNotifier: class ActivityNotifier {
+			notice = {
+				type: 'error',
+				icon: false,
+				hide: true,
+				delay: 8000,
+				stack: new PNotify.Stack({
+					dir1: 'up',
+					dir2: 'left',
+					firstpos1: 25,
+					firstpos2: 25,
+					modal: false,
+					maxOpen: 2,
+					maxStrategy: 'close',
+					maxClosureCausesWait: true
+				})
+			};
+			intervalId = null;
+			state = null;
+			static identifier = '#recordActivityNotifier';
+			constructor(element, params, interval, notice = {}) {
+				this.nodeElement = element.get(0);
+				this.url = params;
+				this.interval = interval || 10;
+				if (notice.length) {
+					this.notice = { ...this.notice, ...notice };
+				}
+			}
+			/**
+			 * Register
+			 * @param {jQuery} container
+			 */
+			static register(container) {
+				let element = container.find(ActivityNotifier.identifier);
+				if (element.length) {
+					let notifierData = element.data();
+					new ActivityNotifier(
+						element,
+						{ module: notifierData.module, view: 'RecordActivity', record: notifierData.record },
+						notifierData.interval
+					).init();
+				}
+			}
+			/**
+			 * Initiation
+			 */
+			init() {
+				this.setFormat();
+				this.setTime();
+				document.addEventListener('visibilitychange', (_) => {
+					if (document.hidden) {
+						this.destroyInterval();
+					} else {
+						this.setInterval();
+						this.requestNotifier();
+					}
+				});
+				if (!document.hidden) {
+					this.setInterval();
+				}
+			}
+			/**
+			 * Set date format
+			 * @param string
+			 */
+			setFormat(format = '') {
+				if (!format) {
+					let timeFormat = '';
+					if (CONFIG.hourFormat.toUpperCase() == 24) {
+						timeFormat = 'HH:mm:ss';
+					} else {
+						timeFormat = 'hh:mm:ss A';
+					}
+					format = CONFIG.dateFormat.toUpperCase() + ' ' + timeFormat;
+				}
+				this.format = format;
+			}
+			/**
+			 * Set date time
+			 * @param string
+			 */
+			setTime(time = '') {
+				if (!time) {
+					time = moment().format(this.format);
+				}
+				this.startTime = time;
+			}
+			/**
+			 * Set Interval
+			 */
+			setInterval() {
+				if (this.nodeElement.isConnected) {
+					this.intervalId = setInterval(() => {
+						if (!this.state) {
+							this.requestNotifier();
+						}
+					}, this.interval * 1000);
+				}
+			}
+			/**
+			 * Destroy Interval
+			 */
+			destroyInterval() {
+				clearInterval(this.intervalId);
+			}
+			/**
+			 * Function request for notifier popups
+			 */
+			requestNotifier() {
+				if (!this.nodeElement.isConnected) {
+					this.destroyInterval();
+					return false;
+				}
+				this.url.dateTime = this.startTime;
+				this.state = 1;
+				AppConnector.request(this.url)
+					.done((data) => {
+						this.state = 0;
+						if (app.isJsonString(data)) {
+							data = JSON.parse(data);
+						}
+						let response = data.result;
+						if (response.text) {
+							this.notice.text = response.text.trim();
+							this.notice.title = response.title.trim();
+							app.showNotify(this.notice);
+						}
+						this.setTime(response.dateTime);
+					})
+					.fail((data, err) => {
+						app.errorLog(data, err);
+						this.destroyInterval();
+					});
+			}
+		},
+		/**
+		 * Icons class
+		 */
+		Icons: class Icons {
+			/**
+			 * Show modal window with icons to select
+			 * @param {Object} params
+			 */
+			static modalView(params = {}) {
+				var aDeferred = $.Deferred();
+				let url = 'index.php?module=AppComponents&view=MediaModal';
+				if (params && Object.keys(params).length) {
+					url = app.convertObjectToUrl(params, url);
+				}
+				let progressElement = $.progressIndicator({ position: 'html', blockInfo: { enabled: true } });
+				app.showModalWindow({
+					id: 'MediaModal',
+					url,
+					cb: (container) => {
+						progressElement.progressIndicator({ mode: 'hide' });
+						container.on('click', '.js-icon-item', (e) => {
+							let data = {
+								type: e.currentTarget.dataset.type,
+								name: e.currentTarget.dataset.name
+							};
+							if (data.type === 'image') {
+								data.src = $(e.currentTarget).find('img').attr('src');
+								data.key = e.currentTarget.dataset.key;
+							}
+							aDeferred.resolve(data);
+							app.hideModalWindow(null, 'MediaModal');
+						});
+					}
+				});
+
+				return aDeferred.promise();
+			}
+		},
+		/**
+		 * Currency Converter class
+		 */
+		CurrencyConverter: class CurrencyConverter {
+			/**
+			 * Show modal window with currencies
+			 * @param {Object} params
+			 */
+			static modalView(params = {}) {
+				let aDeferred = $.Deferred();
+				let url = 'index.php?module=AppComponents&view=CurrencyConverter';
+				if (params && Object.keys(params).length) {
+					url = app.convertObjectToUrl(params, url);
+				}
+				let progressElement = $.progressIndicator({ position: 'html', blockInfo: { enabled: true } });
+				app.showModalWindow({
+					id: 'CurrencyConverter',
+					url,
+					cb: (container) => {
+						progressElement.progressIndicator({ mode: 'hide' });
+						let form = container.find('form');
+						form.validationEngine(app.validationEngineOptions);
+						container.on('click', '.js-modal__save', (e) => {
+							let data = form.serializeFormData();
+							aDeferred.resolve(data);
+							app.hideModalWindow(null, 'CurrencyConverter');
+						});
+					}
+				});
+
+				return aDeferred.promise();
 			}
 		}
 	},
@@ -705,10 +891,282 @@ var App = (window.App = {
 			}
 			return PNotify[type](params);
 		}
+	},
+	Clipboard: class Clipboard {
+		constructor(container) {
+			this.text = null;
+			this.oClipboard = null;
+			this.container = container;
+		}
+		/**
+		 * Register
+		 * @param {jQuery} params
+		 */
+		static register(container) {
+			if (typeof container === 'undefined') {
+				container = $('body');
+			}
+			container.on('dblclick', '.js-copy-clipboard', (e) => {
+				e.preventDefault();
+				new Clipboard($(e.currentTarget)).load().then((instance) => {
+					instance.createClipboard();
+					instance.copy();
+					instance.destroy();
+				});
+			});
+			container.on('click', 'button.js-copy-clipboard-url', (e) => {
+				e.preventDefault();
+				new Clipboard($(e.currentTarget)).load().then((instance) => {
+					ClipboardJS.copy(instance.text);
+					app.showNotify({
+						text: app.vtranslate('JS_NOTIFY_COPY_TEXT'),
+						type: 'success'
+					});
+				});
+			});
+		}
+		/**
+		 * Initiation
+		 */
+		load() {
+			const aDeferred = $.Deferred();
+			let url = this.container.data('url');
+			if (url) {
+				this.getTextFromUrl(url).then((response) => {
+					this.text = response.result.text;
+					aDeferred.resolve(this);
+				});
+			} else {
+				aDeferred.resolve(this);
+			}
+			return aDeferred.promise();
+		}
+		/**
+		 * Create ClipboardJS
+		 */
+		createClipboard() {
+			let id = this.container.attr('id');
+			this.oClipboard = new ClipboardJS(`#${id}`, {
+				text: (_) => {
+					return this.text;
+				}
+			});
+		}
+		/**
+		 * Get text to Clipboard from URL
+		 */
+		getTextFromUrl(url) {
+			const aDeferred = $.Deferred();
+			let progressIndicatorElement = $.progressIndicator({ blockInfo: { enabled: true } });
+			AppConnector.request(url)
+				.done((response) => {
+					progressIndicatorElement.progressIndicator({ mode: 'hide' });
+					if (response.success) {
+						aDeferred.resolve(response);
+					} else {
+						aDeferred.reject(response);
+					}
+				})
+				.fail((_) => {
+					app.showNotify({
+						text: app.vtranslate('JS_ERROR'),
+						type: 'error'
+					});
+					progressIndicatorElement.progressIndicator({ mode: 'hide' });
+					aDeferred.reject(_);
+				});
+			return aDeferred.promise();
+		}
+		/**
+		 * Set text to Clipboard
+		 */
+		copy() {
+			this.container.trigger('click');
+			app.showNotify({
+				text: app.vtranslate('JS_NOTIFY_COPY_TEXT'),
+				type: 'success'
+			});
+		}
+		/**
+		 * Destroy ClipboardJS object
+		 */
+		destroy() {
+			this.oClipboard.destroy();
+		}
+	},
+	/**
+	 * File
+	 */
+	File: class File {
+		/**
+		 * Defalut configuration for fileupload
+		 */
+		fileupload = {
+			dataType: 'json',
+			replaceFileInput: false,
+			autoUpload: false,
+			fail: this.uploadError.bind(this),
+			add: this.add.bind(this),
+			change: this.change.bind(this)
+		};
+		/**
+		 * Defalut options
+		 */
+		options = {
+			formats: [],
+			limit: 1,
+			maxFileSize: CONFIG.maxUploadLimit || 0,
+			maxFileSizeDisplay: ''
+		};
+		files = [];
+		/**
+		 * Constructor
+		 * @param {jQuery} element
+		 * @param {Object} options
+		 */
+		constructor(element, options = {}) {
+			this.fileInput = element;
+			if (typeof options.fileupload !== 'undefined') {
+				this.fileupload = { ...this.fileupload, ...options.fileupload };
+				delete options.fileupload;
+			}
+			this.options = { ...this.options, ...options };
+		}
+		/**
+		 * Register file element
+		 * @param {jQuery} element
+		 * @param {Object} options
+		 * @returns
+		 */
+		static register(element, options = {}) {
+			let file = new File(element, options);
+			file.init();
+			return file;
+		}
+		/**
+		 * Initiation
+		 */
+		init() {
+			this.fileInput.detach();
+			this.fileupload.fileInput = this.fileInput;
+			this.fileInput.fileupload(this.fileupload);
+			this.filesActive = 0;
+		}
+		/**
+		 * Add event handler from jQuery-file-upload
+		 *
+		 * @param {Event} e
+		 * @param {Object} data
+		 */
+		add(_e, data) {
+			if (data.files.length > 0) {
+				data.submit();
+			}
+		}
+		/**
+		 * File change event handler from jQuery-file-upload
+		 *
+		 * @param {Event} e
+		 * @param {object} data
+		 */
+		change(_e, data) {
+			let { valid, error } = this.filterFiles(data.files);
+			data.files = valid;
+			if (!valid.length) {
+				this.fileInput.val('');
+			}
+			if (error.length) {
+				this.showErrors(error);
+			}
+		}
+		/**
+		 * Get only valid files from list
+		 * @param {Array} files
+		 *
+		 * @returns {Object}
+		 */
+		filterFiles(files) {
+			let valid = [],
+				error = [];
+			if (files.length + this.files.length > this.options.limit) {
+				error.push({ error: { text: `${app.vtranslate('JS_FILE_LIMIT')} [${this.options.limit}]` } });
+			} else {
+				for (let file of files) {
+					this.validateFileType(file) && this.validateFileSize(file) ? valid.push(file) : error.push(file);
+				}
+			}
+			return { valid, error };
+		}
+
+		/**
+		 * Validate maximum file size
+		 * @param {Object} file
+		 * @returns {Boolean}
+		 */
+		validateFileSize(file) {
+			let result = typeof file.size === 'number' && file.size < this.options.maxFileSize;
+			if (!result) {
+				file.error = {
+					title: `${app.vtranslate('JS_UPLOADED_FILE_SIZE_EXCEEDS')} <br> [${this.options.maxFileSizeDisplay}]`,
+					text: file.name
+				};
+			}
+			return result;
+		}
+		/**
+		 * Validate file type
+		 *
+		 * @param {Object} file
+		 * @returns {boolean}
+		 */
+		validateFileType(file) {
+			let result =
+				!this.options.formats.length ||
+				this.options.formats.filter((format) => {
+					return file.type === format || (format.slice(-2) === '/*' && file.type.indexOf(format.slice(0, -1)) === 0);
+				}).length > 0;
+
+			if (!result) {
+				file.error = { title: app.vtranslate('JS_INVALID_FILE_TYPE'), text: file.name };
+			}
+			return result;
+		}
+		/**
+		 * Show errors
+		 */
+		showErrors(errors = []) {
+			for (let info of errors) {
+				app.showError(info.error);
+			}
+		}
+		/**
+		 * Error event handler from file upload request
+		 *
+		 * @param {Event} e
+		 * @param {Object} data
+		 */
+		uploadError(_e, data) {
+			this.filesActive--;
+			app.errorLog('File upload error.');
+			const { jqXHR, files } = data;
+			if (typeof jqXHR.responseJSON === 'undefined' || jqXHR.responseJSON === null) {
+				return app.showError({
+					title: app.vtranslate('JS_FILE_UPLOAD_ERROR'),
+					type: 'error'
+				});
+			}
+			files.forEach((file) => {
+				app.showError({
+					title: app.vtranslate('JS_FILE_UPLOAD_ERROR'),
+					text: file.name,
+					type: 'error'
+				});
+			});
+		}
 	}
 });
 
-var app = (window.app = {
+const app = (window.app = {
 	/**
 	 * variable stores client side language strings
 	 */
@@ -746,7 +1204,13 @@ var app = (window.app = {
 	 * Function to get the module name. This function will get the value from element which has id module
 	 * @return : string - module name
 	 */
-	getModuleName: function () {
+	getModuleName: function (container) {
+		if (container) {
+			let element = container.closest('form').find('[name="module"]');
+			if (element.length > 0) {
+				return element.val();
+			}
+		}
 		return this.getMainParams('module');
 	},
 	/**
@@ -766,9 +1230,10 @@ var app = (window.app = {
 	 * Function returns the record id
 	 */
 	getRecordId: function () {
-		var view = this.getViewName();
-		var recordId;
-		if ($.inArray(view, ['Edit', 'PreferenceEdit', 'Detail', 'PreferenceDetail', 'DetailPreview']) !== -1) {
+		let recordId;
+		if (
+			$.inArray(this.getViewName(), ['Edit', 'PreferenceEdit', 'Detail', 'PreferenceDetail', 'DetailPreview']) !== -1
+		) {
 			recordId = this.getMainParams('recordId');
 		}
 		return recordId;
@@ -947,21 +1412,22 @@ var app = (window.app = {
 			manualTriggerDelay: 500,
 			placement: 'auto',
 			html: true,
-			template:
-				'<div class="popover" role="tooltip"><div class="arrow"></div><h3 class="popover-header"></h3><div class="popover-body"></div></div>',
+			template: '<div class="popover" role="tooltip"><div class="arrow"></div><h3 class="popover-header"></h3></div>',
 			container: 'body',
 			boundary: 'viewport',
 			delay: { show: 300, hide: 100 }
 		};
-		selectElement.each(function (index, domElement) {
+		selectElement.each(function (_index, domElement) {
 			let element = $(domElement);
 			let elementParams = $.extend(true, defaultParams, params, element.data());
-			if (element.data('class')) {
-				elementParams.template =
-					'<div class="popover ' +
-					element.data('class') +
-					'" role="tooltip"><div class="arrow"></div><h3 class="popover-header"></h3><div class="popover-body"></div></div>';
+			let tmp = elementParams.template;
+			if (elementParams.class) {
+				tmp = tmp.replace('class="popover"', `class="popover ${elementParams.class}"`);
 			}
+			if (elementParams.content) {
+				tmp = tmp.replace('</h3></div>', `</h3><div class="popover-body">${elementParams.content}</div></div>`);
+			}
+			elementParams.template = tmp;
 			if (element.hasClass('delay0')) {
 				elementParams.delay = { show: 0, hide: 0 };
 			}
@@ -990,8 +1456,7 @@ var app = (window.app = {
 			},
 			trigger: 'manual',
 			placement: 'right',
-			template:
-				'<div class="popover js-popover--before-positioned" role="tooltip"><div class="popover-body"></div></div>'
+			class: 'js-popover--before-positioned'
 		};
 		let popoverText = element.find('.js-popover-text').length ? element.find('.js-popover-text') : element;
 		if (!app.isEllipsisActive(popoverText)) {
@@ -1024,7 +1489,7 @@ var app = (window.app = {
 	 * @param {object} customParams
 	 */
 	registerPopoverRecord: function (
-		selectElement = $('a.js-popover-tooltip--record'),
+		selectElement = $('.js-popover-tooltip--record'),
 		customParams = {},
 		container = $(document)
 	) {
@@ -1036,10 +1501,20 @@ var app = (window.app = {
 			manualTriggerDelay: app.getMainParams('recordPopoverDelay'),
 			placement: 'right',
 			callbackShown: () => {
+				let href;
 				if (!selectElement.attr('href')) {
+					href = selectElement.find('a').attr('href');
+				}
+				if (
+					!href &&
+					(!selectElement.attr('href') || selectElement.closest('.ui-sortable-handle').hasClass('ui-sortable-helper'))
+				) {
 					return false;
 				}
-				let link = new URL(selectElement.eq(0).attr('href'), window.location.origin);
+				if (!href) {
+					href = selectElement.eq(0).attr('href');
+				}
+				let link = new URL(href, window.location.origin);
 				if (!link.searchParams.get('record') || !link.searchParams.get('view')) {
 					return false;
 				}
@@ -1055,12 +1530,13 @@ var app = (window.app = {
 					}
 					self.setPopoverPosition(selectElement, container);
 				};
-				let cacheData = window.popoverCache[url];
+				let urlObject = app.convertUrlToObject(url);
+				let cacheData = window.popoverCache[urlObject['record']];
 				if (typeof cacheData !== 'undefined') {
 					appendPopoverData(cacheData);
 				} else {
 					AppConnector.request(url).done((data) => {
-						window.popoverCache[url] = data;
+						window.popoverCache[urlObject['record']] = data;
 						appendPopoverData(data);
 					});
 				}
@@ -1160,21 +1636,20 @@ var app = (window.app = {
 		if (typeof returnFormat === 'undefined') {
 			returnFormat = 'string';
 		}
-
 		parentElement = $(parentElement);
 
-		var encodedString = parentElement.children().serialize();
+		let encodedString = parentElement.children().serialize();
 		if (returnFormat == 'string') {
 			return encodedString;
 		}
-		var keyValueMap = {};
-		var valueList = encodedString.split('&');
+		let keyValueMap = {};
+		let valueList = encodedString.split('&');
 
-		for (var index in valueList) {
-			var keyValueString = valueList[index];
-			var keyValueArr = keyValueString.split('=');
-			var nameOfElement = keyValueArr[0];
-			var valueOfElement = keyValueArr[1];
+		for (let index in valueList) {
+			let keyValueString = valueList[index];
+			let keyValueArr = keyValueString.split('=');
+			let nameOfElement = keyValueArr[0];
+			let valueOfElement = keyValueArr[1];
 			keyValueMap[nameOfElement] = decodeURIComponent(valueOfElement);
 		}
 		return keyValueMap;
@@ -1197,7 +1672,7 @@ var app = (window.app = {
 			params.backdrop = 'static';
 		}
 		// In a modal dialog elements can be specified which can receive focus even though they are not descendants of the modal dialog.
-		$.fn.modal.Constructor.prototype.enforceFocus = function (e) {
+		$.fn.modal.Constructor.prototype._enforceFocus = function (e) {
 			$(document)
 				.off('focusin.bs.modal') // guard against infinite focus loop
 				.on(
@@ -1215,10 +1690,15 @@ var app = (window.app = {
 			cb(modalContainer);
 			App.Fields.Picklist.changeSelectElementView(modalContainer);
 			App.Fields.Date.register(modalContainer);
+			App.Fields.DateTime.register(modalContainer);
 			App.Fields.Text.Editor.register(modalContainer.find('.js-editor'), {
 				height: '5em',
 				toolbar: 'Min'
 			});
+			App.Fields.MultiAttachment.register(modalContainer);
+			App.Fields.MultiReference.register(modalContainer);
+			App.Fields.MapCoordinates.register(modalContainer);
+			App.Fields.Icon.register(modalContainer);
 			app.registesterScrollbar(modalContainer);
 			app.registerIframeEvents(modalContainer);
 			modalContainer.find('.modal-dialog').draggable({
@@ -1228,7 +1708,9 @@ var app = (window.app = {
 		});
 		$('body').append(container);
 		modalContainer.modal(params);
+		app.registerFormsEvents(modalContainer);
 		thisInstance.registerModalEvents(modalContainer, sendByAjaxCb);
+		app.registerModalPosition(modalContainer);
 	},
 	showModalWindow: function (data, url, cb, paramsObject = {}) {
 		if (!app.isCurrentWindowTarget('app.showModalWindow', arguments)) {
@@ -1292,6 +1774,7 @@ var app = (window.app = {
 				$('body').addClass('modal-open');
 			}
 		});
+
 		Window.lastModalId = modalId;
 		if (data) {
 			thisInstance.showModalData(data, container, paramsObject, cb, url, sendByAjaxCb);
@@ -1301,6 +1784,47 @@ var app = (window.app = {
 			});
 		}
 		return container;
+	},
+	showModalHtml: function (params) {
+		let data = '',
+			icon = '';
+		let footer = params['footer'] ?? '';
+		if (params['header']) {
+			params['header'] = `<span class="${params['headerIcon']} mr-2"></span>${params['header']}`;
+		}
+		if (params['footerButtons']) {
+			$.each(params['footerButtons'], (i, button) => {
+				icon = data = '';
+				$.each(button['data'], (key, val) => {
+					data += ` data-${key}="${val}"`;
+				});
+				if (button['icon']) {
+					icon += `<span class="${button['icon']} mr-2"></span>`;
+				}
+				footer += `<button type="button" class="btn ${button['class']}" ${data}>${icon}${button['text']}</button>`;
+			});
+		}
+		if (footer) {
+			footer = `<div class="modal-footer">${footer}</div>`;
+		}
+		let html = `<div class="modal" role="dialog"><div class="modal-dialog ${params['class']}" role="document"><div class="modal-content">
+		<div class="modal-header"><h5 class="modal-title js-modal-title" data-js="container">${params['header']}</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+		<div class="modal-body js-modal-content text-break ${params['bodyClass']}" data-js="container">${params['body']}</div>${footer}</div></div></div>`;
+		params.data = html;
+		return app.showModalWindow(params);
+	},
+	/**
+	 * Sets the position of the modal window.
+	 * @param {jQuery} container
+	 */
+	registerModalPosition: function (modalContainer) {
+		if (modalContainer.hasClass('js-modal-center')) {
+			const modalContent = modalContainer.find('.modal-dialog');
+			if (modalContent.width()) {
+				modalContent.css({ 'min-width': modalContent.width() + 'px' });
+				modalContainer.addClass('c-modal-center');
+			}
+		}
 	},
 	/**
 	 * Check if current window is target for a modal and trigger in correct window if not
@@ -1363,6 +1887,9 @@ var app = (window.app = {
 		let moduleName = modalContainer.data('module') || 'Base';
 		let modalClass = moduleName.replace(':', '_') + '_' + modalContainer.data('view') + '_JS';
 		if (typeof windowParent[modalClass] === 'undefined') {
+			modalClass = [...modalClass.split('_').slice(0, -1), 'Js'].join('_');
+		}
+		if (typeof windowParent[modalClass] === 'undefined') {
 			modalClass = 'Base_' + modalContainer.data('view') + '_JS';
 		}
 		if (typeof windowParent[modalClass] !== 'undefined') {
@@ -1406,7 +1933,7 @@ var app = (window.app = {
 								if (responseData.result.notify) {
 									Vtiger_Helper_Js.showMessage(responseData.result.notify);
 								}
-								if (responseData.result.procesStop) {
+								if (responseData.result.processStop) {
 									progressIndicatorElement.progressIndicator({ mode: 'hide' });
 									return false;
 								}
@@ -1414,10 +1941,11 @@ var app = (window.app = {
 							app.hideModalWindow();
 							progressIndicatorElement.progressIndicator({ mode: 'hide' });
 						})
-						.fail(function () {
+						.fail(function (error) {
 							app.showNotify({
-								text: app.vtranslate('JS_UNEXPECTED_ERROR'),
-								type: 'error'
+								type: 'error',
+								title: app.vtranslate('JS_UNEXPECTED_ERROR'),
+								text: error
 							});
 							progressIndicatorElement.progressIndicator({ mode: 'hide' });
 						});
@@ -1484,6 +2012,9 @@ var app = (window.app = {
 									if (responseData.result.notify) {
 										Vtiger_Helper_Js.showMessage(responseData.result.notify);
 									}
+									if (responseData.result.closeModal) {
+										app.hideModalWindow(null, container.closest('.js-modal-container').attr('id'));
+									}
 								}
 								progressIndicatorElement.progressIndicator({ mode: 'hide' });
 							})
@@ -1500,16 +2031,10 @@ var app = (window.app = {
 		});
 	},
 	isHidden: function (element) {
-		if (element.css('display') == 'none') {
-			return true;
-		}
-		return false;
+		return element.css('display') == 'none';
 	},
 	isInvisible: function (element) {
-		if (element.css('visibility') == 'hidden') {
-			return true;
-		}
-		return false;
+		return element.css('visibility') == 'hidden';
 	},
 	/**
 	 * Default validation eninge options
@@ -1540,7 +2065,7 @@ var app = (window.app = {
 	 * Default scroll options
 	 */
 	scrollOptions: {
-		wheelSpeed: 0.1
+		wheelSpeed: 0.5
 	},
 	/**
 	 * Function to push down the error message size when validation is invoked
@@ -1560,95 +2085,34 @@ var app = (window.app = {
 			);
 		}
 	},
-	convertToDatePickerFormat: function (dateFormat) {
-		switch (dateFormat) {
-			case 'yyyy-mm-dd':
-				return 'Y-m-d';
-				break;
-			case 'mm-dd-yyyy':
-				return 'm-d-Y';
-				break;
-			case 'dd-mm-yyyy':
-				return 'd-m-Y';
-				break;
-			case 'yyyy.mm.dd':
-				return 'Y.m.d';
-				break;
-			case 'mm.dd.yyyy':
-				return 'm.d.Y';
-				break;
-			case 'dd.mm.yyyy':
-				return 'd.m.Y';
-				break;
-			case 'yyyy/mm/dd':
-				return 'Y/m/d';
-				break;
-			case 'mm/dd/yyyy':
-				return 'm/d/Y';
-				break;
-			case 'dd/mm/yyyy':
-				return 'd/m/Y';
-				break;
-		}
-	},
-	convertTojQueryDatePickerFormat: function (dateFormat) {
-		let i,
-			dotMode = '-';
-		if (dateFormat.indexOf('-') !== -1) {
-			dotMode = '-';
-		}
-		if (dateFormat.indexOf('.') !== -1) {
-			dotMode = '.';
-		}
-		if (dateFormat.indexOf('/') !== -1) {
-			dotMode = '/';
-		}
-		let splitDateFormat = dateFormat.split(dotMode);
-		for (i in splitDateFormat) {
-			let sectionDate = splitDateFormat[i];
-			if (sectionDate.length === 4) {
-				splitDateFormat[i] = sectionDate.substring(0, 2);
-			}
-		}
-		return splitDateFormat.join(dotMode);
-	},
-	/*
-	 * Converts user formated date to database format yyyy-mm-dd
+	/**
+	 * Register block toggle event
+	 * @param {jQuery} container
 	 */
-	getDateInDBInsertFormat: function (dateFormat, dateString) {
-		var i = 0;
-		var dotMode = '-';
-		if (dateFormat.indexOf('-') !== -1) {
-			dotMode = '-';
-		} else if (dateFormat.indexOf('.') !== -1) {
-			dotMode = '.';
-		} else if (dateFormat.indexOf('/') !== -1) {
-			dotMode = '/';
-		}
-		var dateFormatParts = dateFormat.split(dotMode);
-		var day = '',
-			month = '',
-			year = '';
-		var dateParts = dateString.split(dotMode);
-		for (i in dateFormatParts) {
-			var sectionDate = dateFormatParts[i];
-			switch (sectionDate) {
-				case 'dd':
-					day = dateParts[i];
-					break;
-
-				case 'mm':
-					month = dateParts[i];
-					break;
-
-				case 'yyyy':
-					year = dateParts[i];
-					break;
+	registerBlockToggleEvent(container) {
+		container.on('click', '.js-block-header', function (e) {
+			const target = $(e.target);
+			if (
+				target.is('input') ||
+				target.is('button') ||
+				target.parents().is('button') ||
+				target.hasClass('js-stop-propagation') ||
+				target.parents().hasClass('js-stop-propagation')
+			) {
+				return false;
 			}
-		}
-		return year + '-' + month + '-' + day;
+			const blockHeader = $(e.currentTarget);
+			const blockContents = blockHeader.next();
+			const iconToggle = blockHeader.find('.iconToggle');
+			if (blockContents.hasClass('d-none')) {
+				blockContents.removeClass('d-none');
+				iconToggle.removeClass(iconToggle.data('hide')).addClass(iconToggle.data('show'));
+			} else {
+				blockContents.addClass('d-none');
+				iconToggle.removeClass(iconToggle.data('show')).addClass(iconToggle.data('hide'));
+			}
+		});
 	},
-
 	registerBlockAnimationEvent: function (container = false) {
 		let detailViewContentHolder = $('div.details div.contents');
 		let blockHeader = detailViewContentHolder.find('.blockHeader');
@@ -1786,6 +2250,9 @@ var app = (window.app = {
 				}
 			}
 		});
+		if (!Object.keys(options).length) {
+			options = Object.assign({ searching: true, ordering: true, paging: true, info: true }, table.data());
+		}
 		return table.DataTable(options);
 	},
 	/**
@@ -1815,7 +2282,7 @@ var app = (window.app = {
 	},
 	showNewScrollbarTopBottomRight: function (element, options = {}) {
 		if (typeof element === 'undefined' || !element.length) return;
-		options = Object.assign(this.scrollOptions, options);
+		options = Object.assign(options, this.scrollOptions);
 		let scrollbarTopLeftInit = new PerfectScrollbar(element[0], options);
 		let scrollbarTopElement = element.find('.ps__rail-x').first();
 		scrollbarTopElement.css({
@@ -1831,7 +2298,7 @@ var app = (window.app = {
 	},
 	showNewScrollbarTopBottom: function (element, options = { wheelPropagation: true, suppressScrollY: true }) {
 		if (typeof element === 'undefined' || !element.length) return;
-		options = Object.assign(this.scrollOptions, options);
+		options = Object.assign(options, this.scrollOptions);
 		new PerfectScrollbar(element[0], options);
 		new PerfectScrollbar(element[0], options);
 		var scrollbarTopElement = element.find('.ps__rail-x').first();
@@ -1938,12 +2405,12 @@ var app = (window.app = {
 		return store.remove(key);
 	},
 	moduleCacheSet: function (key, value) {
-		var orgKey = key;
+		const orgKey = key;
 		key = this.getModuleName() + '_' + key;
 		this.cacheSet(key, value);
 
-		var cacheKey = 'mCache' + this.getModuleName();
-		var moduleCache = this.cacheGet(cacheKey);
+		const cacheKey = 'mCache' + this.getModuleName();
+		let moduleCache = this.cacheGet(cacheKey);
 		if (moduleCache == null) {
 			moduleCache = [];
 		} else {
@@ -1956,8 +2423,7 @@ var app = (window.app = {
 		return this.cacheGet(this.getModuleName() + '_' + key);
 	},
 	moduleCacheKeys: function () {
-		var cacheKey = 'mCache' + this.getModuleName();
-		var modules = this.cacheGet(cacheKey);
+		const modules = this.cacheGet('mCache' + this.getModuleName());
 		if (modules) {
 			return modules.split(',');
 		}
@@ -2023,12 +2489,6 @@ var app = (window.app = {
 	setFormValues: function (kv) {
 		for (var k in kv) {
 			$(k).val(kv[k]);
-		}
-	},
-	setRTEValues: function (kv) {
-		for (var k in kv) {
-			var rte = CKEDITOR.instances[k];
-			if (rte) rte.setData(kv[k]);
 		}
 	},
 	/**
@@ -2113,45 +2573,6 @@ var app = (window.app = {
 		};
 
 		return getVar()[varName];
-	},
-	getStringDate: function (date) {
-		var d = date.getDate();
-		var m = date.getMonth() + 1;
-		var y = date.getFullYear();
-
-		d = d <= 9 ? '0' + d : d;
-		m = m <= 9 ? '0' + m : m;
-		return y + '-' + m + '-' + d;
-	},
-	formatDate: function (date) {
-		var y = date.getFullYear(),
-			m = date.getMonth() + 1,
-			d = date.getDate(),
-			h = date.getHours(),
-			i = date.getMinutes(),
-			s = date.getSeconds();
-		return (
-			y +
-			'-' +
-			this.formatDateZ(m) +
-			'-' +
-			this.formatDateZ(d) +
-			' ' +
-			this.formatDateZ(h) +
-			':' +
-			this.formatDateZ(i) +
-			':' +
-			this.formatDateZ(s)
-		);
-	},
-	formatDateZ: function (i) {
-		return i <= 9 ? '0' + i : i;
-	},
-	howManyDaysFromDate: function (time) {
-		var fromTime = time.getTime();
-		var today = new Date();
-		var toTime = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-		return Math.floor((toTime - fromTime) / (1000 * 60 * 60 * 24)) + 1;
 	},
 	saveAjax: function (mode, param, addToParams) {
 		var aDeferred = $.Deferred();
@@ -2250,18 +2671,11 @@ var app = (window.app = {
 			if (element.data('values')) {
 				$.extend(data, element.data('values'));
 			}
-			if (element.data('mandatoryFields')) {
-				data.mandatoryFields = element.data('mandatoryFields');
-			}
-			if (element.data('showLayout')) {
-				data.showLayout = element.data('showLayout');
-			}
-			if (element.data('editFields')) {
-				data.editFields = element.data('editFields');
-			}
-			if (element.data('picklistValues')) {
-				data.picklistValues = element.data('picklistValues');
-			}
+			$.each(['mandatoryFields', 'modalTitle', 'showLayout', 'editFields', 'picklistValues'], function (index, value) {
+				if (element.data(value)) {
+					data[value] = element.data(value);
+				}
+			});
 			App.Components.QuickEdit.showModal(data, element);
 		});
 	},
@@ -2273,8 +2687,8 @@ var app = (window.app = {
 			.off('click', 'button.showModal, a.showModal, .js-show-modal')
 			.on('click', 'button.showModal, a.showModal, .js-show-modal', function (e) {
 				e.preventDefault();
-				var currentElement = $(e.currentTarget);
-				var url = currentElement.data('url');
+				let currentElement = $(e.currentTarget);
+				let url = currentElement.data('url');
 
 				if (typeof url !== 'undefined') {
 					if (currentElement.hasClass('js-popover-tooltip')) {
@@ -2283,19 +2697,19 @@ var app = (window.app = {
 					if (currentElement.hasClass('disabledOnClick')) {
 						currentElement.attr('disabled', true);
 					}
-					var modalWindowParams = {
+					let modalWindowParams = {
 						url: url,
 						cb: function (container) {
-							var call = currentElement.data('cb');
+							let call = currentElement.data('cb');
 							if (typeof call !== 'undefined') {
 								if (call.indexOf('.') !== -1) {
-									var callerArray = call.split('.');
+									let callerArray = call.split('.');
 									if (typeof window[callerArray[0]] === 'object' || typeof window[callerArray[0]] === 'function') {
-										window[callerArray[0]][callerArray[1]](container);
+										window[callerArray[0]][callerArray[1]](container, e);
 									}
 								} else {
 									if (typeof window[call] === 'function') {
-										window[call](container);
+										window[call](container, e);
 									}
 								}
 							}
@@ -2321,42 +2735,70 @@ var app = (window.app = {
 			if (currentElement.data('class')) {
 				modalClass = currentElement.data('class');
 			}
-			app.showModalWindow(`<div class="modal" tabindex="-1" role="dialog"><div class="modal-dialog ${modalClass}" role="document"><div class="modal-content">
-			<div class="modal-header"> <h5 class="modal-title">${title}</h5>
-			  <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-			</div><div class="modal-body text-break">${content}</div></div></div></div>`);
+			app.showModalHtml({
+				class: modalClass,
+				header: title,
+				body: content
+			});
 			e.stopPropagation();
 		});
 	},
 	playSound: function (action) {
-		var soundsConfig = app.getMainParams('sounds');
+		const soundsConfig = app.getMainParams('sounds');
 		if (soundsConfig['IS_ENABLED']) {
-			var audio = new Audio(app.getMainParams('soundFilesPath') + soundsConfig[action]);
+			const audio = new Audio(app.getMainParams('soundFilesPath') + soundsConfig[action]);
+			audio.volume = 0.3;
 			audio.play();
 		}
 	},
 	registerIframeAndMoreContent(container = $(document)) {
-		let showMoreModal = (e) => {
+		container.on('click', '.js-more', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
 			const btn = $(e.currentTarget);
-			const message = btn.data('iframe')
-				? btn.siblings('iframe').clone().show()
-				: btn.closest('.js-more-content').find('.fullContent').html();
-			bootbox.dialog({
-				message,
-				title: '<span class="mdi mdi-overscan"></span>  ' + app.vtranslate('JS_FULL_TEXT'),
-				className: 'u-word-break modal-fullscreen',
-				buttons: {
-					danger: {
-						label: '<span class="fas fa-times mr-1"></span>' + app.vtranslate('JS_CLOSE'),
-						className: 'btn-danger',
-						callback: function () {}
+			app.showModalHtml({
+				class: btn.data('modalSize') ? btn.data('modalSize') : 'modal-fullscreen',
+				header: app.vtranslate('JS_FULL_TEXT'),
+				headerIcon: 'mdi mdi-overscan',
+				bodyClass: 'u-word-break pb-0 pt-1',
+				footerButtons: [
+					{ text: app.vtranslate('JS_CANCEL'), icon: 'fas fa-times', class: 'btn-danger', data: { dismiss: 'modal' } }
+				],
+				cb: (modal) => {
+					if (btn.data('iframe')) {
+						let iframe = btn.siblings('iframe');
+						let message = iframe.clone();
+						if (message[0].hasAttribute('srcdoctemp')) {
+							message.attr('srcdoc', message.attr('srcdoctemp'));
+						}
+						let isHidden = iframe.is(':hidden');
+						let height = 0;
+						if (iframe.data('height')) {
+							if (iframe.data('height') === 'full') {
+								height = $(window).height() - 185;
+							} else {
+								height = iframe.data('height');
+							}
+						} else {
+							if (isHidden) {
+								message.css('display', '');
+								iframe.css('display', '');
+							}
+							height = iframe.contents().height() ?? iframe.contents().find('body').height();
+						}
+						if (height) {
+							message.height(height);
+						}
+						if (isHidden) {
+							iframe.css('display', 'none');
+						}
+						modal.find('.js-modal-content').html(message);
+					} else {
+						modal.find('.js-modal-content').html(btn.closest('.js-more-content').find('.fullContent').html());
 					}
 				}
 			});
-		};
-		container.on('click', '.js-more', showMoreModal);
+		});
 	},
 	registerIframeEvents(content) {
 		content.find('.js-iframe-full-height').each(function () {
@@ -2381,7 +2823,7 @@ var app = (window.app = {
 		self.sidebarBtn = $('.js-sidebar-btn').first();
 		self.sidebar = $('.js-sidebar').first();
 		self.sidebarBtn.on('click', self.toggleSidebar.bind(self));
-		$(`a.nav-link,[tabindex],input,select,textarea,button`).on('focus', (e) => {
+		$('a.nav-link,[tabindex],input,select,textarea,button').on('focus', (e) => {
 			if (self.sidebarBtn[0] == e.target || self.sidebar.find(e.target).length) return;
 			if (self.sidebar.find(':focus').length) {
 				self.openSidebar();
@@ -2539,26 +2981,36 @@ var app = (window.app = {
 			window.location.href = url;
 		}
 	},
-	openUrlMethodPost(url, postData = {}, formAttr = {}) {
-		$.extend(formAttr, {
-			method: 'post',
-			action: url,
-			style: 'display:none;'
-		});
-		let form = $('<form></form>', formAttr);
-		if (typeof csrfMagicName !== 'undefined') {
-			postData[csrfMagicName] = csrfMagicToken;
+	/**
+	 * Convert url string to object
+	 *
+	 * @param   {string}  url  example: index.php?module=LayoutEditor&parent=Settings
+	 */
+	changeUrl(params) {
+		let fullUrl = '';
+		if (params.data && typeof params.data.historyUrl !== 'undefined') {
+			fullUrl = params.data.historyUrl;
 		}
-		$.each(postData, (index, value) => {
-			let input = $(document.createElement('input'));
-			input.attr('type', 'hidden');
-			input.attr('name', index);
-			input.val(value);
-			form.append(input);
-		});
-		$('body').append(form);
-		form.submit();
-		form.remove();
+		if (fullUrl === '') {
+			if (params.data) {
+				if (typeof params.data == 'string') {
+					fullUrl = 'index.php?' + params.data;
+				} else {
+					fullUrl = 'index.php?' + $.param(params.data);
+				}
+			} else if (typeof params === 'object') {
+				fullUrl = 'index.php?' + $.param(params);
+			}
+		} else if (fullUrl.indexOf('index.php?') === -1) {
+			fullUrl = 'index.php?' + fullUrl;
+		}
+		if (app.isWindowTop() && history && history.pushState && fullUrl !== '') {
+			if (!history.state) {
+				let currentHref = window.location.href;
+				history.replaceState(currentHref, 'title 1', currentHref);
+			}
+			history.pushState(fullUrl, 'title 2', fullUrl);
+		}
 	},
 	/**
 	 * Convert url string to object
@@ -2595,61 +3047,13 @@ var app = (window.app = {
 			if (typeof value === 'object' || (typeof value === 'string' && value.startsWith('<'))) {
 				return;
 			}
-			url += key + '=' + value + '&';
+			if (!url.endsWith('&') && !url.endsWith('?')) {
+				url += '&';
+			}
+			url += key + '=' + encodeURIComponent(value);
 		});
+
 		return url;
-	},
-	showConfirmation: function (data, element) {
-		var params = {};
-		if (data) {
-			params = $.extend(params, data);
-		}
-		if (element) {
-			element = $(element);
-			if (!params.title) {
-				params.title = element.html() + ' ' + (element.data('content') ? element.data('content') : '');
-			}
-			if (!params.message) {
-				params.message = element.data('confirm');
-			}
-			if (!params.url) {
-				params.url = element.data('url');
-			}
-		}
-		Vtiger_Helper_Js.showConfirmationBox(params).done(function () {
-			if (params.type == 'href') {
-				AppConnector.request(params.url).done(function (data) {
-					app.openUrl(data.result);
-				});
-			} else if (params.type == 'reloadTab') {
-				AppConnector.request(params.url).done(function (data) {
-					Vtiger_Detail_Js.getInstance().reloadTabContent();
-				});
-			}
-		});
-	},
-	formatToHourText: function (decTime, type = 'short', withSeconds = false, withMinutes = true) {
-		const short = type === 'short';
-		const hour = Math.floor(decTime);
-		const min = Math.floor((decTime - hour) * 60);
-		const sec = Math.round(((decTime - hour) * 60 - min) * 60);
-		let result = '';
-		if (hour) {
-			result += short ? hour + app.vtranslate('JS_H') : `${hour} ` + app.vtranslate('JS_H_LONG');
-		}
-		if ((hour || min) && withMinutes) {
-			result += short ? ` ${min}` + app.vtranslate('JS_M') : ` ${min} ` + app.vtranslate('JS_M_LONG');
-		}
-		if (withSeconds !== false) {
-			result += short ? ` ${sec}` + app.vtranslate('JS_S') : ` ${sec} ` + app.vtranslate('JS_S_LONG');
-		}
-		if (!hour && !min && withSeconds === false && withMinutes) {
-			result += short ? '0' + app.vtranslate('JS_M') : '0 ' + app.vtranslate('JS_M_LONG');
-		}
-		if (!hour && !min && withSeconds === false && !withMinutes) {
-			result += short ? '0' + app.vtranslate('JS_H') : '0 ' + app.vtranslate('JS_H_LONG');
-		}
-		return result.trim();
 	},
 	showRecordsList: function (params, cb, afterShowModal) {
 		if (typeof params === 'object' && !params.view) {
@@ -2703,7 +3107,7 @@ var app = (window.app = {
 	},
 	registerHtmlToImageDownloader: function (container) {
 		const self = this;
-		container.on('click', '.js-download-html', function (e) {
+		container.on('click', '.js-download-html', function () {
 			let element = $(this);
 			let fileName = element.data('fileName');
 			self.htmlToImage($(element.data('html'))).then((img) => {
@@ -2712,7 +3116,7 @@ var app = (window.app = {
 		});
 	},
 	decodeHTML(html) {
-		var txt = document.createElement('textarea');
+		let txt = document.createElement('textarea');
 		txt.innerHTML = html;
 		return txt.value;
 	},
@@ -2747,6 +3151,23 @@ var app = (window.app = {
 			})
 		});
 	},
+	/**
+	 * Show notify error
+	 * @param {object} error
+	 *
+	 */
+	showError(error) {
+		if (typeof error.type === 'undefined') {
+			error.type = 'error';
+		}
+		error.textTrusted = false;
+		app.showNotify(error);
+	},
+	/**
+	 * Show notify
+	 * @param {object} customParams
+	 * @returns {PNotify}
+	 */
 	showNotify: function (customParams) {
 		let params = {
 			hide: false
@@ -2784,47 +3205,82 @@ var app = (window.app = {
 		PNotify.defaultModules.set(PNotifyFontAwesome5, {});
 		PNotify.defaultModules.set(PNotifyMobile, {});
 	},
-	showConfirmModal: function (text, callback) {
-		return this.showNotify({
-			icon: 'fas fa-question-circle',
-			title: text,
-			closer: false,
-			sticker: false,
-			destroy: false,
-			modules: new Map([
-				...PNotify.defaultModules,
-				[
-					PNotifyConfirm,
-					{
-						confirm: true,
-						buttons: [
+	/**
+	 * Show confirm modal
+	 * @param {object} params
+	 * @returns {PNotify}
+	 * @returns
+	 */
+	showConfirmModal: function (params) {
+		let confirmButtonLabel = 'JS_OK';
+		let rejectedButtonLabel = 'JS_CANCEL';
+		if (typeof params.confirmButtonLabel !== 'undefined') {
+			confirmButtonLabel = params.confirmButtonLabel;
+		}
+		if (typeof params.rejectedButtonLabel !== 'undefined') {
+			rejectedButtonLabel = params.rejectedButtonLabel;
+		}
+		return this.showNotify(
+			$.extend(
+				{
+					icon: 'fas fa-question-circle',
+					closer: false,
+					sticker: false,
+					destroy: false,
+					hide: false,
+					width: 'auto',
+					animateSpeed: 'fast',
+					addModalClass: 'c-confirm-modal',
+					modules: new Map([
+						...PNotify.defaultModules,
+						[
+							PNotifyConfirm,
 							{
-								text: app.vtranslate('JS_OK'),
-								primary: true,
-								promptTrigger: true,
-								click: function (notice) {
-									notice.close();
-									callback(true);
-								}
-							},
-							{
-								text: app.vtranslate('JS_CANCEL'),
-								click: function (notice) {
-									notice.close();
-									callback(false);
-								}
+								confirm: true,
+								prompt: 'showDialog' in params ? params['showDialog'] : false,
+								promptMultiLine: 'multiLineDialog' in params ? params['multiLineDialog'] : false,
+								buttons: [
+									{
+										text: '<span class="fas fa-check mr-2"></span>' + app.vtranslate(confirmButtonLabel),
+										textTrusted: true,
+										primary: true,
+										promptTrigger: true,
+										click: function (notice, value, e) {
+											if (params['showDialog'] && !value) {
+												return;
+											}
+											if (typeof params.confirmedCallback !== 'undefined') {
+												params.confirmedCallback(notice, value, e);
+											}
+											notice.close();
+										}
+									},
+									{
+										text: '<span class="fas fa-times mr-2"></span>' + app.vtranslate(rejectedButtonLabel),
+										textTrusted: true,
+										click: function (notice) {
+											if (typeof params.rejectedCallback !== 'undefined') {
+												params.rejectedCallback(notice);
+											}
+											notice.close();
+										}
+									}
+								]
 							}
 						]
-					}
-				]
-			]),
-			stack: new PNotify.Stack({
-				dir1: 'down',
-				modal: true,
-				firstpos1: 25,
-				overlayClose: false
-			})
-		});
+					]),
+					stack: new PNotify.Stack({
+						dir1: 'down',
+						firstpos1: 50,
+						spacing1: 0,
+						push: 'top',
+						modal: true,
+						overlayClose: false
+					})
+				},
+				params
+			)
+		);
 	},
 	registesterScrollbar(container) {
 		container.find('.js-scrollbar').each(function () {
@@ -2848,9 +3304,6 @@ var app = (window.app = {
 			'.js-popover-tooltip, .js-popover-tooltip--record, .js-popover-tooltip--ellipsis, [data-field-type="reference"], [data-field-type="multireference"]',
 			(e) => {
 				let currentTarget = $(e.currentTarget);
-				if (currentTarget.find('.js-popover-tooltip--record').length) {
-					return;
-				}
 				if (!currentTarget.hasClass('popover-triggered')) {
 					if (currentTarget.hasClass('js-popover-tooltip--record')) {
 						app.registerPopoverRecord(currentTarget, {}, container);
@@ -2930,9 +3383,10 @@ var app = (window.app = {
 							app.registerAfterLoginEvents();
 						});
 					})
-					.fail(function (textStatus, errorThrown) {
+					.fail(function (_textStatus, errorThrown) {
 						app.showNotify({
 							title: app.vtranslate('JS_ERROR'),
+							textTrusted: false,
 							text: errorThrown,
 							type: 'error'
 						});
@@ -2945,9 +3399,415 @@ var app = (window.app = {
 			default:
 				return;
 		}
+	},
+	/**
+	 * Function to reload view after save event
+	 *
+	 * @param {object} responseData - Save responses data.
+	 * @param {object} params - Save params.
+	 * @param {jQuery} form - Jquery form container.
+	 * @param {jQuery} element - Jquery trigger element.
+	 */
+	reloadAfterSave: function (responseData, params, form, element) {
+		if (responseData.skipReload) {
+			return;
+		}
+		const moduleName = params['module'];
+		const parentModuleName = app.getModuleName();
+		const viewName = app.getViewName();
+		if ('List' === viewName || 'Tiles' === viewName) {
+			if (moduleName === parentModuleName) {
+				app.pageController.getListViewRecords();
+			}
+		} else if ('Kanban' === viewName) {
+			app.pageController.loadKanban(false);
+		} else if ('Detail' === viewName) {
+			if (form && app.getRecordId() === form.find('[name="record"]').val()) {
+				if (responseData.result._isViewable == false) {
+					if (window !== window.parent) {
+						window.parent.location.href = 'index.php?module=' + moduleName + '&view=ListPreview';
+					} else {
+						window.location.href = 'index.php?module=' + moduleName + '&view=List';
+					}
+				} else if (params && params.removeFromUrl) {
+					let searchParams = new URLSearchParams(window.location.search);
+					searchParams.delete('step');
+					window.location.href = 'index.php?' + searchParams.toString();
+				} else {
+					window.location.reload();
+				}
+			} else {
+				let widget, block;
+				if (responseData.result && responseData.result._reload) {
+					window.location.reload();
+				} else if (app.getUrlVar('mode') === 'showRelatedList') {
+					app.pageController.loadRelatedList();
+				} else if (element && (widget = element.closest('.widgetContentBlock')) && widget.length !== 0) {
+					app.pageController.loadWidget(widget);
+				} else if (element && (block = element.closest('.detailViewBlockLink')) && block.length !== 0) {
+					app.pageController.reloadDetailViewBlock(block);
+				} else if (params && params.data) {
+					window.location.reload();
+				} else {
+					app.pageController.reloadTabContent();
+				}
+			}
+		}
+	},
+	/**
+	 * Handler validation for ajax (quick edit)
+	 * @param {Object} params
+	 * @param {String} mode
+	 * @returns
+	 */
+	handlerEventAjax: function (params, mode = '') {
+		const aDeferred = $.Deferred();
+		let paramsTemp = JSON.parse(JSON.stringify(params));
+		if (mode) paramsTemp.data.mode = mode;
+
+		AppConnector.request(paramsTemp)
+			.done((data) => {
+				const response = data.result;
+				let lock = false;
+				let handlers = Object.fromEntries(
+					Object.entries(response).filter(([_key, val]) => typeof val === 'object' && val.result === false)
+				);
+				for (let i in handlers) {
+					let handler = handlers[i];
+					switch (handler.type) {
+						case 'confirm':
+							app.showConfirmModal({
+								text: handler.message || '',
+								confirmedCallback: () => {
+									let handlers = {};
+									if (typeof params.data.skipHandlers !== 'undefined') {
+										handlers = JSON.parse(params.data.skipHandlers);
+									}
+									handlers[i] = handler.hash;
+									params.data.skipHandlers = JSON.stringify(handlers);
+									app.handlerEventAjax(params, mode).then((responsePart, data) => {
+										aDeferred.resolve(responsePart, data);
+									});
+								},
+								rejectedCallback: () => {
+									aDeferred.resolve(false);
+								}
+							});
+							lock = true;
+							break;
+						case 'modal':
+							app.showModalWindow(null, handler.url, function (modalContainer) {
+								app.registerModalController(undefined, modalContainer, function (_, instance) {
+									instance.handlerEvent = aDeferred;
+									instance.handlerResponse = handler;
+									instance.form = params;
+								});
+							});
+							lock = true;
+							break;
+						case 'notice':
+						default:
+							app.showNotify({
+								text: handler.message ? handler.message : app.vtranslate('JS_ERROR2'),
+								type: 'error'
+							});
+							break;
+					}
+				}
+				if (Object.keys(handlers).length <= 0) {
+					aDeferred.resolve(true, response);
+				} else if (!lock) {
+					aDeferred.resolve(false, response);
+				}
+			})
+			.fail((_textStatus, _errorThrown) => {
+				app.showNotify({
+					text: app.vtranslate('JS_ERROR'),
+					type: 'error'
+				});
+				aDeferred.resolve(false);
+			});
+
+		return aDeferred.promise();
+	},
+	/**
+	 * Handler validation for jQuery FORM
+	 * @param {jQuery} params
+	 * @param {String} mode
+	 * @returns
+	 */
+	handlerEventForm: function (form, mode = '') {
+		const aDeferred = $.Deferred();
+		document.progressLoader = $.progressIndicator({
+			message: app.vtranslate('JS_SAVE_LOADER_INFO'),
+			position: 'html',
+			blockInfo: {
+				enabled: true
+			}
+		});
+		let formData = new FormData(form[0]);
+		if (mode) formData.append('mode', mode);
+		AppConnector.request({
+			async: false,
+			url: 'index.php',
+			type: 'POST',
+			data: formData,
+			processData: false,
+			contentType: false
+		})
+			.done((data) => {
+				document.progressLoader.progressIndicator({ mode: 'hide' });
+				let response = data.result;
+				for (let i in response) {
+					let handler = response[i];
+					switch (handler.type) {
+						case 'confirm':
+							app.showConfirmModal({
+								text: handler.message || '',
+								confirmedCallback: () => {
+									let handlers = {},
+										handlerElement = form.find('input[name="skipHandlers"]');
+									if (handlerElement.length) {
+										handlers = JSON.parse(handlerElement.val());
+										handlerElement.remove();
+									}
+									handlers[i] = handler.hash;
+									form.append($('<input>', { name: 'skipHandlers', value: JSON.stringify(handlers), type: 'hidden' }));
+									form.submit();
+								}
+							});
+							break;
+						case 'modal':
+							app.showModalWindow(null, handler.url, function (modalContainer) {
+								app.registerModalController(undefined, modalContainer, function (_, instance) {
+									instance.handlerEvent = aDeferred;
+									instance.handlerResponse = handler;
+									instance.form = form;
+								});
+							});
+							break;
+						case 'notice':
+						default:
+							app.showNotify({
+								text: handler.message ? handler.message : app.vtranslate('JS_ERROR'),
+								type: 'error'
+							});
+							if (handler.hoverField) {
+								form.find('[name="' + handler.hoverField + '"]').focus();
+							}
+							break;
+					}
+				}
+				aDeferred.resolve(data.result.length <= 0);
+			})
+			.fail((textStatus, errorThrown) => {
+				document.progressLoader.progressIndicator({ mode: 'hide' });
+				app.showNotify({
+					text: app.vtranslate('JS_ERROR'),
+					type: 'error'
+				});
+				app.errorLog(textStatus, errorThrown);
+				aDeferred.resolve(false);
+			});
+
+		return aDeferred.promise();
+	},
+
+	/**
+	 * Handler validation
+	 * @param {*} params jQuery FORM or object or url
+	 * @param {String} mode
+	 * @param {Boolean} skip Skip the verification action
+	 * @returns
+	 */
+	handlerEvent: function (params, mode = '', skip = false) {
+		const aDeferred = $.Deferred();
+		if (skip) {
+			aDeferred.resolve(true);
+		} else if (params instanceof jQuery && params.is('form')) {
+			app.handlerEventForm(params, mode).done((response) => {
+				aDeferred.resolve(response);
+			});
+		} else {
+			if ('string' === typeof params) {
+				params = {
+					data: app.convertUrlToObject(params),
+					async: false,
+					dataType: 'json'
+				};
+			}
+			app.handlerEventAjax(params, mode).done((response, data) => {
+				aDeferred.resolve(response, data);
+			});
+		}
+
+		return aDeferred.promise();
+	},
+
+	/**
+	 * Function to register the records events
+	 * @param {jQuery} container - Jquery container.
+	 */
+	registerRecordActionsEvents: function (container) {
+		container.on('click', '.js-record-action', function (event) {
+			event.stopPropagation();
+			let target = $(this),
+				addBtnIcon = target.data('addBtnIcon'),
+				presaveMode = target.data('presave-mode') || '';
+			let params = {
+				icon: false,
+				title: target.data('content'),
+				confirmedCallback: () => {
+					let url = target.data('url');
+					app.handlerEvent(url, presaveMode).done((response, data) => {
+						if (response === true) {
+							if (typeof data === 'object') {
+								for (let i in data) {
+									switch (i) {
+										case 'notify':
+											app.showNotify(data[i]);
+											app.reloadAfterSave(data, app.convertUrlToObject(url), null, target);
+											break;
+										case 'url':
+											app.openUrl(data[i]);
+											break;
+										default:
+											app.reloadAfterSave(data, app.convertUrlToObject(url), null, target);
+											break;
+									}
+								}
+							}
+						}
+					});
+				}
+			};
+			if (target.data('confirm')) {
+				params.text = target.data('confirm');
+				addBtnIcon = 1;
+			}
+			if (addBtnIcon == 1) {
+				params.title = target.html() + (params.title ? ' ' + params.title : '');
+			}
+			app.showConfirmModal(params);
+		});
+	},
+	/**
+	 * Function to register the records events
+	 * @param {jQuery} container - Jquery container.
+	 */
+	registerConfirmActionsEvents: function (container) {
+		container.on('click', '.js-action-confirm', function (event) {
+			event.stopPropagation();
+			let target = $(this),
+				sourceView = target.data('sourceView'),
+				addBtnIcon = target.data('addBtnIcon');
+			let params = {
+				icon: false,
+				title: target.data('content'),
+				confirmedCallback: () => {
+					let progressIndicatorElement = $.progressIndicator({
+						position: 'html',
+						blockInfo: {
+							enabled: true
+						}
+					});
+					let url = target.data('url') + (sourceView ? '&sourceView=' + sourceView : '');
+					if (target.data('type') === 'href') {
+						app.openUrl(url);
+						return false;
+					}
+					AppConnector.request(url).done(function (data) {
+						progressIndicatorElement.progressIndicator({
+							mode: 'hide'
+						});
+						if (data && data.success) {
+							if (data.result.notify) {
+								app.showNotify(data.result.notify);
+							}
+							if (sourceView === 'Href') {
+								app.openUrl(data.result);
+							} else {
+								app.reloadAfterSave(data, app.convertUrlToObject(url), null, target);
+							}
+						} else {
+							app.showNotify({
+								text: app.vtranslate(data.error.message),
+								title: app.vtranslate('JS_LBL_PERMISSION'),
+								type: 'error'
+							});
+						}
+					});
+				}
+			};
+			if (target.data('confirm')) {
+				params.text = target.data('confirm');
+				addBtnIcon = 1;
+			}
+			if (addBtnIcon == 1) {
+				params.title = target.html() + (params.title ? ' ' + params.title : '');
+			}
+			app.showConfirmModal(params);
+		});
+	},
+	/**
+	 * Register keyboard shortcuts events
+	 * @param {jQuery} container
+	 */
+	registerKeyboardShortcutsEvent: function (container) {
+		if (app.getUrlVar('parent') !== 'Settings') {
+			document.addEventListener('keydown', (event) => {
+				if (CONFIG['isEntityModule'] && event.shiftKey && event.ctrlKey && event.code === 'KeyL') {
+					window.location.href = 'index.php?module=' + app.getModuleName() + '&view=List';
+				}
+				if (CONFIG['isQuickCreateSupported'] && event.shiftKey && event.ctrlKey && event.code === 'KeyQ') {
+					App.Components.QuickCreate.createRecord(app.getModuleName());
+				}
+			});
+		}
+	},
+	/**
+	 * Register POST action
+	 * @param {jQuery} container
+	 */
+	registerPostActionEvent: function (container) {
+		container.on('click', '.js-post-action', function (e) {
+			e.preventDefault();
+			let element = $(this);
+			if (element.attr('href')) {
+				AppConnector.requestForm(element.attr('href'));
+			}
+		});
+	},
+	/**
+	 * Print data modal
+	 * @param {jQuery} container
+	 */
+	printModal: function (container) {
+		const html = container.html().replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' '),
+			head = $('head')
+				.html()
+				.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ');
+		const modal = window.open();
+		modal.document.write(`<head>${head}</head>`);
+		modal.document.write(`<body>${html}</body>`);
+		modal.onafterprint = (_e) => {
+			modal.close();
+		};
+		setTimeout(function () {
+			modal.print();
+		}, 500);
+	},
+	/**
+	 * Register print event
+	 * @param {jQuery} container
+	 */
+	registerPrintEvent: function (container) {
+		container.on('click', '.js-print-container', function (_) {
+			app.printModal($($(this).data('container')).children());
+		});
 	}
 });
-CKEDITOR.disableAutoInline = true;
+
 $(function () {
 	Quasar.iconSet.set(Quasar.iconSet.mdiV3);
 	let document = $(this);
@@ -2969,8 +3829,17 @@ $(function () {
 	app.registerShowHideBlock(document);
 	app.registerAfterLoginEvents(document);
 	app.registerFormsEvents(document);
+	app.registerConfirmActionsEvents(document);
+	app.registerRecordActionsEvents(document);
+	app.registerPrintEvent(document);
+	app.registerKeyboardShortcutsEvent(document);
+	app.registerPostActionEvent(document);
 	App.Components.QuickCreate.register(document);
 	App.Components.Scrollbar.initPage();
+	App.Clipboard.register(document);
+	App.Fields.Phone.register(document);
+	App.Fields.Mail.register(document);
+	App.Fields.MapCoordinates.register(document);
 	String.prototype.toCamelCase = function () {
 		let value = this.valueOf();
 		return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
@@ -2980,9 +3849,9 @@ $(function () {
 		$('textarea').resizable();
 	}
 	// Instantiate Page Controller
-	let pageController = app.getPageController();
-	if (pageController) {
-		pageController.registerEvents();
+	app.pageController = app.getPageController();
+	if (app.pageController) {
+		app.pageController.registerEvents();
 	}
 });
 (function ($) {
@@ -2992,12 +3861,12 @@ $(function () {
 	$.fn.getNumberFromText = function () {
 		return App.Fields.Double.formatToDb($(this).text());
 	};
-	$.fn.setValue = function (value, type = 'value') {
-		return App.Fields.Utils.setValue($(this), value, type);
+	$.fn.setValue = function (value, params) {
+		return App.Fields.Utils.setValue($(this), value, params);
 	};
-	$.fn.formatNumber = function () {
+	$.fn.formatNumber = function (mode = App.Fields.Double.FORMAT_USER_WITHOUT_ROUNDING) {
 		let element = $(this);
-		element.val(App.Fields.Double.formatToDisplay(App.Fields.Double.formatToDb(element.val()), false));
+		element.val(App.Fields.Double.formatToDisplay(App.Fields.Double.formatToDb(element.val()), mode));
 	};
 	$.fn.disable = function () {
 		this.attr('disabled', 'disabled');
@@ -3006,11 +3875,11 @@ $(function () {
 		this.removeAttr('disabled');
 	};
 	$.fn.serializeFormData = function () {
-		let form = this;
-		for (var instance in CKEDITOR.instances) {
+		for (let instance in CKEDITOR.instances) {
 			CKEDITOR.instances[instance].updateElement();
 		}
-		let values = form.serializeArray();
+		const form = this,
+			values = form.serializeArray();
 		let data = {};
 		if (values) {
 			$(values).each(function (k, v) {
@@ -3031,6 +3900,7 @@ $(function () {
 			let ac = $(autocompletes[i]);
 			data[ac.attr('name')] = ac.data('value');
 		});
+		delete data['_csrf'];
 		return data;
 	};
 	// Case-insensitive :icontains expression
@@ -3047,5 +3917,4 @@ $(function () {
 			})
 			.remove();
 	};
-	bootbox.setLocale(CONFIG.langKey);
 })($);

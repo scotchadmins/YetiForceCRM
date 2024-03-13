@@ -1,8 +1,8 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
 	<div class="dashboardWidgetHeader">
 		<div class="d-flex flex-row flex-nowrap no-gutters justify-content-between">
-			{include file=\App\Layout::getTemplatePath('dashboards/WidgetHeaderTitle.tpl', $MODULE_NAME) TITLE=App\Purifier::encodeHtml(App\Language::translate($WIDGET->getTitle(), 'Home'))}
+			{include file=\App\Layout::getTemplatePath('dashboards/WidgetHeaderTitle.tpl', $MODULE_NAME)}
 			{include file=\App\Layout::getTemplatePath('dashboards/WidgetHeaderButtons.tpl', $MODULE_NAME)}
 		</div>
 		<hr class="widgetHr" />
@@ -14,11 +14,11 @@
 							<span class="fas fa-bell fa-fw"></span>
 						</span>
 					</div>
-						<select class="widgetFilter form-control select2" aria-label="Small" aria-describedby="inputGroup-sizing-sm" name="type">
-							{foreach from=$TYPES_NOTIFICATION key=KEY item=TYPE}
-								<option value="{$KEY}">{$TYPE}</option>
-							{/foreach}
-						</select>
+					<select class="widgetFilter form-control select2" aria-label="Small" aria-describedby="inputGroup-sizing-sm" name="type">
+						{foreach from=$TYPES_NOTIFICATION key=KEY item=TYPE}
+							<option value="{\App\Purifier::encodeHtml($KEY)}">{\App\Purifier::encodeHtml($TYPE)}</option>
+						{/foreach}
+					</select>
 				</div>
 			</div>
 			<div class="col-ceq-xsm-6">

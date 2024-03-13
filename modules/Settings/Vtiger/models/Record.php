@@ -13,11 +13,29 @@
  */
 abstract class Settings_Vtiger_Record_Model extends App\Base
 {
+	/** @var Settings_Vtiger_Module_Model Settings module model */
+	public $module;
+
+	/**
+	 * Record ID.
+	 *
+	 * @return int
+	 */
 	abstract public function getId();
 
+	/**
+	 * Record name.
+	 *
+	 * @return string
+	 */
 	abstract public function getName();
 
-	public function getRecordLinks()
+	/**
+	 * Get record links.
+	 *
+	 * @return Vtiger_Link_Model[]
+	 */
+	public function getRecordLinks(): array
 	{
 		$links = [];
 		$recordLinks = [];
@@ -36,6 +54,6 @@ abstract class Settings_Vtiger_Record_Model extends App\Base
 	 */
 	public function getDisplayValue(string $key)
 	{
-		return $this->get($key);
+		return \App\Purifier::encodeHtml($this->get($key));
 	}
 }

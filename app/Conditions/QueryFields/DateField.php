@@ -1,22 +1,24 @@
 <?php
-
 /**
- * Date Query Field file.
+ * Date query field conditions file.
+ *
+ * @package UIType
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
 namespace App\Conditions\QueryFields;
 
 /**
- * Date Query Field Class.
- *
- * @package UIType
- *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
- * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * Date query field conditions class.
  */
 class DateField extends BaseField
 {
+	use \App\Conditions\QueryTraits\Comparison;
+	use \App\Conditions\QueryTraits\ComparisonField;
+
 	/**
 	 * Get order by.
 	 *
@@ -24,7 +26,7 @@ class DateField extends BaseField
 	 *
 	 * @return array
 	 */
-	public function getOrderBy($order = false)
+	public function getOrderBy($order = false): array
 	{
 		if ($order && 'DESC' === strtoupper($order)) {
 			$sort = SORT_DESC;
@@ -74,9 +76,7 @@ class DateField extends BaseField
 	 */
 	public function getArrayValue()
 	{
-		return array_map(function ($row) {
-			return \current(explode(' ', $row));
-		}, explode(',', $this->value));
+		return array_map(fn ($row) => \current(explode(' ', $row)), explode(',', $this->value));
 	}
 
 	/**
@@ -86,12 +86,7 @@ class DateField extends BaseField
 	 */
 	public function getStdValue()
 	{
-		if ('custom' === $this->operator) {
-			$date = $this->getArrayValue();
-		} else {
-			$date = \DateTimeRange::getDateRangeByType($this->operator);
-		}
-		return $date;
+		return \DateTimeRange::getDateRangeByType($this->operator);
 	}
 
 	/**
@@ -102,7 +97,6 @@ class DateField extends BaseField
 	public function getStdOperator()
 	{
 		$value = $this->getStdValue();
-
 		return ['between', $this->getColumnName(), $value[0], $value[1]];
 	}
 
@@ -114,8 +108,7 @@ class DateField extends BaseField
 	public function operatorBw()
 	{
 		$value = $this->getArrayValue();
-
-		return ['between', $this->getColumnName(), $value[0], $value[1]];
+		return ['between', $this->getColumnName(), $value[0], $value[1] ?? $value[0]];
 	}
 
 	/**
@@ -133,7 +126,7 @@ class DateField extends BaseField
 	 *
 	 * @return array
 	 */
-	public function operatorA()
+	public function operatorA(): array
 	{
 		return ['>', $this->getColumnName(), $this->getValue()];
 	}

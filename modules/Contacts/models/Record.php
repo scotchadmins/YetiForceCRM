@@ -6,6 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 /**
@@ -13,59 +14,12 @@
  */
 class Contacts_Record_Model extends Vtiger_Record_Model
 {
-	/**
-	 * Function to get List of Fields which are related from Contacts to Inventory Record.
-	 *
-	 * @return array
-	 */
-	public function getInventoryMappingFields()
-	{
-		return [
-			['parentField' => 'parent_id', 'inventoryField' => 'account_id', 'defaultValue' => ''],
-			['parentField' => 'buildingnumbera', 'inventoryField' => 'buildingnumbera', 'defaultValue' => ''],
-			['parentField' => 'localnumbera', 'inventoryField' => 'localnumbera', 'defaultValue' => ''],
-			['parentField' => 'addresslevel1a', 'inventoryField' => 'addresslevel1a', 'defaultValue' => ''],
-			['parentField' => 'addresslevel2a', 'inventoryField' => 'addresslevel2a', 'defaultValue' => ''],
-			['parentField' => 'addresslevel3a', 'inventoryField' => 'addresslevel3a', 'defaultValue' => ''],
-			['parentField' => 'addresslevel4a', 'inventoryField' => 'addresslevel4a', 'defaultValue' => ''],
-			['parentField' => 'addresslevel5a', 'inventoryField' => 'addresslevel5a', 'defaultValue' => ''],
-			['parentField' => 'addresslevel6a', 'inventoryField' => 'addresslevel6a', 'defaultValue' => ''],
-			['parentField' => 'addresslevel7a', 'inventoryField' => 'addresslevel7a', 'defaultValue' => ''],
-			['parentField' => 'addresslevel8a', 'inventoryField' => 'addresslevel8a', 'defaultValue' => ''],
-			['parentField' => 'buildingnumberb', 'inventoryField' => 'buildingnumberb', 'defaultValue' => ''],
-			['parentField' => 'localnumberb', 'inventoryField' => 'localnumberb', 'defaultValue' => ''],
-			['parentField' => 'addresslevel1b', 'inventoryField' => 'addresslevel1b', 'defaultValue' => ''],
-			['parentField' => 'addresslevel2b', 'inventoryField' => 'addresslevel2b', 'defaultValue' => ''],
-			['parentField' => 'addresslevel3b', 'inventoryField' => 'addresslevel3b', 'defaultValue' => ''],
-			['parentField' => 'addresslevel4b', 'inventoryField' => 'addresslevel4b', 'defaultValue' => ''],
-			['parentField' => 'addresslevel5b', 'inventoryField' => 'addresslevel5b', 'defaultValue' => ''],
-			['parentField' => 'addresslevel6b', 'inventoryField' => 'addresslevel6b', 'defaultValue' => ''],
-			['parentField' => 'addresslevel7b', 'inventoryField' => 'addresslevel7b', 'defaultValue' => ''],
-			['parentField' => 'addresslevel8b', 'inventoryField' => 'addresslevel8b', 'defaultValue' => ''],
-		];
-	}
-
-	/**
-	 * {@inheritdoc}
-	 */
-	public function delete()
-	{
-		parent::delete();
-		\App\Db::getInstance()->createCommand()->update('vtiger_customerdetails', [
-			'portal' => 0,
-			'support_start_date' => null,
-			'support_end_date' => null,
-		], ['customerid' => $this->getId()])->execute();
-	}
-
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getRecordRelatedListViewLinksLeftSide(Vtiger_RelationListView_Model $viewModel)
 	{
 		$links = parent::getRecordRelatedListViewLinksLeftSide($viewModel);
-		if (App\Config::main('isActiveSendingMails') && \App\Privilege::isPermitted('OSSMail')) {
-			if (1 == Users_Record_Model::getCurrentUserModel()->get('internal_mailer')) {
+		if (\Config\Main::$isActiveSendingMails) {
+			if ('InternalClient' === \App\Mail::getMailComposer()) {
 				$links['LBL_SEND_EMAIL'] = Vtiger_Link_Model::getInstanceFromValues([
 					'linklabel' => 'LBL_SEND_EMAIL',
 					'linkhref' => true,

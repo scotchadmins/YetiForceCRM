@@ -6,11 +6,25 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
 class Vtiger_ShowWidget_View extends Vtiger_IndexAjax_View
 {
+	/** {@inheritdoc} */
+	public function checkPermission(App\Request $request)
+	{
+		$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
+		$moduleName = $request->getModule();
+		if ('Home' === $moduleName && !$userPrivilegesModel->hasModulePermission($moduleName)) {
+			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
+		}
+		if ('Home' !== $moduleName && !$userPrivilegesModel->hasModuleActionPermission($moduleName, 'Dashboard')) {
+			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
+		}
+	}
+
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		$moduleName = $request->getModule();
@@ -43,6 +57,7 @@ class Vtiger_ShowWidget_View extends Vtiger_IndexAjax_View
 		$response->emit();
 	}
 
+	/** {@inheritdoc} */
 	public function validateRequest(App\Request $request)
 	{
 		$request->validateWriteAccess();

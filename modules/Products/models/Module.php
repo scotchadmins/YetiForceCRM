@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Products_Module_Model extends Vtiger_Module_Model
@@ -50,13 +50,11 @@ class Products_Module_Model extends Vtiger_Module_Model
 		}
 	}
 
-	/**
-	 * Function to check whether the module is summary view supported.
-	 *
-	 * @return bool
-	 */
-	public function isSummaryViewSupported()
+	/** {@inheritdoc} */
+	public function getQueryForRecords(string $searchValue, int $limit, int $srcRecord = null): App\QueryGenerator
 	{
-		return false;
+		$queryGenerator = parent::getQueryForRecords($searchValue, $limit, $srcRecord);
+		$queryGenerator->addCondition('discontinued', 1, 'e');
+		return $queryGenerator;
 	}
 }

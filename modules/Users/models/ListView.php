@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Users_ListView_Model extends Vtiger_ListView_Model
@@ -22,19 +22,23 @@ class Users_ListView_Model extends Vtiger_ListView_Model
 	{
 		$linkTypes = ['LISTVIEWBASIC', 'LISTVIEW', 'LISTVIEWSETTING'];
 		$links = Vtiger_Link_Model::getAllByType($this->getModule()->getId(), $linkTypes, $linkParams);
+		if (!isset($links['LISTVIEWBASIC'])) {
+			$links['LISTVIEWBASIC'] = [];
+		}
 		if (App\User::getCurrentUserModel()->isAdmin()) {
 			$links['LISTVIEWBASIC'][] = Vtiger_Link_Model::getInstanceFromValues([
 				'linktype' => 'LISTVIEWBASIC',
 				'linklabel' => 'LBL_ADD_RECORD',
 				'linkurl' => $this->getModule()->getCreateRecordUrl(),
 				'linkicon' => '',
-				'linkclass' => 'btn-light'
+				'linkclass' => 'btn-light',
 			]);
 		}
 		$advancedLinks = $this->getAdvancedLinks();
 		foreach ($advancedLinks as $advancedLink) {
 			$links['LISTVIEW'][] = Vtiger_Link_Model::getInstanceFromValues($advancedLink);
 		}
+
 		return $links;
 	}
 
@@ -54,7 +58,7 @@ class Users_ListView_Model extends Vtiger_ListView_Model
 				'linktype' => 'LISTVIEWMASSACTION',
 				'linklabel' => 'LBL_MASS_EDIT',
 				'linkurl' => 'javascript:Vtiger_List_Js.triggerMassEdit("index.php?module=Users&view=MassActionAjax&mode=showMassEditForm");',
-				'linkicon' => 'yfi yfi-full-editing-view'
+				'linkicon' => 'yfi yfi-full-editing-view js-full-edit',
 			];
 			$massActionLinks[] = [
 				'linktype' => 'LISTVIEWMASSACTION',
@@ -77,31 +81,17 @@ class Users_ListView_Model extends Vtiger_ListView_Model
 		return $links;
 	}
 
-	/**
-	 * Function to get the list view entries.
-	 *
-	 * @param Vtiger_Paging_Model $pagingModel , $status (Active or Inactive User). Default false
-	 *
-	 * @return <Array> - Associative array of record id mapped to Vtiger_Record_Model instance
-	 */
+	/** {@inheritdoc} */
 	public function getListViewEntries(Vtiger_Paging_Model $pagingModel)
 	{
-		$queryGenerator = $this->get('query_generator');
+		$queryGenerator = $this->getQueryGenerator();
 		// Added as Users module do not have custom filters and id column is added by querygenerator.
 		$fields = $queryGenerator->getFields();
 		$fields[] = 'id';
 		$fields[] = 'imagename';
 		$fields[] = 'authy_secret_totp';
 		$queryGenerator->setFields($fields);
-		$searchParams = $this->getArray('search_params');
-		foreach ($searchParams as &$params) {
-			foreach ($params as &$param) {
-				if ('is_admin' === $param['field_name']) {
-					$param['value'] = '0' == $param['value'] ? 'off' : 'on';
-				}
-			}
-		}
-		$this->set('search_params', $searchParams);
+
 		return parent::getListViewEntries($pagingModel);
 	}
 
@@ -151,9 +141,7 @@ class Users_ListView_Model extends Vtiger_ListView_Model
 		return $advancedLinks;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function loadListViewOrderBy()
 	{
 		$orderBy = $this->getForSql('orderby');
@@ -164,7 +152,7 @@ class Users_ListView_Model extends Vtiger_ListView_Model
 					'sourceField' => $sourceFieldName,
 					'relatedModule' => $moduleName,
 					'relatedField' => $fieldName,
-					'relatedSortOrder' => $this->getForSql('sortorder')
+					'relatedSortOrder' => $this->getForSql('sortorder'),
 				]);
 			}
 			return $this->getQueryGenerator()->setOrder($orderBy, $this->getForSql('sortorder'));

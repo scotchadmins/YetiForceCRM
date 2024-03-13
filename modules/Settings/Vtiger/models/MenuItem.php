@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce Sp. z o.o
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 // Vtiger Settings MenuItem Model Class
@@ -29,6 +29,9 @@ class Settings_Vtiger_MenuItem_Model extends Settings_Vtiger_Menu_Model
 	 * @var string
 	 */
 	protected static $itemsTable = 'vtiger_settings_field';
+
+	/** @var Settings_Vtiger_Menu_Model Menu item. */
+	public $menu;
 
 	/**
 	 * Table index.

@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Import_Main_View extends \App\Controller\View\Page
@@ -103,8 +103,8 @@ class Import_Main_View extends \App\Controller\View\Page
 			throw new \App\Exceptions\AppException('ERR_IMPORT_INTERRUPTED');
 		}
 		$importDataController = new Import_Data_Action($importInfo, $user);
-		if ($importInfo['temp_status'] === Import_Queue_Action::$IMPORT_STATUS_HALTED ||
-			$importInfo['temp_status'] === Import_Queue_Action::$IMPORT_STATUS_NONE) {
+		if ($importInfo['temp_status'] === Import_Queue_Action::$IMPORT_STATUS_HALTED
+			|| $importInfo['temp_status'] === Import_Queue_Action::$IMPORT_STATUS_NONE) {
 			$continueImport = true;
 		} else {
 			$continueImport = false;

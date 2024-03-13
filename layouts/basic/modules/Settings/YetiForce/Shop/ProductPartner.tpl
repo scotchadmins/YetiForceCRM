@@ -1,4 +1,4 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
 	<!-- tpl-Settings-YetiForce-Shop-ProductPartner -->
 	{assign var=PRODUCT_ALERT value=$PRODUCT->showAlert()}
@@ -32,23 +32,23 @@
 							{/if}
 						</button>
 					{else}
-					{if $PRODUCT_ALERT['status']}
-						{if $PRODUCT_ALERT['type'] === 'LBL_SHOP_RENEW'}
-							<button class="btn btn-dark btn-block m-auto js-buy-modal" data-js="showBuyModal | click" data-product="{$PRODUCT->getName()}">
-								{\App\Language::translate($PRODUCT_ALERT['type'], $QUALIFIED_MODULE)}
-							</button>
+						{if $PRODUCT_ALERT['status']}
+							{if $PRODUCT_ALERT['type'] === 'LBL_SHOP_RENEW'}
+								<button class="btn btn-dark btn-block m-auto js-buy-modal" data-js="showBuyModal | click" data-product="{$PRODUCT->getName()}">
+									{\App\Language::translate($PRODUCT_ALERT['type'], $QUALIFIED_MODULE)}
+								</button>
+							{else}
+								<a class="btn btn-danger btn-block m-auto js-popover-tooltip" href="{$PRODUCT_ALERT['href']}" data-content="{\App\Language::translate($PRODUCT_ALERT['message'], $QUALIFIED_MODULE)}" data-js="popover | mouseenter">
+									<span class="fas fa-exclamation-triangle mr-2"></span>
+									{\App\Language::translate($PRODUCT_ALERT['type'], $QUALIFIED_MODULE)}
+								</a>
+							{/if}
 						{else}
-							<a class="btn btn-danger btn-block m-auto js-popover-tooltip" href="{$PRODUCT_ALERT['href']}" data-content="{\App\Language::translate($PRODUCT_ALERT['message'], $QUALIFIED_MODULE)}" data-js="popover | mouseenter">
-								<span class="fas fa-exclamation-triangle mr-2"></span>
-								{\App\Language::translate($PRODUCT_ALERT['type'], $QUALIFIED_MODULE)}
-							</a>
+							<button class="btn btn-block bg-yellow mt-auto js-buy-modal" data-js="showBuyModal | click" data-product="{$PRODUCT->getName()}" disabled>
+								{\App\Fields\Date::formatToDisplay($PRODUCT->expirationDate)}
+							</button>
 						{/if}
-					{else}
-						<button class="btn btn-block bg-yellow mt-auto js-buy-modal" data-js="showBuyModal | click" data-product="{$PRODUCT->getName()}" disabled>
-							{\App\Fields\Date::formatToDisplay($PRODUCT->expirationDate)}
-						</button>
 					{/if}
-				{/if}
 				</div>
 			</div>
 		</div>

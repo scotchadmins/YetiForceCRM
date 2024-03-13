@@ -3,8 +3,8 @@
 /**
  * OSSMailScanner cron action class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class OSSMailScanner_Cron_Action extends \App\Controller\Action
 {
@@ -25,9 +25,29 @@ class OSSMailScanner_Cron_Action extends \App\Controller\Action
 
 	public function process(App\Request $request)
 	{
-		$recordModel = Vtiger_Record_Model::getCleanInstance('OSSMailScanner');
+		$scanner = new \App\Mail\Scanner();
+		$scanner->setLimit(\App\Mail::getConfig('scanner', 'limit'));
+		$messages = 'ok';
+		if ($scanner->isReady()) {
+			$executeTime = time() + 30;
+			$queryGenerator = (new \App\QueryGenerator('MailAccount'));
+			$queryGenerator->setFields(['id'])->addCondition('mailaccount_status', \App\Mail\Account::STATUS_ACTIVE, 'e');
+			$dataReader = $queryGenerator->createQuery()->createCommand()->query();
+
+			while ($recordId = $dataReader->readColumn(0)) {
+				$mailAccount = \App\Mail\Account::getInstanceById($recordId);
+				$scanner->setAccount($mailAccount);
+				$scanner->run(fn () => time() > $executeTime);
+				if (time() > $executeTime) {
+					break;
+				}
+			}
+		} else {
+			$messages = \App\Log::warning(\App\Language::translate('ERROR_ACTIVE_CRON', 'OSSMailScanner'));
+		}
+
 		$response = new Vtiger_Response();
-		$response->setResult($recordModel->executeCron(Users_Record_Model::getCurrentUserModel()->user_name));
+		$response->setResult($messages);
 		$response->emit();
 	}
 }

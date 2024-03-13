@@ -5,9 +5,11 @@
  *
  * @package   View
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Dudek <a.dudek@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
 /**
@@ -15,9 +17,7 @@
  */
 class RecycleBin_List_View extends Vtiger_List_View
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function preProcess(App\Request $request, $display = true)
 	{
 		parent::preProcess($request, false);
@@ -29,17 +29,13 @@ class RecycleBin_List_View extends Vtiger_List_View
 		$this->preProcessDisplay($request);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function preProcessTplName(App\Request $request)
 	{
 		return 'ListViewPreProcess.tpl';
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function initializeListViewContents(App\Request $request, Vtiger_Viewer $viewer)
 	{
 		$moduleName = $request->getModule();
@@ -68,6 +64,14 @@ class RecycleBin_List_View extends Vtiger_List_View
 		if (!$this->listViewLinks) {
 			$this->listViewLinks = $listViewModel->getListViewLinks($linkParams);
 		}
+		$totalCount = false;
+		if (App\Config::performance('LISTVIEW_COMPUTE_PAGE_COUNT')) {
+			if (!$this->listViewCount) {
+				$this->listViewCount = $this->listViewModel->getListViewCount();
+			}
+			$pagingModel->set('totalCount', (int) $this->listViewCount);
+			$totalCount = (int) $this->listViewCount;
+		}
 		$noOfEntries = \count($this->listViewEntries);
 		$viewer->assign('MODULE', $moduleName);
 		$viewer->assign('VIEW_MODEL', $this->listViewModel);
@@ -80,17 +84,18 @@ class RecycleBin_List_View extends Vtiger_List_View
 		$viewer->assign('COLUMN_NAME', $orderBy);
 		$viewer->assign('ORDER_BY', $orderBy);
 		$viewer->assign('SOURCE_MODULE', $sourceModule);
-		$viewer->assign('LISTVIEW_COUNT', $noOfEntries);
+		$viewer->assign('LISTVIEW_COUNT', $totalCount);
 		$viewer->assign('LISTVIEW_HEADERS', $this->listViewHeaders);
 		$viewer->assign('LISTVIEW_ENTRIES', $this->listViewEntries);
 		$viewer->assign('LISTVIEW_ENTRIES_COUNT', $noOfEntries);
 		$viewer->assign('IS_MODULE_EDITABLE', false);
 		$viewer->assign('IS_MODULE_DELETABLE', false);
+		$viewer->assign('SEARCH_PARAMS', []);
+		$viewer->assign('ADVANCED_CONDITIONS', []);
+		$viewer->assign('LOCKED_EMPTY_FIELDS', []);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function postProcess(App\Request $request, $display = true)
 	{
 		$viewer = $this->getViewer($request);
@@ -100,17 +105,11 @@ class RecycleBin_List_View extends Vtiger_List_View
 		parent::postProcess($request);
 	}
 
-	/**
-	 * Function to get the list of Script models to be included.
-	 *
-	 * @param \App\Request $request
-	 *
-	 * @return Vtiger_JsScript_Model[] - List of Vtiger_JsScript_Model instances
-	 */
+	/** {@inheritdoc} */
 	public function getFooterScripts(App\Request $request)
 	{
 		return array_merge(parent::getFooterScripts($request), $this->checkAndConvertJsScripts([
-			"modules.{$request->getModule()}.resources.List"
+			"modules.{$request->getModule()}.resources.List",
 		]));
 	}
 }

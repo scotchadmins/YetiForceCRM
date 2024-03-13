@@ -6,6 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 require_once 'modules/com_vtiger_workflow/include.php';
@@ -21,6 +22,15 @@ class Settings_Workflows_TaskRecord_Model extends Settings_Vtiger_Record_Model
 	 * @var int
 	 */
 	const TASK_STATUS_ACTIVE = 1;
+
+	/** @var VTTaskManager */
+	private $taskMenager;
+	/** @var VTTask */
+	private $taskObject;
+	/** @var Workflow */
+	private $workflow;
+	/** @var Settings_Workflows_TaskType_Model */
+	private $taskTypeModel;
 
 	/**
 	 * Return task record id.
@@ -39,7 +49,7 @@ class Settings_Workflows_TaskRecord_Model extends Settings_Vtiger_Record_Model
 	 */
 	public function getName()
 	{
-		return $this->get('summary');
+		return $this->get('summary') ?? '';
 	}
 
 	/**
@@ -53,13 +63,26 @@ class Settings_Workflows_TaskRecord_Model extends Settings_Vtiger_Record_Model
 	}
 
 	/**
+	 * Check if record is editable.
+	 *
+	 * @return bool
+	 */
+	public function isEditable(): bool
+	{
+		$recordEventMode = $this->getTaskObject()->recordEventState ?? VTTask::RECORD_EVENT_ACTIVE;
+		$workflowModeIterationOff = $this->getWorkflow()->getParams('iterationOff');
+		return $workflowModeIterationOff && (VTTask::RECORD_EVENT_DOUBLE_MODE === $recordEventMode || VTTask::RECORD_EVENT_INACTIVE === $recordEventMode)
+		|| (!$workflowModeIterationOff && (VTTask::RECORD_EVENT_DOUBLE_MODE === $recordEventMode || VTTask::RECORD_EVENT_ACTIVE === $recordEventMode));
+	}
+
+	/**
 	 * Return task object.
 	 *
 	 * @return VTTask
 	 */
 	public function getTaskObject()
 	{
-		return $this->task_object;
+		return $this->taskObject;
 	}
 
 	/**
@@ -71,7 +94,7 @@ class Settings_Workflows_TaskRecord_Model extends Settings_Vtiger_Record_Model
 	 */
 	public function setTaskObject($task)
 	{
-		$this->task_object = $task;
+		$this->taskObject = $task;
 
 		return $this;
 	}
@@ -83,7 +106,7 @@ class Settings_Workflows_TaskRecord_Model extends Settings_Vtiger_Record_Model
 	 */
 	public function getTaskManager()
 	{
-		return $this->task_manager;
+		return $this->taskMenager;
 	}
 
 	/**
@@ -93,7 +116,7 @@ class Settings_Workflows_TaskRecord_Model extends Settings_Vtiger_Record_Model
 	 */
 	public function setTaskManager($tm)
 	{
-		$this->task_manager = $tm;
+		$this->taskMenager = $tm;
 	}
 
 	/**
@@ -103,7 +126,11 @@ class Settings_Workflows_TaskRecord_Model extends Settings_Vtiger_Record_Model
 	 */
 	public function getEditViewUrl()
 	{
-		return 'index.php?module=Workflows&parent=Settings&view=EditTask&type=' . $this->task_type->getName() . '&task_id=' . $this->getId() . '&for_workflow=' . $this->getWorkflow()->getId();
+		$url = 'index.php?module=Workflows&parent=Settings&view=EditTask&type=' . $this->getTaskType()->getName() . '&for_workflow=' . $this->getWorkflow()->getId();
+		if ($this->getId()) {
+			$url .= '&task_id=' . $this->getId();
+		}
+		return $url;
 	}
 
 	/**
@@ -139,7 +166,7 @@ class Settings_Workflows_TaskRecord_Model extends Settings_Vtiger_Record_Model
 	/**
 	 * Set workflow from instance.
 	 *
-	 * @param object $workflowModel
+	 * @param Workflow $workflowModel
 	 *
 	 * @return $this
 	 */
@@ -157,32 +184,48 @@ class Settings_Workflows_TaskRecord_Model extends Settings_Vtiger_Record_Model
 	 */
 	public function getTaskType()
 	{
-		if (empty($this->task_type)) {
+		if (empty($this->taskTypeModel)) {
 			$taskObject = $this->getTaskObject();
 			if (!empty($taskObject)) {
 				$taskClass = \get_class($taskObject);
-				$this->task_type = Settings_Workflows_TaskType_Model::getInstanceFromClassName($taskClass);
+				$this->taskTypeModel = Settings_Workflows_TaskType_Model::getInstanceFromClassName($taskClass);
 			}
 		}
-		return $this->task_type;
+		return $this->taskTypeModel;
+	}
+
+	/**
+	 * Set task type model.
+	 *
+	 * @param Settings_Workflows_TaskType_Model $taskType
+	 *
+	 * @return self
+	 */
+	public function setTaskType(Settings_Workflows_TaskType_Model $taskType): self
+	{
+		$this->taskTypeModel = $taskType;
+		return $this;
 	}
 
 	/**
 	 * Return all tasks for workflow.
 	 *
-	 * @param Workflow $workflowModel
-	 * @param bool     $active
+	 * @param Settings_Workflows_Record_Model $workflowModel
+	 * @param bool                            $active
 	 *
 	 * @return VTTask[]
 	 */
-	public static function getAllForWorkflow($workflowModel, $active = false)
+	public static function getAllForWorkflow(Settings_Workflows_Record_Model $workflowModel, $active = false)
 	{
 		$tm = new VTTaskManager();
-		$tasks = $tm->getTasksForWorkflow($workflowModel->getId());
+		$tasks = $tm->getTasksForWorkflow($workflowModel->getId(), $active);
 		$taskModels = [];
 		foreach ($tasks as $task) {
 			if (!$active || self::TASK_STATUS_ACTIVE == $task->active) {
-				$taskModels[$task->id] = self::getInstanceFromTaskObject($task, $workflowModel, $tm);
+				$taskRecord = self::getInstanceFromTaskObject($task, $workflowModel, $tm);
+				if (!$active || $taskRecord->isEditable()) {
+					$taskModels[$task->id] = $taskRecord;
+				}
 			}
 		}
 		return $taskModels;
@@ -252,7 +295,7 @@ class Settings_Workflows_TaskRecord_Model extends Settings_Vtiger_Record_Model
 	 */
 	public function delete()
 	{
-		$this->task_manager->deleteTask($this->getId());
+		$this->getTaskManager()->deleteTask($this->getId());
 	}
 
 	/**
@@ -261,6 +304,22 @@ class Settings_Workflows_TaskRecord_Model extends Settings_Vtiger_Record_Model
 	public function save()
 	{
 		$taskObject = $this->getTaskObject();
-		$this->task_manager->saveTask($taskObject);
+		$this->getTaskManager()->saveTask($taskObject);
+		$this->set('summary', $taskObject->summary)->set('status', $taskObject->active);
+	}
+
+	/**
+	 * Get next task action sequence number.
+	 *
+	 * @param int $workflowId
+	 *
+	 * @return int
+	 */
+	public function getNextSequenceNumber(int $workflowId): int
+	{
+		return (new \App\Db\Query())
+			->from('com_vtiger_workflowtasks')
+			->where(['workflow_id' => $workflowId])
+			->max('sequence') + 1;
 	}
 }

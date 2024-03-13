@@ -3,8 +3,8 @@
 /**
  * OSSMailView record model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class OSSMailView_Record_Model extends Vtiger_Record_Model
 {
@@ -83,6 +83,8 @@ class OSSMailView_Record_Model extends Vtiger_Record_Model
 			$query->limit($config['widget_limit']);
 		}
 
+		$popup = \App\User::getCurrentUserModel()->getDetail('mail_popup');
+
 		$dataReader = $query->createCommand()->query();
 		while ($row = $dataReader->read()) {
 			$from = $this->findRecordsById($row['from_id']);
@@ -91,12 +93,12 @@ class OSSMailView_Record_Model extends Vtiger_Record_Model
 			$to = ($to && '' !== $to) ? $to : $row['to_email'];
 			$content = \App\Purifier::purifyHtml(vtlib\Functions::getHtmlOrPlainText($row['content']));
 			if (\App\Privilege::isPermitted('OSSMailView', 'DetailView', $row['ossmailviewid'])) {
-				$subject = '<a href="index.php?module=OSSMailView&view=Preview&record=' . $row['ossmailviewid'] . '" target="' . $config['target'] . '"> ' . \App\Purifier::encodeHtml($row['subject']) . '</a>';
+				$subject = '<a href="index.php?module=OSSMailView&view=Preview&record=' . $row['ossmailviewid'] . '" target="' . ($popup ? '_blank' : '_self') . '"> ' . \App\Purifier::encodeHtml($row['subject']) . '</a>';
 			} else {
 				$subject = \App\Purifier::encodeHtml($row['subject']);
 			}
-			$firstLetterBg = self::TYPE_COLORS[$row['type']];
-			$firstLetter = strtoupper(App\TextParser::textTruncate(trim(strip_tags($from)), 1, false));
+			$firstLetterBg = self::TYPE_COLORS[$row['type']] ?? '';
+			$firstLetter = strtoupper(App\TextUtils::textTruncate(trim(strip_tags($from)), 1, false));
 			if ($row['orginal_mail'] && '-' !== $row['orginal_mail']) {
 				$rblInstance = \App\Mail\Rbl::getInstance([]);
 				$rblInstance->set('rawBody', $row['orginal_mail']);
@@ -121,7 +123,7 @@ class OSSMailView_Record_Model extends Vtiger_Record_Model
 				'to' => $to,
 				'url' => "index.php?module=OSSMailView&view=Preview&record={$row['ossmailviewid']}&srecord=$srecord&smodule=$smodule",
 				'type' => $row['type'],
-				'teaser' => App\TextParser::textTruncate(\App\Utils::htmlToText($content), 190),
+				'teaser' => App\TextUtils::textTruncate(\App\Utils::htmlToText($content), 190),
 				'body' => $content,
 				'bodyRaw' => $row['content'],
 			];
@@ -141,8 +143,7 @@ class OSSMailView_Record_Model extends Vtiger_Record_Model
 	{
 		$return = false;
 		if (!empty($ids)) {
-			$recordModelMailScanner = Vtiger_Record_Model::getCleanInstance('OSSMailScanner');
-			$config = $recordModelMailScanner->getConfig('email_list');
+			$popup = \App\User::getCurrentUserModel()->getDetail('mail_popup');
 			if (strpos($ids, ',')) {
 				$idsArray = explode(',', $ids);
 			} else {
@@ -162,7 +163,7 @@ class OSSMailView_Record_Model extends Vtiger_Record_Model
 				}
 				if (\App\Privilege::isPermitted($module, 'DetailView', $id)) {
 					$label = \App\Record::getLabel($id);
-					$return .= '<a href="index.php?module=' . $module . '&view=Detail&record=' . $id . '" target="' . $config['target'] . '"> ' . $label . '</a>,';
+					$return .= '<a href="index.php?module=' . $module . '&view=Detail&record=' . $id . '" target="' . ($popup ? '_blank' : '_self') . '"> ' . $label . '</a>,';
 				}
 			}
 		}
@@ -351,7 +352,7 @@ class OSSMailView_Record_Model extends Vtiger_Record_Model
 				'id' => $row['crmid'],
 				'module' => $module,
 				'label' => \App\Record::getLabel($row['crmid']),
-				'is_related_to_documents' => false !== Vtiger_Relation_Model::getInstance(Vtiger_Module_Model::getInstance($module), $moduleDocuments)
+				'is_related_to_documents' => false !== Vtiger_Relation_Model::getInstance(Vtiger_Module_Model::getInstance($module), $moduleDocuments),
 			];
 		}
 		$dataReader->close();
@@ -411,7 +412,7 @@ class OSSMailView_Record_Model extends Vtiger_Record_Model
 	 *
 	 * @return bool
 	 */
-	public function isEditable()
+	public function isEditable(): bool
 	{
 		return false;
 	}

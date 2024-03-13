@@ -1,8 +1,8 @@
 <?php
 
 /**
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -71,8 +71,10 @@ class Settings_Inventory_Record_Model extends \App\Base
 
 	/**
 	 * Function clears cache.
+	 *
+	 * @return void
 	 */
-	public function clearCache()
+	public function clearCache(): void
 	{
 		\App\Cache::delete('Inventory', $this->getType());
 	}
@@ -85,7 +87,7 @@ class Settings_Inventory_Record_Model extends \App\Base
 			$updateRows = [
 				'name' => $this->getName(),
 				'value' => $this->get('value'),
-				'status' => $this->get('status')
+				'status' => $this->get('status'),
 			];
 			if ('Taxes' === $this->getType()) {
 				if ($this->get('default')) {
@@ -116,7 +118,7 @@ class Settings_Inventory_Record_Model extends \App\Base
 			$insertData = [
 				'status' => $this->get('status'),
 				'value' => $this->get('value'),
-				'name' => $this->getName()
+				'name' => $this->getName(),
 			];
 
 			if ('Taxes' === $this->getType()) {
@@ -142,7 +144,7 @@ class Settings_Inventory_Record_Model extends \App\Base
 		if ($table) {
 			\App\Db::getInstance()->createCommand()
 				->update($table, [
-					'default' => 0
+					'default' => 0,
 				])
 				->execute();
 		}

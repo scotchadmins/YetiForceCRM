@@ -7,8 +7,8 @@ namespace App\TextParser;
  *
  * @package TextParser
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class TableTaxSummary extends Base
@@ -41,7 +41,9 @@ class TableTaxSummary extends Base
 			} else {
 				$currency = $baseCurrency['id'];
 			}
-			$currencyData = \App\Fields\Currency::getById($currency);
+			$currencySymbol = \App\Fields\Currency::getById($currency)['currency_symbol'];
+		} else {
+			$currencySymbol = \App\Fields\Currency::getDefault()['currency_symbol'];
 		}
 		if (!empty($fields[0])) {
 			$taxes = [];
@@ -65,19 +67,19 @@ class TableTaxSummary extends Base
 				$html .= '<table class="table-tax-summary" style="width:100%;vertical-align:top;border-collapse:collapse;border:1px solid #ddd;">
 						<thead>
 							<tr>
-								<th colspan="2" style="font-weight:bold;padding:0px 4px;">' . \App\Language::translate('LBL_TAX_SUMMARY', $this->textParser->moduleName) . '</th>
+								<th colspan="2" style="font-weight:bold;padding:0px 4px;background-color:#ddd;">' . \App\Language::translate('LBL_TAX_SUMMARY', $this->textParser->moduleName) . '</th>
 							</tr>
 						</thead><tbody>';
 				foreach ($taxes as $key => &$tax) {
 					$taxAmount += $tax;
 					$html .= '<tr>
 								<td class="name" style="text-align:left;padding:0px 4px;">' . $key . '%</td>
-								<td class="value" style="text-align:right;padding:0px 4px;">' . \CurrencyField::convertToUserFormat($tax, null, true) . ' ' . $currencyData['currency_symbol'] . '</td>
+								<td class="value" style="text-align:right;padding:0px 4px;">' . \CurrencyField::convertToUserFormatSymbol($tax, true, $currencySymbol) . ' </td>
 							</tr>';
 				}
 				$html .= '<tr class="summary">
-						<td class="name" style="text-align:left;font-weight:bold;padding:0px 4px;">' . (\in_array('hideSumName', $this->params) ? '' : \App\Language::translate('LBL_AMOUNT', $this->textParser->moduleName)) . '</td>
-						<td class="value" style="text-align:right;font-weight:bold;padding:0px 4px;">' . \CurrencyField::convertToUserFormat($taxAmount, null, true) . ' ' . $currencyData['currency_symbol'] . '</td>
+						<td class="name" style="text-align:left;font-weight:bold;padding:0px 4px;border:1px solid #ddd;border-right:0;">' . (\in_array('hideSumName', $this->params) ? '' : \App\Language::translate('LBL_AMOUNT', $this->textParser->moduleName)) . '</td>
+						<td class="value" style="text-align:right;font-weight:bold;padding:0px 4px;border:1px solid #ddd;border-left:0;">' . \CurrencyField::convertToUserFormatSymbol($taxAmount, true, $currencySymbol) . ' </td>
 					</tr>
 				</tbody>
 			</table>';

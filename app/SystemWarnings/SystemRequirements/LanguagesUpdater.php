@@ -5,8 +5,8 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -28,8 +28,10 @@ class LanguagesUpdater extends \App\SystemWarnings\Template
 
 	/**
 	 * Checking if registration is correct and display modal with info if not.
+	 *
+	 * @return void
 	 */
-	public function process()
+	public function process(): void
 	{
 		if (\App\Installer\Languages::getToInstall() && \App\Security\AdminAccess::isPermitted('LangManagement')) {
 			$this->status = 0;

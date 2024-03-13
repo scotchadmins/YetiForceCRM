@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Vtiger_MiniList_Model extends Vtiger_Widget_Model
@@ -63,10 +63,10 @@ class Vtiger_MiniList_Model extends Vtiger_Widget_Model
 		}
 		if ('Calendar' === $moduleName && $extraField) {
 			$moduleModel = $this->getTargetModuleModel();
-			if (\in_array('date_start', $fields) && ($fieldModel = \Vtiger_Field_Model::getInstance('time_start', $moduleModel)) && $fieldModel->isActiveField() && $fieldModel->isViewable()) {
+			if (\in_array('date_start', $fields) && ($fieldModel = $moduleModel->getFieldByName('time_start')) && $fieldModel->isActiveField() && $fieldModel->isViewable()) {
 				$fields[] = 'time_start';
 			}
-			if (\in_array('due_end', $fields) && ($fieldModel = \Vtiger_Field_Model::getInstance('time_end', $moduleModel)) && $fieldModel->isActiveField() && $fieldModel->isViewable()) {
+			if (\in_array('due_end', $fields) && ($fieldModel = $moduleModel->getFieldByName('time_end')) && $fieldModel->isActiveField() && $fieldModel->isViewable()) {
 				$fields[] = 'time_end';
 			}
 		}
@@ -97,8 +97,8 @@ class Vtiger_MiniList_Model extends Vtiger_Widget_Model
 		$title = $this->widgetModel->get('title');
 		if (empty($title)) {
 			$suffix = '';
-			$cvId = $this->widgetModel->get('filterid');
-			$viewName = \App\CustomView::getCustomViewsDetails([$cvId])[$cvId]['viewname'] ?? '';
+			$cvId = (int) $this->widgetModel->get('filterid');
+			$viewName = \App\CustomView::getCVDetails($cvId, $this->getTargetModule())['viewname'] ?? '';
 			if ($viewName) {
 				$suffix = ' - ' . \App\Language::translate($viewName, $this->getTargetModule());
 			}
@@ -112,13 +112,13 @@ class Vtiger_MiniList_Model extends Vtiger_Widget_Model
 	{
 		$this->initListViewController();
 		if (!$this->listviewHeaders) {
-			$headerFieldModels = [];
 			foreach ($this->getTargetFields() as $fieldName) {
-				if ('id' !== $fieldName) {
-					$headerFieldModels[$fieldName] = $this->getTargetModuleModel()->getFieldByName($fieldName);
+				if ('id' !== $fieldName && ($fieldModel = $this->getTargetModuleModel()->getFieldByName($fieldName))) {
+					$this->listviewHeaders[$fieldName] = $fieldModel;
+				} else {
+					\App\Log::warning('Field not found:' . $fieldName . ' | Module: ' . $this->getTargetModuleModel()->getName(), __METHOD__);
 				}
 			}
-			$this->listviewHeaders = $headerFieldModels;
 		}
 		return $this->listviewHeaders;
 	}
@@ -144,7 +144,7 @@ class Vtiger_MiniList_Model extends Vtiger_Widget_Model
 
 		if (!$this->listviewRecords) {
 			if (!empty($user)) {
-				$this->queryGenerator->addNativeCondition(['vtiger_crmentity.smownerid' => $user]);
+				$this->queryGenerator->addCondition('assigned_user_id', $user, 'e');
 			}
 			if (!empty($this->searchParams)) {
 				$searchParamsCondition = $this->queryGenerator->parseBaseSearchParamsToCondition($this->searchParams);
@@ -162,7 +162,7 @@ class Vtiger_MiniList_Model extends Vtiger_Widget_Model
 							'sourceField' => $sourceFieldName,
 							'relatedModule' => $moduleName,
 							'relatedField' => $fieldName,
-							'relatedSortOrder' => $sortFlag
+							'relatedSortOrder' => $sortFlag,
 						]);
 					} elseif (isset($fields[$fieldName])) {
 						$this->queryGenerator->setOrder($fieldName, $sortFlag);

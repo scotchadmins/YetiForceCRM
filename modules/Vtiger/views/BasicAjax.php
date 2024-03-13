@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
 class Vtiger_BasicAjax_View extends \App\Controller\View\Page
@@ -19,7 +19,6 @@ class Vtiger_BasicAjax_View extends \App\Controller\View\Page
 		parent::__construct();
 		$this->exposeMethod('showAdvancedSearch');
 		$this->exposeMethod('showSearchResults');
-		$this->exposeMethod('performPhoneCall');
 		$this->exposeMethod('getDashBoardPredefinedWidgets');
 	}
 
@@ -66,7 +65,7 @@ class Vtiger_BasicAjax_View extends \App\Controller\View\Page
 		if (!Users_Privileges_Model::getCurrentUserPrivilegesModel()->hasModulePermission($moduleName)) {
 			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
 		}
-		$viewer->assign('SEARCHABLE_MODULES', Vtiger_Module_Model::getSearchableModules());
+		$viewer->assign('SEARCHABLE_MODULES', \App\RecordSearch::getSearchableModules());
 		$viewer->assign('SOURCE_MODULE', $moduleName);
 		$viewer->assign('MODULE', $module);
 		$viewer->assign('SAVE_FILTER_PERMITTED', $saveFilterPermitted);
@@ -97,7 +96,7 @@ class Vtiger_BasicAjax_View extends \App\Controller\View\Page
 			$queryGenerator = new \App\QueryGenerator($moduleName);
 			$queryGenerator->setFields(['id']);
 			$queryGenerator->setConditions(\App\Condition::getConditionsFromRequest($advFilterList));
-			$query = $queryGenerator->createQuery()->limit(App\Config::search('GLOBAL_SERACH_AUTOCOMPLETE_LIMIT'));
+			$query = $queryGenerator->createQuery()->limit(App\Config::search('GLOBAL_SEARCH_AUTOCOMPLETE_LIMIT'));
 			$dataReader = $query->createCommand()->query();
 			while ($recordId = $dataReader->readColumn(0)) {
 				$recordModel = Vtiger_Record_Model::getInstanceById($recordId);
@@ -107,17 +106,14 @@ class Vtiger_BasicAjax_View extends \App\Controller\View\Page
 			$viewer->assign('SEARCH_MODULE', $moduleName);
 		} else {
 			$searchKey = \App\RecordSearch::getSearchField()->getUITypeModel()->getDbConditionBuilderValue($request->getByType('value', 'Text'), '');
-			$limit = false;
-			if (!$request->isEmpty('limit', true) && false !== $request->getBoolean('limit')) {
-				$limit = $request->getInteger('limit');
-			}
-			$operator = (!$request->isEmpty('operator')) ? $request->getByType('operator', 1) : false;
-			$searchModule = false;
+			$limit = ($request->isEmpty('limit', true) || \App\Validator::bool($request->get('limit'))) ? null : $request->getInteger('limit');
+			$operator = (!$request->isEmpty('operator')) ? $request->getByType('operator', \App\Purifier::STANDARD) : null;
+			$searchModule = null;
 			if (!$request->isEmpty('searchModule', true) && '-' !== $request->getRaw('searchModule')) {
-				$searchModule = $request->getByType('searchModule', 2);
+				$searchModule = $request->getByType('searchModule', \App\Purifier::ALNUM);
 			}
 			$viewer->assign('SEARCH_MODULE', $searchModule);
-			$matchingRecords = Vtiger_Record_Model::getSearchResult($searchKey, $searchModule, $limit, $operator);
+			$matchingRecords = \App\RecordSearch::getSearchResult($searchKey, $searchModule, $limit, $operator);
 			if (1 === App\Config::search('GLOBAL_SEARCH_SORTING_RESULTS')) {
 				$matchingRecordsList = [];
 				foreach (\App\Module::getAllEntityModuleInfo(true) as $module) {
@@ -162,24 +158,6 @@ class Vtiger_BasicAjax_View extends \App\Controller\View\Page
 		}
 	}
 
-	/**
-	 * Perform phone call.
-	 *
-	 * @param \App\Request $request
-	 */
-	public function performPhoneCall(App\Request $request)
-	{
-		$pbx = App\Integrations\Pbx::getDefaultInstance();
-		$pbx->loadUserPhone();
-		try {
-			$pbx->performCall($request->getByType('phoneNumber', 'Phone'));
-			$response = new Vtiger_Response();
-			$response->setResult(\App\Language::translate('LBL_PHONE_CALL_SUCCESS'));
-			$response->emit();
-		} catch (Exception $exc) {
-			\App\Log::error('Error while telephone connections: ' . $exc->getMessage(), 'PBX');
-		}
-	}
 
 	/**
 	 * Return button of predefined widgets.

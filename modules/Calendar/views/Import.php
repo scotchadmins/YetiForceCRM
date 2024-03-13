@@ -7,7 +7,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce Sp. z o.o
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 Vtiger_Loader::includeOnce('~modules/Calendar/ICalLastImport.php');
@@ -27,17 +27,13 @@ class Calendar_Import_View extends Vtiger_Import_View
 		$this->exposeMethod('undoImport');
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		parent::process($request);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function uploadAndParse(App\Request $request)
 	{
 		$type = $request->getByType('type', 'Text');
@@ -74,9 +70,7 @@ class Calendar_Import_View extends Vtiger_Import_View
 		$viewer->view('ImportResult.tpl', $moduleName);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function undoImport(App\Request $request)
 	{
 		if ($request->has('type') && 'ics' === $request->getByType('type', 'Text')) {

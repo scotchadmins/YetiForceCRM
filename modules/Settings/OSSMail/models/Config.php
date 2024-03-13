@@ -3,8 +3,8 @@
 /**
  * OSSMail Config Model.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Tomasz Kur <t.kur@yetiforce.com>
  */
 class Settings_OSSMail_Config_Model extends App\Base
@@ -51,10 +51,8 @@ class Settings_OSSMail_Config_Model extends App\Base
 	public function getForm()
 	{
 		return [
-			'default_host' => ['label' => 'LBL_RC_default_host', 'fieldType' => 'multipicklist', 'required' => 1],
-			'default_port' => ['label' => 'LBL_RC_default_port', 'fieldType' => 'int', 'required' => 1],
-			'smtp_server' => ['label' => 'LBL_RC_smtp_server', 'fieldType' => 'text', 'required' => 1],
-			'smtp_port' => ['label' => 'LBL_RC_smtp_port', 'fieldType' => 'int', 'required' => 1],
+			'imap_host' => ['label' => 'LBL_RC_imap_host', 'fieldType' => 'multipicklist', 'required' => 1],
+			'smtp_host' => ['label' => 'LBL_RC_smtp_host', 'fieldType' => 'text', 'required' => 1],
 			'username_domain' => ['label' => 'LBL_RC_username_domain', 'fieldType' => 'text', 'required' => 0],
 			'validate_cert' => ['label' => 'LBL_RC_validate_cert', 'fieldType' => 'checkbox', 'required' => 0],
 			'imap_open_add_connection_type' => ['label' => 'LBL_RC_imap_open_add_connection_type', 'fieldType' => 'checkbox', 'required' => 0],

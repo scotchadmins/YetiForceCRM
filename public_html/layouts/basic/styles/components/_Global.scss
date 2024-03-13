@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 .basePanel,
 .bodyContents,
 .mainContainer,
@@ -116,10 +116,10 @@ body:not(.desktop) {
 	@extend .text-white;
 	@extend .text-center;
 
-	width: 32px;
-	height: 32px;
-	line-height: 27px;
-	font-size: 17px;
+	width: calculate-rem(32px);
+	height: calculate-rem(32px);
+	line-height: calculate-rem(27px);
+	font-size: calculate-rem(17px);
 }
 
 .c-badge--md {
@@ -159,24 +159,36 @@ body:not(.desktop) {
 		@extend .d-inline-flex;
 	}
 }
-
-.c-multi-image__preview-img {
-	height: 2rem;
-	width: 2rem;
-	cursor: pointer;
-	background-size: cover;
-	background-position: center;
+.c-multi-image {
+	&__preview-img {
+		height: 2rem;
+		width: 2rem;
+		cursor: pointer;
+		background-size: contain;
+		background-position: center;
+		background-repeat: no-repeat;
+	}
+	&__popover-img {
+		cursor: pointer;
+	}
+	&__drop-effect {
+		background: rgba($blue, 0.2);
+		border: $border-width solid rgba($blue, 0.5) !important;
+	}
+	&__container-narrow,
+	&__container-medium {
+		padding: 0.15em !important;
+	}
+	&__btn-narrow {
+		@extend .btn-xs;
+	}
+	&__result-narrow {
+		.c-multi-image__preview-img {
+			height: 1.5rem !important;
+			width: 1.5rem !important;
+		}
+	}
 }
-
-.c-multi-image__popover-img {
-	cursor: pointer;
-}
-
-.c-multi-image__drop-effect {
-	background: rgba($blue, 0.2);
-	border: $border-width solid rgba($blue, 0.5) !important;
-}
-
 .c-btn-collapsible {
 	overflow: hidden;
 	white-space: nowrap;
@@ -277,10 +289,6 @@ body:not(.desktop) {
 			line-height: 1;
 			.btn-group {
 				vertical-align: top;
-			}
-
-			.btn-xs {
-				@extend .btn-sm;
 			}
 		}
 	}
@@ -397,7 +405,6 @@ body:not(.desktop) {
 	border-radius: 50%;
 
 	[class^="yfm-"],
-	.adminIcon-user,
 	.adminIcon-user {
 		font-size: calculate-rem(20px);
 	}
@@ -460,32 +467,6 @@ body:not(.desktop) {
 		@extend .mr-1;
 
 		cursor: pointer;
-	}
-}
-
-.js-completions__emojis {
-	.EmojiPanel {
-		display: none;
-	}
-
-	&.active {
-		.EmojiPanel {
-			display: block;
-		}
-	}
-}
-
-.EmojiPanel {
-	position: absolute;
-	z-index: 90000000;
-	transform: translateY(calc(-100% - #{calculate-rem(15px)}));
-
-	.EmojiPanel__brand {
-		display: none;
-	}
-
-	.fa-search {
-		display: none;
 	}
 }
 
@@ -617,8 +598,6 @@ input[type="checkbox"][disabled] {
 .c-text-divider {
 	display: flex;
 	align-items: center;
-	justify-content: center;
-	text-align: center;
 	position: relative;
 	background-color: inherit;
 
@@ -705,6 +684,25 @@ input[type="checkbox"][disabled] {
 	.hideSiteBar {
 		.o-expandable__panel__tabs {
 			right: 0px;
+		}
+	}
+}
+
+.c-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(calc(1em * 8), 1fr));
+	grid-gap: 1em 1em;
+	grid-auto-flow: row dense;
+	justify-items: center;
+	@at-root #{&}-item {
+		&--signature {
+			width: 100%;
+			line-height: 1.25;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			display: -webkit-box;
+			-webkit-line-clamp: 2;
+			-webkit-box-orient: vertical;
 		}
 	}
 }

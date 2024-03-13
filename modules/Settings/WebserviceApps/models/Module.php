@@ -1,36 +1,29 @@
 <?php
 
 /**
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @package Settings.Model
+ *
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Tomasz Kur <t.kur@yetiforce.com>
+ * @author  Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class Settings_WebserviceApps_Module_Model extends Settings_Vtiger_Module_Model
 {
 	/**
-	 * Webservice apps types.
-	 * Payments is turned off.
-	 *
-	 * @return string[]
-	 */
-	public static function getTypes(): array
-	{
-		return [
-			'Portal',
-			'ManageConsents',
-		];
-	}
-
-	/**
 	 * Get all servers.
+	 *
+	 * @param bool $onlyActive
 	 *
 	 * @return array
 	 */
-	public static function getServers(): array
+	public static function getServers(bool $onlyActive = true): array
 	{
-		return (new \App\Db\Query())->from('w_#__servers')
-			->createCommand(\App\Db::getInstance('webservice'))
-			->queryAllByGroup(1);
+		$query = (new \App\Db\Query())->from('w_#__servers');
+		if ($onlyActive) {
+			$query->where(['status' => 1]);
+		}
+		return $query->createCommand(\App\Db::getInstance('webservice'))->queryAllByGroup(1);
 	}
 
 	/**

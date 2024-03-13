@@ -5,7 +5,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce Sp. z o.o
+ * Contributor(s): YetiForce S.A.
  *************************************************************************************/
 'use strict';
 
@@ -166,8 +166,7 @@ Vtiger_Edit_Js(
 				container.find('.js-autofill').trigger('change');
 				if (start > end) {
 					end = start;
-					endDateElement.val(moment(end).format(dateFormat));
-					App.Fields.Date.register(container);
+					endDateElement.val(moment(end).format(dateFormat)).datepicker('update');
 				}
 			});
 			container.find('input[name="time_start"]').on('focus', function (e) {
@@ -225,8 +224,7 @@ Vtiger_Edit_Js(
 			if (endValue === 'count') {
 				rule += ';COUNT=' + form.find('.countEvents').val();
 			} else if (endValue === 'until') {
-				var date = form.find('.calendarUntil').val();
-				date = app.getDateInDBInsertFormat(CONFIG.dateFormat, date);
+				let date = App.Fields.Date.dateToDbFormat(App.Fields.Date.getDateInstance(form.find('.calendarUntil').val()));
 				rule += ';UNTIL=' + date.replace(/-/gi, '') + 'T235959';
 			}
 			if (freq === 'WEEKLY') {
@@ -242,13 +240,11 @@ Vtiger_Edit_Js(
 				}
 			}
 			if (freq === 'MONTHLY') {
-				var dayOfWeek = Vtiger_Helper_Js.getDay(form.find('[name="date_start"]').val());
-				var dateInstance = Vtiger_Helper_Js.getDateInstance(form.find('[name="date_start"]').val(), CONFIG.dateFormat);
-				var dayOfMonth = dateInstance.getDate();
-				var option = form.find('.calendarMontlyType:checked').val();
-				if (option == 'DAY') {
-					var dayOfWeekLabel = '';
-					switch (dayOfWeek) {
+				const dateInstance = App.Fields.Date.getDateInstance(form.find('[name="date_start"]').val());
+				let dayOfMonth = dateInstance.getDate();
+				if (form.find('.calendarMontlyType:checked').val() == 'DAY') {
+					let dayOfWeekLabel = '';
+					switch (dateInstance.getDay()) {
 						case 0:
 							dayOfWeekLabel = 'SU';
 							break;
@@ -283,30 +279,10 @@ Vtiger_Edit_Js(
 		 * @param {jQuery} form
 		 */
 		registerFormSubmitEvent: function (form) {
-			var thisInstance = this;
-			var lockSave = true;
-			if (app.getRecordId()) {
-				form.on(Vtiger_Edit_Js.recordPreSave, function (e) {
-					if (lockSave && form.find('input[name="reapeat"]').is(':checked')) {
-						e.preventDefault();
-						app.showModalWindow(form.find('.typeSavingModal').clone(), function (container) {
-							container.find('.typeSavingBtn').on('click', function (e) {
-								var currentTarget = $(e.currentTarget);
-								form.find('[name="typeSaving"]').val(currentTarget.data('value'));
-								app.hideModalWindow();
-								lockSave = false;
-								form.submit();
-							});
-						});
-					}
-				});
-			}
+			let thisInstance = this;
 			form.on('submit', function (e) {
 				const recurringCheck = form.find('input[name="reapeat"]').is(':checked');
 				if (recurringCheck) {
-					if (app.getRecordId() && lockSave) {
-						e.preventDefault();
-					}
 					form.find('[name="recurrence"]').val(thisInstance.getRule());
 				}
 				let rows = form.find('.js-participants-content .js-participant-row');
@@ -321,11 +297,14 @@ Vtiger_Edit_Js(
 			});
 		},
 		getFreeTime: function (container) {
-			var timeStart = container.find('[name="time_start"], [data-element-name="time_start"]');
-			var timeEnd = container.find('[name="time_end"], [data-element-name="time_end"]');
-			var dateStart = container.find('[name="date_start"], [data-element-name="date_start"]');
-			var ownerId = container.find('[name="assigned_user_id"], [data-element-name="assigned_user_id"]');
-			var params = {
+			let ownerId = container.find('[name="assigned_user_id"], [data-element-name="assigned_user_id"]');
+			if (ownerId.length === 0 || !ownerId.val()) {
+				return;
+			}
+			let timeStart = container.find('[name="time_start"], [data-element-name="time_start"]');
+			let timeEnd = container.find('[name="time_end"], [data-element-name="time_end"]');
+			let dateStart = container.find('[name="date_start"], [data-element-name="date_start"]');
+			let params = {
 				module: 'Calendar',
 				action: 'GetFreeTime',
 				dateStart: dateStart.val(),
@@ -413,6 +392,7 @@ Vtiger_Edit_Js(
 			this.registerInviteEvent(container);
 			this.registerAddInvitation(container);
 			this.registerFormSubmitEvent(container);
+			this.registerReminderFieldCheckBox();
 		},
 		toggleTimesInputs: function (container) {
 			container.find(':checkbox').on('change', function () {
@@ -446,10 +426,10 @@ Vtiger_Edit_Js(
 			var endDate = endDateElement.val();
 			var dateFormat = CONFIG.dateFormat;
 			if (type == 'start') {
-				return Vtiger_Helper_Js.getDateInstance(startDate + ' ' + startTime, dateFormat);
+				return App.Fields.Date.getDateInstance(startDate + ' ' + startTime, dateFormat);
 			}
 			if (type == 'end') {
-				return Vtiger_Helper_Js.getDateInstance(endDate + ' ' + endTime, dateFormat);
+				return App.Fields.Date.getDateInstance(endDate + ' ' + endTime, dateFormat);
 			}
 		},
 		emailExists(email) {
@@ -507,7 +487,7 @@ Vtiger_Edit_Js(
 				_renderMenu: function (ul, items) {
 					let that = this,
 						currentCategory = '';
-					$.each(items, function (index, item) {
+					$.each(items, function (_index, item) {
 						if (item.category != currentCategory) {
 							ul.append("<li class='ui-autocomplete-category'>" + item.category + '</li>');
 							currentCategory = item.category;
@@ -582,61 +562,6 @@ Vtiger_Edit_Js(
 				}
 			});
 		},
-		/**
-		 * Function validate is holiday day
-		 * @param {jQuery} form
-		 * @returns {boolean}
-		 */
-		validateHolidayDate(form) {
-			let fields = form.find('[name="date_start"], [name="due_date"]'),
-				isHoliday = false,
-				fieldHolidayArray = [],
-				aDeferred = $.Deferred();
-			$.each(fields, function (index, fieldObj) {
-				fieldHolidayArray.push(fieldObj.value);
-			});
-			AppConnector.request({
-				async: false,
-				data: {
-					module: form.find('[name="module"]').length ? form.find('[name="module"]').val() : app.getModuleName(),
-					action: 'Fields',
-					mode: 'verifyIsHolidayDate',
-					fieldName: 'date_start',
-					date: fieldHolidayArray
-				}
-			})
-				.done(function (data) {
-					if (true === data.success && true === data.result.isHolidayDate) {
-						isHoliday = true;
-					}
-					aDeferred.resolve(isHoliday);
-				})
-				.fail(function (error) {
-					aDeferred.reject(false);
-				});
-			return aDeferred.promise();
-		},
-		/**
-		 * Register pre save event
-		 * @param {jQuery} form
-		 */
-		registerRecordPreSaveEventEvent: function (form) {
-			const self = this;
-			let lockSave = true;
-			form.on(Vtiger_Edit_Js.recordPreSave, function (e, data) {
-				self.validateHolidayDate(form).done(function (isHoliday) {
-					if (lockSave && isHoliday) {
-						e.preventDefault();
-						app.showConfirmModal(app.vtranslate('JS_DATES_SELECTED_HOLIDAYS'), function (s) {
-							if (s) {
-								lockSave = false;
-								form.submit();
-							}
-						});
-					}
-				});
-			});
-		},
 		registerRow(row) {
 			row.on('click', '.js-participant-remove', (e) => {
 				$(e.target).closest('.js-participant-row').remove();
@@ -646,7 +571,6 @@ Vtiger_Edit_Js(
 			if (!this.proceedRegisterEvents()) {
 				return;
 			}
-			this.registerReminderFieldCheckBox();
 			this.registerRecurrenceFieldCheckBox();
 			this.registerRecurringTypeChangeEvent();
 			this._super();

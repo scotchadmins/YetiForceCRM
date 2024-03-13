@@ -7,8 +7,8 @@ namespace App\TextParser;
  *
  * @package TextParser
  *
- * @copyright YetiForce Sp. z o.o.
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Sołek <a.solek@yetiforce.com>
  */
 class TableTaxSTwoLang extends Base
@@ -41,7 +41,9 @@ class TableTaxSTwoLang extends Base
 			} else {
 				$currency = $baseCurrency['id'];
 			}
-			$currencyData = \App\Fields\Currency::getById($currency);
+			$currencySymbol = \App\Fields\Currency::getById($currency)['currency_symbol'];
+		} else {
+			$currencySymbol = \App\Fields\Currency::getDefault()['currency_symbol'];
 		}
 		if (!empty($fields[0])) {
 			$taxes = [];
@@ -66,12 +68,12 @@ class TableTaxSTwoLang extends Base
 					$taxAmount += $tax;
 					$html .= '<tr>
 								<td class="name" style="text-align:left;padding:0px 4px;">' . $key . '%</td>
-								<td class="value" style="padding:0px 4px;text-align:right;">' . \CurrencyField::convertToUserFormat($tax, null, true) . ' ' . $currencyData['currency_symbol'] . '</td>
+								<td class="value" style="padding:0px 4px;text-align:right;">' . \CurrencyField::convertToUserFormat($tax, null, true) . ' ' . $currencySymbol . '</td>
 							</tr>';
 				}
 				$html .= '<tr class="summary">
 							<td class="name" style="padding:0px 4px;text-align:left;">' . \App\Language::translate('LBL_AMOUNT', $this->textParser->moduleName) . ' / ' . \App\Language::translate('LBL_AMOUNT', $this->textParser->moduleName, \App\Language::DEFAULT_LANG) . '</td>
-							<td class="value" style="text-align:right;padding:0px 4px;">' . \CurrencyField::convertToUserFormat($taxAmount, null, true) . ' ' . $currencyData['currency_symbol'] . '</td>
+							<td class="value" style="text-align:right;padding:0px 4px;">' . \CurrencyField::convertToUserFormat($taxAmount, null, true) . ' ' . $currencySymbol . '</td>
 						 </tr>
 						</tbody>
 					</table>';

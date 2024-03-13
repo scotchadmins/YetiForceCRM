@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Vtiger_UserRole_UIType extends Vtiger_Picklist_UIType
@@ -26,17 +26,18 @@ class Vtiger_UserRole_UIType extends Vtiger_Picklist_UIType
 	/** {@inheritdoc} */
 	public function getDisplayValue($value, $record = false, $recordModel = false, $rawText = false, $length = false)
 	{
-		$displayValue = \App\Language::translate(\App\PrivilegeUtil::getRoleName($value), $this->getFieldModel()->getModuleName());
+		$roleName = \App\PrivilegeUtil::getRoleName($value);
 		if ($rawText) {
-			return $displayValue;
+			return \App\Language::translate($roleName, $this->getFieldModel()->getModuleName());
 		}
-		$displayValue = \App\TextParser::textTruncate($displayValue, \is_int($length) ? $length : false);
+		$displayValue = \App\Language::translate($roleName, $this->getFieldModel()->getModuleName(), false, false);
+		$displayValue = \App\TextUtils::textTruncate($displayValue, \is_int($length) ? $length : false);
 		if (\App\User::getCurrentUserModel()->isAdmin()) {
 			$roleRecordModel = new Settings_Roles_Record_Model();
 			$roleRecordModel->set('roleid', $value);
 			return '<a href="' . $roleRecordModel->getEditViewUrl() . '">' . \App\Purifier::encodeHtml($displayValue) . '</a>';
 		}
-		return $displayValue;
+		return \App\Purifier::encodeHtml($displayValue);
 	}
 
 	/**
@@ -46,10 +47,9 @@ class Vtiger_UserRole_UIType extends Vtiger_Picklist_UIType
 	 */
 	public function getPicklistValues()
 	{
-		$roleModels = Settings_Roles_Record_Model::getAll();
 		$roles = [];
-		foreach ($roleModels as $roleId => $roleModel) {
-			$roles[$roleId] = \App\Language::translate($roleModel->getName(), $this->getFieldModel()->getModuleName());
+		foreach (Settings_Roles_Record_Model::getAll() as $roleId => $roleModel) {
+			$roles[$roleId] = \App\Language::translate($roleModel->getName(), $this->getFieldModel()->getModuleName(), false, false);
 		}
 		return $roles;
 	}

@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 Settings_Vtiger_List_Js(
@@ -28,16 +28,6 @@ Settings_Vtiger_List_Js(
 					thisInstance.updatePagination();
 					thisInstance.registerBasic();
 				});
-			});
-		},
-		/*
-		 * Function to register the list view row click event
-		 */
-		registerRowClickEvent: function () {
-			var listViewContentDiv = this.getListViewContentContainer();
-			listViewContentDiv.on('click', '.listViewEntries td:not(.tdActions)', function (e) {
-				var editUrl = jQuery(e.currentTarget).parent().find('..fas').closest('a').attr('href');
-				window.location.href = editUrl;
 			});
 		},
 		getDefaultParams: function () {

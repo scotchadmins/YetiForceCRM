@@ -6,9 +6,13 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @see https://api.stat.gov.pl/Home/RegonApi
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Adrian Kon <a.kon@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 namespace App\RecordCollectors\Helper;
@@ -18,95 +22,99 @@ namespace App\RecordCollectors\Helper;
  */
 class GusClient extends \SoapClient
 {
-	/**
-	 * Report names for entity.
-	 *
-	 * @var array
-	 */
-	private $reportName = [
+	/** @var array Report names for entity. */
+	const REPORT_NAME = [
 		'F' => [
 			'1' => 'BIR11OsFizycznaDzialalnoscCeidg',
 			'2' => 'BIR11OsFizycznaDzialalnoscRolnicza',
 			'3' => 'BIR11OsFizycznaDzialalnoscPozostala',
-			'4' => 'BIR11OsFizycznaDzialalnoscSkreslonaDo20141108   '
+			'4' => 'BIR11OsFizycznaDzialalnoscSkreslonaDo20141108',
 		],
 		'LF' => 'BIR11OsFizycznaDzialalnoscSkreslonaDo20141108',
-		'P' => 'PublDaneRaportPrawna',
-		'LP' => 'PublDaneRaportLokalnaPrawnej'
+		'P' => 'BIR11OsPrawna',
+		'LP' => 'BIR11JednLokalnaOsPrawnej',
 	];
-	/**
-	 * Mapping field from report to number local field in record.
-	 *
-	 * @var array
-	 */
-	private $reportToNumberLocal = [
-		'PublDaneRaportPrawna' => 'praw_adSiedzNumerNieruchomosci',
+
+	/** @var string[] Mapping field from report to number local field in record. */
+	const REPORT_TO_NUMBER_LOCAL = [
+		'BIR11OsPrawna' => 'praw_adSiedzNumerNieruchomosci',
 		'BIR11OsFizycznaDzialalnoscSkreslonaDo20141108' => 'fiz_adSiedzNumerNieruchomosci',
 		'BIR11OsFizycznaDzialalnoscPozostala' => 'fiz_adSiedzNumerNieruchomosci',
 		'BIR11OsFizycznaDzialalnoscRolnicza' => 'fiz_adSiedzNumerNieruchomosci',
-		'BIR11OsFizycznaDzialalnoscCeidg' => 'fiz_adSiedzNumerNieruchomosci'
+		'BIR11OsFizycznaDzialalnoscCeidg' => 'fiz_adSiedzNumerNieruchomosci',
 	];
-	/**
-	 * Variable for mapggin report names to value prefix.
-	 *
-	 * @var strig[]
-	 */
-	private $reportPrefix = [
-		'PublDaneRaportPrawna' => 'praw_',
-		'PublDaneRaportLokalnaPrawnej' => 'lokpraw_',
+
+	/** @var string[] Variable for mapping report names to value prefix. */
+	const REPORT_PREFIX = [
+		'BIR11OsPrawna' => 'praw_',
+		'BIR11JednLokalnaOsPrawnej' => 'lokpraw_',
 	];
-	/**
-	 * Client session.
-	 *
-	 * @var string
-	 */
-	public $sessionId;
-	/**
-	 * Stream context.
-	 */
-	public $streamContext;
-	/**
-	 * Namespace for header.
-	 *
-	 * @var string
-	 */
-	public static $namespaceHeader = 'http://www.w3.org/2005/08/addressing';
-	/**
-	 * Client contection details.
-	 *
-	 * @var array
-	 */
-	public static $config = [
+
+	/** @var string[] PKD report map. */
+	const PKD_REPORTS = [
+		'BIR11OsPrawna' => 'BIR11OsPrawnaPkd',
+		'BIR11OsFizycznaDzialalnoscCeidg' => 'BIR11OsFizycznaPkd',
+		'BIR11OsFizycznaDzialalnoscRolnicza' => 'BIR11OsFizycznaPkd',
+		'BIR11OsFizycznaDzialalnoscPozostala' => 'BIR11OsFizycznaPkd',
+		'BIR11OsFizycznaDzialalnoscSkreslonaDo20141108' => 'BIR11OsFizycznaPkd',
+		'BIR11JednLokalnaOsPrawnej' => 'BIR11JednLokalnaOsPrawnejPkd',
+	];
+
+	/** @var string Namespace for header. */
+	const HEADER_NAMESPACE = 'http://www.w3.org/2005/08/addressing';
+
+	/** @var string[] Client connection details. */
+	const CONFIG = [
 		'apiKey' => 'd2df36a7394c432e88ea',
 		'addressToService' => 'https://wyszukiwarkaregon.stat.gov.pl/wsBIR/UslugaBIRzewnPubl.svc',
-		'addresToWsdl' => 'https://wyszukiwarkaregon.stat.gov.pl/wsBIR/wsdl/UslugaBIRzewnPubl-ver11-prod.wsdl',
+		'addressToWsdl' => 'https://wyszukiwarkaregon.stat.gov.pl/wsBIR/wsdl/UslugaBIRzewnPubl-ver11-prod.wsdl',
 	];
+
+	/** @var self[] Namespace for header. */
+	public static $cache = [];
+
+	/** @var string Client session. */
+	private $sessionId;
+
+	/** @var resource Stream context. */
+	private $streamContext;
+
+	/** @var array Params. */
+	private $params;
 
 	/**
 	 * Get instance.
 	 *
+	 * @param array $params
+	 *
 	 * @return self
 	 */
-	public static function getInstance(): self
+	public static function getInstance(array $params = []): self
 	{
+		$cacheKey = \App\Json::encode($params);
+		if (isset(self::$cache[$cacheKey])) {
+			return self::$cache[$cacheKey];
+		}
 		$context = stream_context_create([]);
 		$options = \App\RequestHttp::getSoapOptions();
 		$options['soap_version'] = SOAP_1_2;
 		$options['encoding'] = 'utf-8';
 		$options['stream_context'] = $context;
-		$instance = new self(self::$config['addresToWsdl'], $options);
+		$instance = new self(self::CONFIG['addressToWsdl'], $options);
 		$instance->streamContext = $context;
-		return $instance;
+		$instance->params = $params;
+		return self::$cache[$cacheKey] = $instance;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function __doRequest($req, $location, $action, $version = SOAP_1_2, $oneWay = null): string
 	{
-		$response = parent::__doRequest($req, self::$config['addressToService'], $action, $version);
-		$matches = [];
+		$original = ini_get('default_socket_timeout');
+		ini_set('default_socket_timeout', 10);
+		$response = parent::__doRequest($req, self::CONFIG['addressToService'], $action, $version);
+		ini_set('default_socket_timeout', $original);
 		preg_match('/<s:Envelope.*<\\/s:Envelope>/s', $response, $matches);
+
 		return $matches[0];
 	}
 
@@ -132,8 +140,7 @@ class GusClient extends \SoapClient
 	public function parseResponse(string $response): array
 	{
 		preg_match_all('/(<([\\w]+)[^>]*>)(.*?)(<\\/\\2>)/', $response, $matches, PREG_SET_ORDER);
-		$fields = [];
-		$totalFields = [];
+		$totalFields = $fields = [];
 		foreach ($matches as $val) {
 			if (isset($fields[$val[2]])) {
 				$totalFields[] = $fields;
@@ -152,12 +159,13 @@ class GusClient extends \SoapClient
 	 */
 	public function startSession()
 	{
-		$header[] = new \SoapHeader(self::$namespaceHeader, 'Action', $this->getAddressToAction('Zaloguj'), 0);
-		$header[] = new \SoapHeader(self::$namespaceHeader, 'To', self::$config['addressToService'], 0);
-		$this->__setSoapHeaders($header);
-		$params = ['pKluczUzytkownika' => self::$config['apiKey']];
-		$result = $this->Zaloguj($params);
-		$this->sessionId = $result->ZalogujResult;
+		if (empty($this->sessionId)) {
+			$header[] = new \SoapHeader(self::HEADER_NAMESPACE, 'Action', $this->getAddressToAction('Zaloguj'), 0);
+			$header[] = new \SoapHeader(self::HEADER_NAMESPACE, 'To', self::CONFIG['addressToService'], 0);
+			$this->__setSoapHeaders($header);
+			$result = $this->Zaloguj(['pKluczUzytkownika' => self::CONFIG['apiKey']]);
+			$this->sessionId = $result->ZalogujResult;
+		}
 	}
 
 	/**
@@ -167,12 +175,43 @@ class GusClient extends \SoapClient
 	 */
 	public function endSession()
 	{
-		$header[] = new \SoapHeader(self::$namespaceHeader, 'Action', $this->getAddressToAction('Wyloguj'), 0);
-		$header[] = new \SoapHeader(self::$namespaceHeader, 'To', self::$config['addressToService'], 0);
+		if (empty($this->register)) {
+			register_shutdown_function(function () {
+				try {
+					$header[] = new \SoapHeader(self::HEADER_NAMESPACE, 'Action', $this->getAddressToAction('Wyloguj'), 0);
+					$header[] = new \SoapHeader(self::HEADER_NAMESPACE, 'To', self::CONFIG['addressToService'], 0);
+					$this->__setSoapHeaders();
+					$this->__setSoapHeaders($header);
+					$this->Wyloguj(['pIdentyfikatorSesji' => $this->sessionId]);
+				} catch (\Throwable $e) {
+					\App\Log::error($e->getMessage() . PHP_EOL . $e->__toString());
+					throw $e;
+				}
+			});
+			$this->register = true;
+		}
+	}
+
+	/**
+	 * Get data from API.
+	 *
+	 * @param string $type
+	 * @param array  $params
+	 *
+	 * @return array
+	 */
+	public function getData(string $type, array $params): array
+	{
+		if (empty($this->sessionId)) {
+			$this->startSession();
+		}
+		$header[] = new \SoapHeader(self::HEADER_NAMESPACE, 'Action', $this->getAddressToAction($type), true);
+		$header[] = new \SoapHeader(self::HEADER_NAMESPACE, 'To', self::CONFIG['addressToService'], true);
+		stream_context_set_option($this->streamContext, ['http' => ['header' => 'sid: ' . $this->sessionId]]);
 		$this->__setSoapHeaders();
 		$this->__setSoapHeaders($header);
-		$params = ['pIdentyfikatorSesji' => $this->sessionId];
-		$this->Wyloguj($params);
+		$result = $this->{$type}($params);
+		return $this->parseResponse($result->{"{$type}Result"});
 	}
 
 	/**
@@ -189,14 +228,7 @@ class GusClient extends \SoapClient
 		if (!$vatId && !$taxNumber && !$ncr) {
 			return [];
 		}
-		$this->startSession();
-		$header[] = new \SoapHeader(self::$namespaceHeader, 'Action', $this->getAddressToAction('DaneSzukajPodmioty'), true);
-		$header[] = new \SoapHeader(self::$namespaceHeader, 'To', self::$config['addressToService'], true);
-		stream_context_set_option($this->streamContext, ['http' => ['header' => 'sid: ' . $this->sessionId]]);
-		$this->__setSoapHeaders();
-		$this->__setSoapHeaders($header);
-		$result = $this->DaneSzukajPodmioty(['pParametryWyszukiwania' => ['Nip' => $vatId,  'Krs' => $ncr, 'Regon' => $taxNumber]]);
-		$response = $this->parseResponse($result->DaneSzukajPodmiotyResult);
+		$response = $this->getData('DaneSzukajPodmioty', ['pParametryWyszukiwania' => ['Nip' => $vatId,  'Krs' => $ncr, 'Regon' => $taxNumber]]);
 		foreach ($response as &$info) {
 			$this->getAdvanceData($info);
 		}
@@ -213,35 +245,28 @@ class GusClient extends \SoapClient
 	 */
 	public function getAdvanceData(array &$response): void
 	{
-		if (isset($response['Typ'], $response['SilosID']) && $reportName = $this->getReportName($response['Typ'], $response['SilosID'])) {
-			$header[] = new \SoapHeader(self::$namespaceHeader, 'Action', $this->getAddressToAction('DanePobierzPelnyRaport'), true);
-			$header[] = new \SoapHeader(self::$namespaceHeader, 'To', self::$config['addressToService'], true);
-			$this->__setSoapHeaders();
-			$this->__setSoapHeaders($header);
-			$result = $this->DanePobierzPelnyRaport(['pRegon' => $response['Regon'], 'pNazwaRaportu' => $reportName]);
-			$responseFromGus = $this->parseResponse($result->DanePobierzPelnyRaportResult);
+		if (isset($response['Typ'], $response['SilosID']) && ($reportName = $this->getReportName($response['Typ'], $response['SilosID']))) {
+			$responseFromGus = $this->getData('DanePobierzPelnyRaport', ['pRegon' => $response['Regon'], 'pNazwaRaportu' => $reportName]);
 			if (empty($responseFromGus)) {
 				return;
 			}
 			$responseFromGus = reset($responseFromGus);
-			$prefixName = $this->reportPrefix[$reportName] ?? 'fiz_';
-			if (isset($responseFromGus[$prefixName . 'nip'])) {
-				$nip = $responseFromGus[$prefixName . 'nip'];
-			}
+			$prefixName = self::REPORT_PREFIX[$reportName] ?? 'fiz_';
 			if ('fiz_' === $prefixName) {
 				$resultFiz = $this->DanePobierzPelnyRaport(['pRegon' => $response['Regon'], 'pNazwaRaportu' => 'BIR11OsFizycznaDaneOgolne']);
 				$responseFromGusFiz = $this->parseResponse($resultFiz->DanePobierzPelnyRaportResult);
-				$nip = $responseFromGusFiz[0][$prefixName . 'nip'];
+				$responseFromGusFiz = reset($responseFromGusFiz);
+				$responseFromGus = array_merge($responseFromGus, $responseFromGusFiz);
 			}
-			$response['NumerBudynku'] = $responseFromGus[$this->reportToNumberLocal[$reportName]] ?? '';
+			$response['NumerBudynku'] = $responseFromGus[self::REPORT_TO_NUMBER_LOCAL[$reportName]] ?? '';
 			$response['NumerLokalu'] = $responseFromGus[$prefixName . 'adSiedzNumerLokalu'] ?? '';
 			$response['Krs'] = $responseFromGus[$prefixName . 'numerWrejestrzeEwidencji'] ?? '';
-			$response['Nip'] = $nip ?? '';
 			$response['Kraj'] = $responseFromGus[$prefixName . 'adSiedzKraj_Nazwa'] ?? '';
 			$response['Kraj'] = 'POLSKA' === $response['Kraj'] ? 'Poland' : $response['Kraj'];
 			$response['NumerTelefonu'] = $responseFromGus[$prefixName . 'numerTelefonu'] ?? '';
 			$response['NumerFaksu'] = $responseFromGus[$prefixName . 'numerFaksu'] ?? '';
 			$response['AdresEmail'] = mb_strtolower($responseFromGus[$prefixName . 'adresEmail'] ?? '');
+			$response['AdresStronyInternetowej'] = mb_strtolower($responseFromGus[$prefixName . 'adresStronyinternetowej'] ?? '');
 			$response['PodstawowaFormaPrawnaNazwa'] = mb_convert_case($responseFromGus[$prefixName . 'podstawowaFormaPrawna_Nazwa'] ?? '', MB_CASE_TITLE, 'UTF-8');
 			$response['PodstawowaFormaPrawnaKod'] = $responseFromGus[$prefixName . 'podstawowaFormaPrawna_Symbol'] ?? '';
 			$response['PodstawowaFormaPrawna'] = "{$response['PodstawowaFormaPrawnaKod']} - {$response['PodstawowaFormaPrawnaNazwa']}";
@@ -252,7 +277,6 @@ class GusClient extends \SoapClient
 			$response['FormaFinansowania'] = $responseFromGus[$prefixName . 'formaFinansowania_Nazwa'] ?? '';
 			$response['FormaWlasnosci'] = $responseFromGus[$prefixName . 'formaWlasnosci_Nazwa'] ?? '';
 			$response['DataPowstania'] = $responseFromGus[$prefixName . 'dataPowstania'] ?? '';
-			$response['DataRozpoczeciaDzialalnosci'] = $responseFromGus[$prefixName . 'dataRozpoczeciaDzialalnosci'] ?? '';
 			$response['DataWpisuDoREGON'] = $responseFromGus[$prefixName . 'dataWpisuDoREGON'] ?? '';
 			$response['DataZawieszeniaDzialalnosci'] = $responseFromGus[$prefixName . 'dataZawieszeniaDzialalnosci'] ?? '';
 			$response['DataWznowieniaDzialalnosci'] = $responseFromGus[$prefixName . 'dataWznowieniaDzialalnosci'] ?? '';
@@ -260,6 +284,23 @@ class GusClient extends \SoapClient
 			$response['DataZakonczeniaDzialalnosci'] = $responseFromGus[$prefixName . 'dataZakonczeniaDzialalnosci'] ?? '';
 			$response['DataWpisuDoRejestruEwidencji'] = $responseFromGus[$prefixName . 'dataWpisuDoRejestruEwidencji'] ?? '';
 			$response['DataSkresleniazRegon'] = $responseFromGus[$prefixName . 'dataSkresleniazRegon'] ?? '';
+			if (isset($responseFromGus[$prefixName . 'nip'])) {
+				$response['Nip'] = $responseFromGus[$prefixName . 'nip'];
+			}
+			if (\in_array('pkd', $this->params)) {
+				$result = $this->DanePobierzPelnyRaport(['pRegon' => $response['Regon'], 'pNazwaRaportu' => self::PKD_REPORTS[$reportName]]);
+				$additional = [];
+				foreach ($this->parseResponse($result->DanePobierzPelnyRaportResult) as $value) {
+					$name = mb_convert_case($value[$prefixName . 'pkdNazwa'] ?? '', MB_CASE_TITLE, 'UTF-8');
+					if ($value[$prefixName . 'pkdPrzewazajace']) {
+						$response['PKDPodstawowyKod'] = $value[$prefixName . 'pkdKod'];
+						$response['PKDPodstawowyNazwa'] = $name;
+					} else {
+						$additional[] = "{$value[$prefixName . 'pkdKod']} - {$name}";
+					}
+				}
+				$response['PKDPozostale'] = implode(' ## ', $additional);
+			}
 		} else {
 			$response = [];
 		}
@@ -275,14 +316,12 @@ class GusClient extends \SoapClient
 	 */
 	private function getReportName(string $type, string $silosId): string
 	{
-		if ('F' === $type) {
-			if (isset($this->reportName[$type][$silosId])) {
-				return $this->reportName[$type][$silosId];
-			}
+		$name = '';
+		if ('F' === $type && isset(self::REPORT_NAME[$type][$silosId])) {
+			$name = self::REPORT_NAME[$type][$silosId];
+		} elseif (isset(self::REPORT_NAME[$type])) {
+			$name = self::REPORT_NAME[$type];
 		}
-		if (isset($this->reportName[$type])) {
-			return $this->reportName[$type];
-		}
-		return '';
+		return $name;
 	}
 }

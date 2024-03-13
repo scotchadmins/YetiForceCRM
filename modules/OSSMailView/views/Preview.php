@@ -3,8 +3,8 @@
 /**
  * OSSMailView preview view class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class OSSMailView_Preview_View extends Vtiger_Index_View
 {
@@ -42,7 +42,7 @@ class OSSMailView_Preview_View extends Vtiger_Index_View
 		$viewer->assign('FOOTER_SCRIPTS', $this->getFooterScripts($request));
 		$viewer->assign('MODULENAME', $moduleName);
 		$viewer->assign('NOLOADLIBS', $load);
-		$viewer->assign('TO', explode(',', $recordModel->getDisplayValue('to_email')));
+		$viewer->assign('TO', $recordModel->getDisplayValue('to_email'));
 		$viewer->assign('CC', $recordModel->getDisplayValue('cc_email'));
 		$viewer->assign('BCC', $recordModel->getDisplayValue('bcc_email'));
 		if (\App\Utils::isHtml($recordModel->get('content'))) {
@@ -51,7 +51,7 @@ class OSSMailView_Preview_View extends Vtiger_Index_View
 			$content = nl2br(\App\Layout::truncateHtml(\App\Purifier::purify($recordModel->get('content')), 'full'));
 		}
 		$firstLetterBg = self::TYPE_COLORS[$recordModel->get('type')];
-		$firstLetter = strtoupper(App\TextParser::textTruncate(trim(strip_tags($recordModel->getDisplayValue('from_email'))), 1, false));
+		$firstLetter = strtoupper(App\TextUtils::textTruncate(trim(strip_tags($recordModel->getDisplayValue('from_email'))), 1, false));
 		if ($recordModel->get('orginal_mail')) {
 			$rblInstance = \App\Mail\Rbl::getInstance([]);
 			$rblInstance->set('rawBody', $recordModel->get('orginal_mail'));

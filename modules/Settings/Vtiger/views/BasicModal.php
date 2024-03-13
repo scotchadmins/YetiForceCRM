@@ -3,8 +3,8 @@
 /**
  * Basic Modal Class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Settings_Vtiger_BasicModal_View extends Settings_Vtiger_IndexAjax_View
@@ -13,6 +13,8 @@ class Settings_Vtiger_BasicModal_View extends Settings_Vtiger_IndexAjax_View
 	{
 		$moduleName = $request->getModule();
 		$viewName = $request->getByType('view', 1);
+		$viewer = $this->getViewer($request);
+		$viewer->assign('VIEW', $viewName);
 		echo '<div class="modal fade modal' . $moduleName . '' . $viewName . '" id="modal' . $viewName . '"><div class="modal-dialog ' . $this->getSize($request) . '"><div class="modal-content">';
 		foreach ($this->getModalCss($request) as $style) {
 			echo '<link rel="stylesheet" href="' . $style->getHref() . '">';

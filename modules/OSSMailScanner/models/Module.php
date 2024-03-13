@@ -3,8 +3,8 @@
 /**
  * OSSMailScanner module model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class OSSMailScanner_Module_Model extends Vtiger_Module_Model
 {
@@ -20,9 +20,7 @@ class OSSMailScanner_Module_Model extends Vtiger_Module_Model
 		return 'index';
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getSettingLinks(): array
 	{
 		Vtiger_Loader::includeOnce('~~modules/com_vtiger_workflow/VTWorkflowUtils.php');

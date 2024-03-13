@@ -4,23 +4,19 @@
  *
  * @package Settings.View
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Rafal Pospiech <r.pospiech@yetiforce.com>
  */
 class Settings_BusinessHours_List_View extends Settings_Vtiger_List_View
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getBreadcrumbTitle(App\Request $request)
 	{
-		return \App\Language::translate('LBL_BUSINESS_HOURS', $request->getModule());
+		return \App\Language::translate('LBL_BUSINESS_HOURS', $request->getModule(false));
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function initializeListViewContents(App\Request $request, Vtiger_Viewer $viewer)
 	{
 		$listViewModel = Settings_Vtiger_ListView_Model::getInstance($request->getModule(false));
@@ -45,9 +41,7 @@ class Settings_BusinessHours_List_View extends Settings_Vtiger_List_View
 		$viewer->assign('LISTVIEW_ENTRIES_COUNT', \count($this->listViewEntries));
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		if ($request->isJSON()) {

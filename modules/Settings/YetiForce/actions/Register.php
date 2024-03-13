@@ -5,9 +5,10 @@
  *
  * @package   Modules
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Sławomir Kłos <s.klos@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 /**
@@ -80,14 +81,14 @@ class Settings_YetiForce_Register_Action extends Settings_Vtiger_Save_Action
 			'address' => 'Text',
 			'industry' => 'Text',
 			'companysize' => 'Integer',
-			'website' => 'Url',
+			'website' => 'url',
 			'newsletter' => 'Integer',
 			'firstname' => 'Text',
 			'lastname' => 'Text',
 			'email' => 'Email',
-			'facebook' => 'Url',
-			'twitter' => 'Url',
-			'linkedin' => 'Url',
+			'facebook' => 'url',
+			'twitter' => 'url',
+			'linkedin' => 'url',
 		]);
 		if (!\App\Company::registerOnline($companies)) {
 			$result = false;
@@ -110,7 +111,6 @@ class Settings_YetiForce_Register_Action extends Settings_Vtiger_Save_Action
 	public function check(App\Request $request)
 	{
 		$status = \App\YetiForce\Register::check(true);
-		$label = 'LBL_REGISTRATION_PENDING';
 		switch ($status) {
 			case 3:
 				$label = 'LBL_REGISTRATION_COMPANY_DETAILS_VARY';
@@ -119,6 +119,8 @@ class Settings_YetiForce_Register_Action extends Settings_Vtiger_Save_Action
 			case 4:
 				$label = 'ERR_OCCURRED_CHECK_LOGS';
 				break;
+			default:
+				$label = 'LBL_REGISTRATION_PENDING';
 		}
 		$response = new Vtiger_Response();
 		$response->setResult([

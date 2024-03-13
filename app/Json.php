@@ -7,8 +7,8 @@ namespace App;
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class Json
@@ -36,6 +36,9 @@ class Json
 	 */
 	public static function decode($encodedValue, $objectDecodeType = self::TYPE_ARRAY)
 	{
+		if (null === $encodedValue) {
+			return '';
+		}
 		if (\function_exists('json_decode')) {
 			return json_decode($encodedValue, $objectDecodeType);
 		}
@@ -86,7 +89,7 @@ class Json
 	 */
 	public static function isJson(?string $value): bool
 	{
-		return !('' === $value || null === self::decode($value) || JSON_ERROR_NONE !== \json_last_error());
+		return !(null === $value || '' === $value || null === self::decode($value) || JSON_ERROR_NONE !== \json_last_error());
 	}
 
 	/**

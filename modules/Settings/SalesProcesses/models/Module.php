@@ -3,8 +3,8 @@
 /**
  * Settings SalesProcesses module model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class Settings_SalesProcesses_Module_Model extends \App\Base
 {
@@ -91,7 +91,7 @@ class Settings_SalesProcesses_Module_Model extends \App\Base
 	 *
 	 * @param mixed $moduleName
 	 *
-	 * @return - true or false
+	 * @return bool
 	 */
 	public static function checkRelatedToPotentialsLimit($moduleName)
 	{
@@ -110,7 +110,7 @@ class Settings_SalesProcesses_Module_Model extends \App\Base
 	 *
 	 * @param mixed $moduleName
 	 *
-	 * @return - true or false
+	 * @return bool
 	 */
 	public static function isLimitForModule($moduleName)
 	{

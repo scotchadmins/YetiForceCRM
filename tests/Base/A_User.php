@@ -5,9 +5,10 @@
  *
  * @package   Tests
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 namespace Tests\Base;
@@ -19,7 +20,7 @@ class A_User extends \Tests\Base
 	 *
 	 * @var string
 	 */
-	public static $defaultPassrowd = 'Demo12345678T';
+	public static string $defaultPassword = 'Demo12345678T';
 	/**
 	 * User id.
 	 */
@@ -30,7 +31,7 @@ class A_User extends \Tests\Base
 	 *
 	 * @var \Users_Record_Model[]
 	 */
-	private static $record = [];
+	private static array $record = [];
 
 	/**
 	 * Create/return users module record model with demo user.
@@ -43,7 +44,7 @@ class A_User extends \Tests\Base
 	 *
 	 * @return \Users_Record_Model
 	 */
-	public static function createUsersRecord($login = 'demo')
+	public static function createUsersRecord($login = 'demo'): \Users_Record_Model
 	{
 		if (isset(self::$record[$login])) {
 			return self::$record[$login];
@@ -57,8 +58,8 @@ class A_User extends \Tests\Base
 		$user->set('email1', "{$login}@yetiforce.com");
 		$user->set('first_name', 'Demo');
 		$user->set('last_name', 'YetiForce');
-		$user->set('user_password', self::$defaultPassrowd);
-		$user->set('confirm_password', self::$defaultPassrowd);
+		$user->set('user_password', self::$defaultPassword);
+		$user->set('confirm_password', self::$defaultPassword);
 		$user->set('roleid', 'H2');
 		$user->set('is_admin', 'on');
 		$user->save();
@@ -67,8 +68,10 @@ class A_User extends \Tests\Base
 
 	/**
 	 * Testing user creation.
+	 * @return void
+	 * @throws \App\Exceptions\AppException
 	 */
-	public function testLoadBaseUser()
+	public function testLoadBaseUser(): void
 	{
 		$db = \App\Db::getInstance();
 		$db->createCommand()->update('vtiger_password', ['val' => 4], ['type' => 'min_length'])->execute();
@@ -82,8 +85,10 @@ class A_User extends \Tests\Base
 
 	/**
 	 * Testing user creation.
+	 * @return void
+	 * @throws \Exception
 	 */
-	public function testAddUser()
+	public function testAddUser(): void
 	{
 		$user = \Vtiger_Record_Model::getCleanInstance('Users');
 		$user->set('user_name', 'testuser');
@@ -107,8 +112,10 @@ class A_User extends \Tests\Base
 
 	/**
 	 * Testing user edition.
+	 * @return void
+	 * @throws \Exception
 	 */
-	public function testEditUser()
+	public function testEditUser(): void
 	{
 		$user = \Vtiger_Record_Model::getInstanceById(self::$id, 'Users');
 		$this->assertNotFalse($user, 'No user');
@@ -129,8 +136,9 @@ class A_User extends \Tests\Base
 
 	/**
 	 * Testing user deletion.
+	 * @return void
 	 */
-	public function testDeleteUser()
+	public function testDeleteUser(): void
 	{
 		$currentUserModel = \Users_Record_Model::getCurrentUserModel();
 		$this->assertNotFalse($currentUserModel, 'No current user');
@@ -140,8 +148,9 @@ class A_User extends \Tests\Base
 
 	/**
 	 * Testing locks creation.
+	 * @return void
 	 */
-	public function testLocksUser()
+	public function testLocksUser(): void
 	{
 		$param = [['user' => 'H6', 'locks' => ['copy', 'paste']]];
 		$moduleModel = \Settings_Users_Module_Model::getInstance();
@@ -153,8 +162,9 @@ class A_User extends \Tests\Base
 
 	/**
 	 * Testing locks deletion.
+	 * @return void
 	 */
-	public function testDelteLocksUser()
+	public function testDeleteLocksUser(): void
 	{
 		$param = '';
 		$moduleModel = \Settings_Users_Module_Model::getInstance();

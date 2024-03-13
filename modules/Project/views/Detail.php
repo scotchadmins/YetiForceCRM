@@ -10,36 +10,12 @@
 
 class Project_Detail_View extends Vtiger_Detail_View
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function __construct()
 	{
 		parent::__construct();
 		$this->exposeMethod('showRelatedRecords');
-		$this->exposeMethod('showCharts');
 		$this->exposeMethod('showGantt');
-	}
-
-	/**
-	 * Show time control chart.
-	 *
-	 * @param \App\Request $request
-	 *
-	 * @throws \App\Exceptions\IllegalValue
-	 */
-	public function showCharts(App\Request $request)
-	{
-		$recordId = $request->getInteger('record');
-		$moduleName = $request->getModule();
-		$viewer = $this->getViewer($request);
-		$moduleModel = Vtiger_Module_Model::getInstance('OSSTimeControl');
-		if ($moduleModel) {
-			$data = $moduleModel->getTimeUsers($recordId, $moduleName);
-		}
-		$viewer->assign('MODULE_NAME', $moduleName);
-		$viewer->assign('DATA', $data);
-		$viewer->view('charts/ShowTimeProjectUsers.tpl', $moduleName);
 	}
 
 	/**
@@ -60,18 +36,13 @@ class Project_Detail_View extends Vtiger_Detail_View
 		$viewer->view('gantt/GanttContents.tpl', $moduleName);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getFooterScripts(App\Request $request)
 	{
-		$jsFileNames = [
-			'~libraries/chart.js/dist/Chart.js',
-			'~libraries/chartjs-plugin-datalabels/dist/chartjs-plugin-datalabels.js',
+		return array_merge(parent::getFooterScripts($request), $this->checkAndConvertJsScripts([
 			'~libraries/gantt-elastic/dist/bundle.js',
 			'modules.Project.resources.Gantt',
 			'modules.Project.resources.GanttController'
-		];
-		return array_merge(parent::getFooterScripts($request), $this->checkAndConvertJsScripts($jsFileNames));
+		]));
 	}
 }

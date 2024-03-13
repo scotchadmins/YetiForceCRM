@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 var Settings_Index_Js = {
@@ -342,7 +342,7 @@ var Settings_Index_Js = {
 	showStats: function (data, modules) {
 		const thisInstance = this;
 		let container = $('.LangManagement'),
-			html = '<div class="col-md-12"><div class="panel panel-default"><div class="panel-body">',
+			html = '<div class="col-md-12"><div class="panel panel-default"><div class="panel-body col-md-12">',
 			langStats = 0,
 			shortages = [];
 		for (let i in modules) {
@@ -382,7 +382,6 @@ var Settings_Index_Js = {
 			}
 		}
 		html += '</div></div></div>';
-		this.getDataCharts(shortages, langStats);
 		let element = container.find('.statsData').html(html);
 		app.showScrollBar(element.find('.panel-body'), {
 			height: '400px',
@@ -423,62 +422,12 @@ var Settings_Index_Js = {
 			});
 		});
 	},
-	getDataCharts: function (shortages, max) {
-		let container = $('.LangManagement'),
-			data = [],
-			chartData = {
-				labels: [],
-				datasets: [
-					{
-						data: data,
-						backgroundColor: [],
-						datalabels: {
-							font: {
-								weight: 'bold'
-							},
-							color: 'white',
-							anchor: 'end',
-							align: 'start'
-						}
-					}
-				]
-			};
-		for (let i in shortages) {
-			let x = (shortages[i] * 100) / max,
-				langName = container
-					.find('select option[value="' + i + '"]')
-					.first()
-					.text();
-			data.push(Math.round(x * 100) / 100);
-			chartData.datasets[0].backgroundColor.push(App.Fields.Colors.getRandomColor());
-			chartData.labels.push(langName);
-		}
-		if (data.length > 0) {
-			container.find('.widgetData').val(JSON.stringify(chartData));
-			this.showCharts();
-		}
-	},
-	showCharts: function () {
-		var instance = Vtiger_Widget_Js.getInstance(jQuery('.chartBlock'), 'Bar');
-		instance.init(jQuery('.chartBlock'));
-		instance.loadChart({
-			scales: {
-				xAxes: [
-					{
-						ticks: {
-							minRotation: 0
-						}
-					}
-				]
-			}
-		});
-	},
 	registerEvents: function () {
 		Settings_Index_Js.initEvants();
 		this.registerStats();
 	}
 };
-$(document).ready(function () {
+jQuery(function () {
 	document.showDiff = false;
 	Settings_Index_Js.registerEvents();
 });

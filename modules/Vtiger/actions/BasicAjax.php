@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce Sp. z o.o
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Vtiger_BasicAjax_Action extends \App\Controller\Action
@@ -33,18 +33,20 @@ class Vtiger_BasicAjax_Action extends \App\Controller\Action
 	 */
 	public function process(App\Request $request)
 	{
-		$searchModuleModel = \Vtiger_Module_Model::getInstance($request->getByType('search_module', 'Alnum'));
-		$records = $searchModuleModel->searchRecord($request->getByType('search_value', 'Text'), $request->getModule());
 		$result = [];
-		if (\is_array($records)) {
-			foreach ($records as $recordModels) {
-				foreach ($recordModels as $recordModel) {
-					$result[] = [
-						'label' => App\Purifier::decodeHtml($recordModel->getSearchName()),
-						'value' => App\Purifier::decodeHtml($recordModel->getName()),
-						'id' => $recordModel->getId(),
-					];
-				}
+		if (!$request->isEmpty('search_value')) {
+			$searchValue = \App\RecordSearch::getSearchField()->getUITypeModel()->getDbConditionBuilderValue($request->getByType('search_value', \App\Purifier::TEXT), '');
+			$srcRecord = $request->has('src_record') ? $request->getInteger('src_record') : null;
+			$dataReader = \Vtiger_Module_Model::getInstance($request->getByType('search_module', \App\Purifier::ALNUM))
+				->getQueryForRecords($searchValue, \App\Config::search('GLOBAL_SEARCH_AUTOCOMPLETE_LIMIT'), $srcRecord)
+				->createQuery()->createCommand()->query();
+			while ($row = $dataReader->read()) {
+				$label = \App\Record::getLabel($row['id'], true);
+				$result[] = [
+					'label' => $label,
+					'value' => $label,
+					'id' => $row['id'],
+				];
 			}
 		}
 		$response = new Vtiger_Response();

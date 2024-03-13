@@ -1,11 +1,11 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
 	<div class="tpl-ProjectTask-Dashboard-UpcomingProjectTasksContents">
 		{foreach from=$PROJECTTASKS key=INDEX item=TASK}
 			<div class="row">
 				<div class="p-0 text-center col-sm-3">
 					<a href="{$TASK->getDetailViewUrl()}">
-						{\App\TextParser::textTruncate($TASK->getDisplayName(), $NAMELENGTH)}
+						{\App\TextUtils::textTruncate($TASK->getDisplayName(), $NAMELENGTH)}
 					</a>
 				</div>
 				<div class="p-0 text-center col-sm-1">

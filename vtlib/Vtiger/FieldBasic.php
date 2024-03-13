@@ -1,14 +1,14 @@
 <?php
 
- /* +**********************************************************************************
- * The contents of this file are subject to the vtiger CRM Public License Version 1.0
- * ("License"); You may not use this file except in compliance with the License
- * The Original Code is:  vtiger CRM Open Source
- * The Initial Developer of the Original Code is vtiger.
- * Portions created by vtiger are Copyright (C) vtiger.
- * All Rights Reserved.
- * Contributor(s): YetiForce.com
- * ********************************************************************************** */
+/* +**********************************************************************************
+* The contents of this file are subject to the vtiger CRM Public License Version 1.0
+* ("License"); You may not use this file except in compliance with the License
+* The Original Code is:  vtiger CRM Open Source
+* The Initial Developer of the Original Code is vtiger.
+* Portions created by vtiger are Copyright (C) vtiger.
+* All Rights Reserved.
+* Contributor(s): YetiForce S.A.
+* ********************************************************************************** */
 
 namespace vtlib;
 
@@ -21,7 +21,7 @@ class FieldBasic
 	public $id;
 	public $name;
 	public $tabid = false;
-	public $label = false;
+	public $label = '';
 	public $table = false;
 	public $column = false;
 	public $columntype = false;
@@ -48,52 +48,11 @@ class FieldBasic
 	public $block;
 	public $fieldparams = '';
 	public $color = '';
+	public $icon = '';
 	/**
 	 * @var string[] Anonymization targets form field ex. logs.
 	 */
 	public $anonymizationTarget = [];
-
-	/**
-	 * Initialize this instance.
-	 *
-	 * @param array        $valuemap
-	 * @param mixed        $module        Mixed id or name of the module
-	 * @param \vtlib\Block $blockInstance Instance of block to which this field belongs
-	 */
-	public function initialize($valuemap, $module = false, $blockInstance = false)
-	{
-		$this->id = (int) $valuemap['fieldid'];
-		$this->tabid = (int) $valuemap['tabid'];
-		$this->name = $valuemap['fieldname'];
-		$this->label = $valuemap['fieldlabel'];
-		$this->column = $valuemap['columnname'];
-		$this->table = $valuemap['tablename'];
-		$this->uitype = (int) $valuemap['uitype'];
-		$this->typeofdata = $valuemap['typeofdata'];
-		$this->helpinfo = $valuemap['helpinfo'];
-		$this->masseditable = (int) $valuemap['masseditable'];
-		$this->header_field = $valuemap['header_field'];
-		$this->maximumlength = $valuemap['maximumlength'];
-		$this->maxlengthtext = (int) $valuemap['maxlengthtext'];
-		$this->maxwidthcolumn = (int) $valuemap['maxwidthcolumn'];
-		$this->tabindex = (int) $valuemap['tabindex'];
-		$this->displaytype = (int) $valuemap['displaytype'];
-		$this->generatedtype = (int) $valuemap['generatedtype'];
-		$this->readonly = (int) $valuemap['readonly'];
-		$this->presence = (int) $valuemap['presence'];
-		$this->defaultvalue = $valuemap['defaultvalue'];
-		$this->quickcreate = (int) $valuemap['quickcreate'];
-		$this->sequence = (int) $valuemap['sequence'];
-		$this->quicksequence = (int) $valuemap['quickcreatesequence'];
-		$this->summaryfield = (int) $valuemap['summaryfield'];
-		$this->fieldparams = $valuemap['fieldparams'];
-		$this->visible = (int) $valuemap['visible'];
-		$this->color = $valuemap['color'];
-		$this->block = $blockInstance ?: Block::getInstance($valuemap['block'], $module);
-		if (!empty($valuemap['anonymization_target'])) {
-			$this->anonymizationTarget = \App\Json::decode($valuemap['anonymization_target']);
-		}
-	}
 
 	/** Cache (Record) the schema changes to improve performance */
 	public static $__cacheSchemaChanges = [];
@@ -163,7 +122,7 @@ class FieldBasic
 		}
 		if (!empty($this->columntype)) {
 			Utils::addColumn($this->table, $this->column, $this->columntype);
-			if (10 === $this->uitype) {
+			if (\in_array($this->uitype, [10, 318, 325, 332])) {
 				$nameIndex = "{$this->table}_{$this->column}_idx";
 				$indexes = $db->getSchema()->getTableIndexes($this->table, true);
 				$isCreateIndex = true;
@@ -185,7 +144,7 @@ class FieldBasic
 			'tabid' => $this->getModuleId(),
 			'columnname' => $this->column,
 			'tablename' => $this->table,
-			'generatedtype' => (int) ($this->generatedtype),
+			'generatedtype' => (int) $this->generatedtype,
 			'uitype' => $this->uitype,
 			'fieldname' => $this->name,
 			'fieldlabel' => $this->label,
@@ -197,19 +156,20 @@ class FieldBasic
 			'block' => $this->getBlockId(),
 			'displaytype' => $this->displaytype,
 			'typeofdata' => $this->typeofdata,
-			'quickcreate' => (int) ($this->quickcreate),
-			'quickcreatesequence' => (int) ($this->quicksequence),
+			'quickcreate' => (int) $this->quickcreate,
+			'quickcreatesequence' => (int) $this->quicksequence,
 			'info_type' => $this->info_type,
 			'helpinfo' => $this->helpinfo,
-			'summaryfield' => (int) ($this->summaryfield),
+			'summaryfield' => (int) $this->summaryfield,
 			'fieldparams' => $this->fieldparams,
 			'masseditable' => $this->masseditable,
 			'visible' => $this->visible,
+			'icon' => $this->icon,
 		])->execute();
 		$this->id = (int) $db->getLastInsertID('vtiger_field_fieldid_seq');
 		Profile::initForField($this);
-		$this->clearCache();
 		\App\Log::trace("Creating field $this->name ... DONE", __METHOD__);
+		$this->afterFieldChange();
 	}
 
 	public function __update()
@@ -237,8 +197,68 @@ class FieldBasic
 				}
 			}
 		}
-		$this->clearCache();
+		$this->afterFieldChange();
 		\App\Log::trace("Deleteing Field $this->name ... DONE", __METHOD__);
+	}
+
+	/**
+	 * Initialize this instance.
+	 *
+	 * @param array        $valuemap
+	 * @param mixed        $module        Mixed id or name of the module
+	 * @param \vtlib\Block $blockInstance Instance of block to which this field belongs
+	 */
+	public function initialize($valuemap, $module = false, $blockInstance = false)
+	{
+		$this->id = (int) $valuemap['fieldid'];
+		$this->tabid = (int) $valuemap['tabid'];
+		$this->name = $valuemap['fieldname'];
+		$this->label = $valuemap['fieldlabel'];
+		$this->column = $valuemap['columnname'];
+		$this->table = $valuemap['tablename'];
+		$this->uitype = (int) $valuemap['uitype'];
+		$this->typeofdata = $valuemap['typeofdata'];
+		$this->helpinfo = $valuemap['helpinfo'];
+		$this->masseditable = (int) $valuemap['masseditable'];
+		$this->header_field = $valuemap['header_field'];
+		$this->maximumlength = $valuemap['maximumlength'];
+		$this->maxlengthtext = (int) $valuemap['maxlengthtext'];
+		$this->maxwidthcolumn = (int) $valuemap['maxwidthcolumn'];
+		$this->tabindex = (int) $valuemap['tabindex'];
+		$this->displaytype = (int) $valuemap['displaytype'];
+		$this->generatedtype = (int) $valuemap['generatedtype'];
+		$this->readonly = (int) $valuemap['readonly'];
+		$this->presence = (int) $valuemap['presence'];
+		$this->defaultvalue = $valuemap['defaultvalue'];
+		$this->quickcreate = (int) $valuemap['quickcreate'];
+		$this->sequence = (int) $valuemap['sequence'];
+		$this->quicksequence = (int) $valuemap['quickcreatesequence'];
+		$this->summaryfield = (int) $valuemap['summaryfield'];
+		$this->fieldparams = $valuemap['fieldparams'];
+		$this->visible = (int) $valuemap['visible'];
+		$this->color = $valuemap['color'];
+		$this->icon = $valuemap['icon'];
+		$this->block = $blockInstance ?: Block::getInstance($valuemap['block'], $module);
+		if (!empty($valuemap['anonymization_target'])) {
+			$this->anonymizationTarget = \App\Json::decode($valuemap['anonymization_target']);
+		}
+	}
+
+	/**
+	 * Function performed after field modification.
+	 *
+	 * @return void
+	 */
+	public function afterFieldChange(): void
+	{
+		switch ($this->uitype) {
+			case 331:
+				\App\Fields\MapCoordinates::reloadHandler();
+				break;
+			default:
+				break;
+		}
+		$this->clearCache();
 	}
 
 	/**
@@ -373,10 +393,20 @@ class FieldBasic
 
 	/**
 	 * Clear cache.
+	 *
+	 * @return void
 	 */
-	protected function clearCache()
+	protected function clearCache(): void
 	{
+		\App\Cache::delete('FieldInfoById', $this->id);
 		\App\Cache::staticDelete('ModuleFields', $this->getModuleId());
+		\App\Cache::delete('AllFieldForModule', $this->getModuleId());
 		\App\Cache::staticDelete('module', $this->getModuleName());
+		\App\Cache::delete('BlocksForModule', $this->getModuleId());
+		\App\Cache::delete('ModuleFieldInfosByName', $this->getModuleName());
+		\App\Cache::delete('ModuleFieldInfosByColumn', $this->getModuleName());
+		\App\Cache::delete('App\Field::getFieldsPermissions' . \App\User::getCurrentUserId(), $this->getModuleName());
+		\App\Cache::delete('getRelatedFieldForModule', 'all');
+		\Vtiger_Module_Model::getInstance($this->getModuleName())->clearCache();
 	}
 }

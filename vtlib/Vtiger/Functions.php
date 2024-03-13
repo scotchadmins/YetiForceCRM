@@ -7,7 +7,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
 namespace vtlib;
@@ -41,7 +41,7 @@ class Functions
 			}
 			\App\Cache::save('moduleTabs', 'all', $moduleList);
 		}
-		$restrictedModules = ['SMSNotifier', 'Dashboard', 'ModComments'];
+		$restrictedModules = ['Dashboard', 'ModComments'];
 		foreach ($moduleList as $id => $module) {
 			if (!$showRestricted && \in_array($module['name'], $restrictedModules)) {
 				unset($moduleList[$id]);
@@ -159,40 +159,6 @@ class Functions
 		$label = \App\Record::getLabel($id);
 
 		return empty($label) ? $default : $label;
-	}
-
-	/**
-	 * Function get module field infos.
-	 *
-	 * @param int|string $module
-	 * @param bool       $returnByColumn
-	 *
-	 * @return mixed[]
-	 */
-	public static function getModuleFieldInfos($module, $returnByColumn = false)
-	{
-		if (is_numeric($module)) {
-			$module = \App\Module::getModuleName($module);
-		}
-		$cacheName = 'getModuleFieldInfosByName';
-		if (!\App\Cache::has($cacheName, $module)) {
-			$dataReader = (new \App\Db\Query())
-				->from('vtiger_field')
-				->leftJoin('s_#__fields_anonymization', 'vtiger_field.fieldid = s_#__fields_anonymization.field_id')
-				->where(['tabid' => \App\Module::getModuleId($module)])
-				->createCommand()->query();
-			$fieldInfoByName = $fieldInfoByColumn = [];
-			while ($row = $dataReader->read()) {
-				$fieldInfoByName[$row['fieldname']] = $row;
-				$fieldInfoByColumn[$row['columnname']] = $row;
-			}
-			\App\Cache::save($cacheName, $module, $fieldInfoByName);
-			\App\Cache::save('getModuleFieldInfosByColumn', $module, $fieldInfoByColumn);
-		}
-		if ($returnByColumn) {
-			return \App\Cache::get('getModuleFieldInfosByColumn', $module);
-		}
-		return \App\Cache::get($cacheName, $module);
 	}
 
 	/**
@@ -381,7 +347,7 @@ class Functions
 			} else {
 				$trace = '';
 				if (\App\Config::debug('DISPLAY_EXCEPTION_BACKTRACE') && \is_object($e)) {
-					$trace = str_replace(ROOT_DIRECTORY . \DIRECTORY_SEPARATOR, '', "{$e->getFile()}({$e->getLine()})\n{$e->getTraceAsString()}");
+					$trace = str_replace(ROOT_DIRECTORY . \DIRECTORY_SEPARATOR, '', "->{$e->getFile()}:{$e->getLine()}\n{$e->getTraceAsString()}");
 				}
 				$response->setError($code, $message, $trace);
 			}
@@ -391,18 +357,20 @@ class Functions
 				if (\App\Config::debug('DISPLAY_EXCEPTION_BACKTRACE') && \is_object($e)) {
 					$message = [
 						'message' => $message,
-						'trace' => str_replace(ROOT_DIRECTORY . \DIRECTORY_SEPARATOR, '', "{$e->getFile()}({$e->getLine()})\n{$e->getTraceAsString()}")
+						'trace' => str_replace(ROOT_DIRECTORY . \DIRECTORY_SEPARATOR, '', "-> {$e->getFile()}:{$e->getLine()}\n{$e->getTraceAsString()}"),
 					];
 					$code = $e->getCode();
 				}
-				http_response_code($code);
+				if (is_numeric($code)) {
+					http_response_code($code);
+				}
 				$viewer = new \Vtiger_Viewer();
-				$viewer->assign('MESSAGE', $message);
-				$viewer->assign('MESSAGE_EXPANDED', \is_array($message));
+				$viewer->assign('MESSAGE', \Config\Debug::$EXCEPTION_ERROR_TO_SHOW ? $message : \App\Language::translate('ERR_OCCURRED_ERROR'));
+				$viewer->assign('MESSAGE_EXPANDED', \Config\Debug::$EXCEPTION_ERROR_TO_SHOW ? \is_array($message) : false);
 				$viewer->assign('HEADER_MESSAGE', \App\Language::translate($messageHeader));
-				$viewer->view('ExceptionError.tpl', 'Vtiger');
+				$viewer->view('Exceptions/ExceptionError.tpl', 'Vtiger');
 			} else {
-				echo $message . PHP_EOL;
+				echo(\Config\Debug::$EXCEPTION_ERROR_TO_SHOW ? $message : \App\Language::translate('ERR_OCCURRED_ERROR')) . PHP_EOL;
 			}
 		}
 		if ($die) {
@@ -494,7 +462,14 @@ class Functions
 		return $i;
 	}
 
-	public static function parseBytes($str)
+	/**
+	 * Parse bytes.
+	 *
+	 * @param mixed $str
+	 *
+	 * @return float
+	 */
+	public static function parseBytes($str): float
 	{
 		if (is_numeric($str)) {
 			return (float) $str;
@@ -522,7 +497,15 @@ class Functions
 		return (float) $bytes;
 	}
 
-	public static function showBytes($bytes, &$unit = null)
+	/**
+	 * Show bytes.
+	 *
+	 * @param mixed       $bytes
+	 * @param string|null $unit
+	 *
+	 * @return string
+	 */
+	public static function showBytes($bytes, &$unit = null): string
 	{
 		$bytes = self::parseBytes($bytes);
 		if ($bytes >= 1073741824) {
@@ -541,18 +524,6 @@ class Functions
 			$str = sprintf('%d ', $bytes) . $unit;
 		}
 		return $str;
-	}
-
-	public static function getMaxUploadSize()
-	{
-		// find max filesize value
-		$maxFileSize = self::parseBytes(ini_get('upload_max_filesize'));
-		$maxPostSize = self::parseBytes(ini_get('post_max_size'));
-
-		if ($maxPostSize && $maxPostSize < $maxFileSize) {
-			$maxFileSize = $maxPostSize;
-		}
-		return $maxFileSize;
 	}
 
 	public static function getMinimizationOptions($type = 'js')
@@ -606,31 +577,45 @@ class Functions
 	 */
 	public static function getConversionRateInfo($currencyId, $date = '')
 	{
-		$currencyUpdateModel = \Settings_CurrencyUpdate_Module_Model::getCleanInstance();
 		$defaultCurrencyId = \App\Fields\Currency::getDefault()['id'];
 		$info = [];
-
 		if (empty($date)) {
-			$yesterday = date('Y-m-d', strtotime('-1 day'));
-			$date = self::getLastWorkingDay($yesterday);
+			$date = date('Y-m-d', strtotime('-1 day'));
 		}
-		$info['date'] = $date;
+		$date = self::getLastWorkingDay($date);
 
-		if ($currencyId == $defaultCurrencyId) {
+		$info['date'] = $date;
+		if ($currencyId == $defaultCurrencyId || !\App\Fields\Currency::getActiveBankForExchangeRateUpdate()) {
 			$info['value'] = 1.0;
 			$info['conversion'] = 1.0;
 		} else {
-			$value = $currencyUpdateModel->getCRMConversionRate($currencyId, $defaultCurrencyId, $date);
+			$exchangeDate = $date;
+			$i = 5;
+			// Loop to skip holidays
+			while ($i-- && !($value = \Settings_CurrencyUpdate_Module_Model::getCleanInstance()->getCRMConversionRate($currencyId, $defaultCurrencyId, $exchangeDate))) {
+				$exchangeDate = date('Y-m-d', strtotime('-1 day', strtotime($exchangeDate)));
+			}
+			$info['date'] = $value ? $exchangeDate : $date;
 			$info['value'] = empty($value) ? 1.0 : round($value, 5);
 			$info['conversion'] = empty($value) ? 1.0 : round(1 / $value, 5);
 		}
+
 		return $info;
 	}
 
-	public static function getQueryParams($url)
+	/**
+	 * Getting parameters from URL.
+	 *
+	 * @param string|null $url
+	 *
+	 * @return array
+	 */
+	public static function getQueryParams($url): array
 	{
-		$queryStr = parse_url(htmlspecialchars_decode($url), PHP_URL_QUERY);
-		parse_str($queryStr, $queryParams);
+		$queryParams = [];
+		if (!empty($url) && $queryStr = parse_url(htmlspecialchars_decode($url), PHP_URL_QUERY)) {
+			parse_str($queryStr, $queryParams);
+		}
 
 		return $queryParams;
 	}

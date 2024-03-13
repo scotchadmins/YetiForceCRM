@@ -4,8 +4,8 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -98,8 +98,7 @@ class Request
 	 *
 	 * @var array
 	 */
-	public $headersPurifierMap = [
-	];
+	public $headersPurifierMap = [];
 
 	/**
 	 * Constructor.
@@ -142,7 +141,6 @@ class Request
 		if ($value) {
 			$value = Purifier::purify($value);
 		}
-
 		return $this->purifiedValuesByGet[$key] = $value;
 	}
 
@@ -176,11 +174,11 @@ class Request
 	 * Function to get the boolean value for a given key.
 	 *
 	 * @param string $key
-	 * @param mixed  $defaultValue Default value
+	 * @param bool   $defaultValue Default value
 	 *
 	 * @return bool
 	 */
-	public function getBoolean($key, $defaultValue = '')
+	public function getBoolean(string $key, bool $defaultValue = null)
 	{
 		$value = $this->get($key, $defaultValue);
 		if (\is_bool($value)) {
@@ -208,7 +206,6 @@ class Request
 		if (false !== ($value = filter_var($this->rawValues[$key], FILTER_VALIDATE_INT))) {
 			return $this->purifiedValuesByInteger[$key] = $value;
 		}
-
 		throw new \App\Exceptions\IllegalValue("ERR_NOT_ALLOWED_VALUE||$key||{$this->rawValues[$key]}", 406);
 	}
 
@@ -286,57 +283,7 @@ class Request
 
 			return $this->purifiedValuesByExploded[$key] = $value;
 		}
-
 		return $value;
-	}
-
-	/**
-	 * Purify multi dimension array.
-	 *
-	 * @param mixed        $values
-	 * @param array|string $template
-	 *
-	 * @throws \App\Exceptions\IllegalValue
-	 *
-	 * @return mixed
-	 */
-	private function purifyMultiDimensionArray($values, $template)
-	{
-		if (\is_array($template)) {
-			foreach ($values as $firstKey => $value) {
-				if (\is_array($value)) {
-					if (1 === \count($template)) {
-						$template = current($template);
-					}
-					foreach ($value as $secondKey => $val) {
-						$tempTemplate = $template;
-						if (isset($template[$firstKey])) {
-							$tempTemplate = $template[$firstKey];
-						}
-						if (1 === \count($tempTemplate)) {
-							$tempTemplate = current($tempTemplate);
-						} elseif (!isset($tempTemplate[$secondKey])) {
-							throw new Exceptions\IllegalValue("ERR_NOT_ALLOWED_VALUE||{$secondKey}", 406);
-						} else {
-							$tempTemplate = $tempTemplate[$secondKey];
-						}
-						$values[$firstKey][$secondKey] = $this->purifyMultiDimensionArray($val, $tempTemplate);
-					}
-				} else {
-					if (\is_array($template) && 1 === \count($template)) {
-						$values[$firstKey] = $this->purifyMultiDimensionArray($value, current($template));
-					} elseif (isset($template[$firstKey])) {
-						$values[$firstKey] = $this->purifyMultiDimensionArray($value, $template[$firstKey]);
-					} else {
-						throw new Exceptions\IllegalValue("ERR_NOT_ALLOWED_VALUE||{$firstKey}", 406);
-					}
-				}
-			}
-		} else {
-			$values = $template ? Purifier::purifyByType($values, $template) : Purifier::purify($values);
-		}
-
-		return $values;
 	}
 
 	/**
@@ -361,10 +308,9 @@ class Request
 					Log::warning('Invalid data format, problem encountered while decoding JSON. Data should be in JSON format. Data: ' . $value);
 				}
 			}
-			$value = (array) $this->purifyMultiDimensionArray($value, $template);
+			$value = (array) Purifier::purifyMultiDimensionArray($value, $template);
 			$return = $this->purifiedValuesByMultiDimension[$key] = $value;
 		}
-
 		return $return;
 	}
 
@@ -436,7 +382,6 @@ class Request
 		foreach ($this->rawValues as $key => $value) {
 			$this->get($key);
 		}
-
 		return $this->purifiedValuesByGet;
 	}
 
@@ -463,7 +408,6 @@ class Request
 		if (isset($this->rawValues[$key])) {
 			return $this->rawValues[$key];
 		}
-
 		return $defaultValue;
 	}
 
@@ -477,21 +421,9 @@ class Request
 		if (isset($this->headers)) {
 			return $this->headers;
 		}
-		$data = [];
-		if (!\function_exists('apache_request_headers')) {
-			foreach ($_SERVER as $key => $value) {
-				if ('HTTP_' === substr($key, 0, 5)) {
-					$key = str_replace(' ', '-', \strtolower(str_replace('_', ' ', substr($key, 5))));
-					if ('' !== $value) {
-						$data[$key] = isset($this->headersPurifierMap[$key]) ? Purifier::purifyByType($value, $this->headersPurifierMap[$key]) : Purifier::purify($value);
-					} else {
-						$data[$key] = '';
-					}
-				}
-			}
-		} else {
-			$data = array_change_key_case(apache_request_headers(), CASE_LOWER);
-			foreach ($data as $key => &$value) {
+		$data = array_change_key_case(getallheaders(), CASE_LOWER);
+		foreach ($data as $key => &$value) {
+			if ('' !== $value) {
 				$value = isset($this->headersPurifierMap[$key]) ? Purifier::purifyByType($value, $this->headersPurifierMap[$key]) : Purifier::purify($value);
 			}
 		}
@@ -520,9 +452,9 @@ class Request
 	 *
 	 * @return string
 	 */
-	public function getRequestMethod()
+	public static function getRequestMethod()
 	{
-		$method = $this->getServer('REQUEST_METHOD');
+		$method = $_SERVER['REQUEST_METHOD'];
 		if ('POST' === $method && isset($_SERVER['HTTP_X_HTTP_METHOD'])) {
 			if ('DELETE' === $_SERVER['HTTP_X_HTTP_METHOD']) {
 				$method = 'DELETE';
@@ -532,8 +464,7 @@ class Request
 				throw new \App\Exceptions\AppException('Unexpected Header');
 			}
 		}
-
-		return $method;
+		return strtoupper($method);
 	}
 
 	/**
@@ -549,7 +480,6 @@ class Request
 		if (!isset($_SERVER[$key])) {
 			return $default;
 		}
-
 		return Purifier::purifyByType($_SERVER[$key], 'Text');
 	}
 
@@ -562,11 +492,10 @@ class Request
 	 */
 	public function getModule($raw = true)
 	{
-		$moduleName = $this->getByType('module', 'Alnum');
-		if (!$raw && !$this->isEmpty('parent', true) && 'Settings' === ($parentModule = $this->getByType('parent', 'Alnum'))) {
+		$moduleName = $this->getByType('module', \App\Purifier::ALNUM);
+		if (!$raw && !$this->isEmpty('parent', true) && 'Settings' === ($parentModule = $this->getByType('parent', \App\Purifier::ALNUM))) {
 			$moduleName = "$parentModule:$moduleName";
 		}
-
 		return $moduleName;
 	}
 
@@ -595,7 +524,6 @@ class Request
 		if ($emptyFunction) {
 			return empty($this->rawValues[$key]);
 		}
-
 		return !isset($this->rawValues[$key]) || '' === $this->rawValues[$key];
 	}
 
@@ -678,7 +606,6 @@ class Request
 		if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
 			return true;
 		}
-
 		return false;
 	}
 
@@ -700,7 +627,7 @@ class Request
 	public function validateReadAccess()
 	{
 		// Referer check if present - to over come && Check for user post authentication.
-		if (isset($_SERVER['HTTP_REFERER']) && \App\User::getCurrentUserId() && 'Install' !== $this->get('module')) {
+		if (\Config\Security::$verifyRefererHeader && isset($_SERVER['HTTP_REFERER']) && \App\User::getCurrentUserId() && 'Install' !== $this->get('module')) {
 			$allowed = array_merge(\Config\Security::$allowedFrameDomains, \Config\Security::$allowedFormDomains);
 			$allowed[] = \App\Config::main('site_URL');
 			$throw = true;
@@ -725,11 +652,11 @@ class Request
 	public function validateWriteAccess($skipRequestTypeCheck = false)
 	{
 		if (!$skipRequestTypeCheck && 'POST' !== $_SERVER['REQUEST_METHOD']) {
-			throw new \App\Exceptions\Csrf('Invalid request - validate Write Access');
+			throw new \App\Exceptions\Csrf('Invalid request - validate Write Access', 403);
 		}
 		$this->validateReadAccess();
-		if (class_exists('CSRFConfig') && !\CsrfMagic\Csrf::check(false)) {
-			throw new \App\Exceptions\Csrf('Unsupported request');
+		if (\App\Config::security('csrfActive')) {
+			\CsrfMagic\Csrf::check();
 		}
 	}
 
@@ -761,7 +688,7 @@ class Request
 	public static function __callStatic($name, $arguments = null)
 	{
 		if (!static::$request) {
-			self::init();
+			static::init();
 		}
 		$function = ltrim($name, '_');
 		if (!method_exists(static::$request, $function)) {
@@ -774,7 +701,6 @@ class Request
 		if (empty($arguments)) {
 			return static::$request->{$function}($first);
 		}
-
 		return static::$request->{$function}($first, $arguments[0]);
 	}
 }

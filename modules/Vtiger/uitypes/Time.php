@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Vtiger_Time_UIType extends Vtiger_Base_UIType
@@ -106,10 +106,11 @@ class Vtiger_Time_UIType extends Vtiger_Base_UIType
 	 *
 	 * @return string time
 	 */
-	public static function getTimeValueInAMorPM($time)
+	public static function getTimeValueInAMorPM($time): string
 	{
+		$result = '';
 		if ($time) {
-			[$hours, $minutes] = explode(':', $time);
+			[$hours, $minutes, $seconds] = array_pad(explode(':', $time), 3, null);
 			$format = \App\Language::translate('PM');
 
 			if ($hours > 12) {
@@ -126,9 +127,10 @@ class Vtiger_Time_UIType extends Vtiger_Base_UIType
 			if (1 === \strlen($hours)) {
 				$hours = "0$hours";
 			}
-			return "$hours:$minutes $format";
+			$result = "{$hours}:{$minutes}" . (null !== $seconds ? ":{$seconds}" : '') . " {$format}";
 		}
-		return '';
+
+		return $result;
 	}
 
 	/** {@inheritdoc} */
@@ -140,7 +142,7 @@ class Vtiger_Time_UIType extends Vtiger_Base_UIType
 	/** {@inheritdoc} */
 	public function getQueryOperators()
 	{
-		return ['e', 'n', 'l', 'g', 'b', 'a', 'y', 'ny'];
+		return array_merge(['e', 'n', 'b', 'a', 'y', 'ny'], \App\Condition::FIELD_COMPARISON_OPERATORS);
 	}
 
 	/**

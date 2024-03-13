@@ -4,9 +4,10 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 namespace App\Mail;
@@ -69,11 +70,11 @@ class Rbl extends \App\Base
 			'[Security] Overloading infrastructure or application' => 'LBL_SECURITY_OVERLOADING_INFRASTRUCTURE_OR_APPLICATION',
 			'[Other] The message contains inappropriate words' => 'LBL_OTHER_MESSAGE_CONTAINS_INAPPROPRIATE_WORDS',
 			'[Other] The message contains inappropriate materials' => 'LBL_OTHER_MESSAGE_CONTAINS_INAPPROPRIATE_MATERIALS',
-			'[Other] Malicious message' => 'LBL_OTHER_MALICIOUS_MESSAGE'
+			'[Other] Malicious message' => 'LBL_OTHER_MALICIOUS_MESSAGE',
 		],
 		'White' => [
-			'[Whitelist] Trusted sender' => 'LBL_TRUSTED_SENDER'
-		]
+			'[Whitelist] Trusted sender' => 'LBL_TRUSTED_SENDER',
+		],
 	];
 	/**
 	 * RLB black list type.
@@ -239,7 +240,7 @@ class Rbl extends \App\Base
 	{
 		$instance = new self();
 		$instance->setData($data);
-		$instance->mailMimeParser = \ZBateson\MailMimeParser\Message::from($instance->get('header'));
+		$instance->mailMimeParser = \ZBateson\MailMimeParser\Message::from($instance->get('header'), false);
 		return $instance;
 	}
 
@@ -250,7 +251,22 @@ class Rbl extends \App\Base
 	 */
 	public function parse(): void
 	{
-		$this->mailMimeParser = \ZBateson\MailMimeParser\Message::from($this->has('rawBody') ? $this->get('rawBody') : $this->get('header') . "\r\n\r\n");
+		$this->mailMimeParser = \ZBateson\MailMimeParser\Message::from($this->has('rawBody') ? $this->get('rawBody') : $this->get('header') . "\r\n\r\n", false);
+	}
+
+	/**
+	 * Get email from header by name.
+	 *
+	 * @param string $name
+	 *
+	 * @return string
+	 */
+	protected function getHeaderEmail(string $name): string
+	{
+		if ($header = $this->mailMimeParser->getHeader($name)) {
+			return $header->getEmail() ?: '';
+		}
+		return '';
 	}
 
 	/**
@@ -438,7 +454,7 @@ class Rbl extends \App\Base
 	public function getSenders(): array
 	{
 		$senders = [
-			'From' => $this->mailMimeParser->getHeaderValue('From')
+			'From' => $this->mailMimeParser->getHeaderValue('From'),
 		];
 		if ($returnPath = $this->mailMimeParser->getHeaderValue('Return-Path')) {
 			$senders['Return-Path'] = $returnPath;
@@ -459,16 +475,15 @@ class Rbl extends \App\Base
 	 */
 	public function verifySender(): array
 	{
-		$from = $this->mailMimeParser->getHeader('from');
+		$from = $this->getHeaderEmail('from');
 		if (!$from) {
 			return ['status' => true, 'info' => ''];
 		}
-		$from = $from->getEmail();
 		$status = true;
 		$info = '';
-		if (($returnPathHeader = $this->mailMimeParser->getHeader('Return-Path')) && ($returnPath = $returnPathHeader->getEmail())) {
-			if (0 === stripos($returnPath, 'SRS')) {
-				$separator = substr($returnPath, 4, 1);
+		if ($returnPath = $this->getHeaderEmail('Return-Path')) {
+			if (0 === stripos($returnPath, 'SRS') && ($separator = substr($returnPath, 4, 1)) !== '') {
+				$returnPathSrs = '';
 				$parts = explode($separator, $returnPath);
 				$mail = explode('@', array_pop($parts));
 				if (isset($mail[1])) {
@@ -480,13 +495,13 @@ class Rbl extends \App\Base
 				$status = $from === $returnPath;
 			}
 			if (!$status) {
-				$info .= "From: $from <> Return-Path: $returnPath" . PHP_EOL;
+				$info .= "From: {$from} <> Return-Path: {$returnPath}" . PHP_EOL;
 			}
 		}
-		if ($status && ($senderHeader = $this->mailMimeParser->getHeader('Sender')) && ($sender = $senderHeader->getEmail())) {
+		if ($status && ($sender = $this->getHeaderEmail('Sender'))) {
 			$status = $from === $sender;
 			if (!$status) {
-				$info .= "From: $from <> Sender: $sender" . PHP_EOL;
+				$info .= "From: {$from} <> Sender: {$sender}" . PHP_EOL;
 			}
 		}
 		return ['status' => $status, 'info' => $info];
@@ -495,7 +510,7 @@ class Rbl extends \App\Base
 	/**
 	 * Verify SPF (Sender Policy Framework) for Authorizing Use of Domains in Email.
 	 *
-	 * @see @see https://tools.ietf.org/html/rfc7208
+	 * @see https://tools.ietf.org/html/rfc7208
 	 *
 	 * @return array
 	 */
@@ -504,25 +519,36 @@ class Rbl extends \App\Base
 		if (isset($this->spfCache)) {
 			return $this->spfCache;
 		}
+		$returnPath = $this->getHeaderEmail('Return-Path');
 		$sender = $this->getSender();
 		$return = ['status' => self::SPF_NONE];
+		if ($email = $this->getHeaderEmail('from')) {
+			$return['domain'] = explode('@', $email)[1];
+		}
 		if (isset($sender['ip'])) {
-			try {
-				$environment = new \SPFLib\Check\Environment($sender['ip'], '', $this->mailMimeParser->getHeader('Return-Path')->getEmail());
-				switch ((new \SPFLib\Checker())->check($environment, \SPFLib\Checker::FLAG_CHECK_MAILFROADDRESS)->getCode()) {
-					case \SPFLib\Check\Result::CODE_PASS:
-						$return['status'] = self::SPF_PASS;
-						break;
-					case \SPFLib\Check\Result::CODE_FAIL:
-					case \SPFLib\Check\Result::CODE_SOFTFAIL:
-						$return['status'] = self::SPF_FAIL;
-						break;
+			$cacheKey = "{$sender['ip']}-{$returnPath}";
+			if (\App\Cache::has('RBL:verifySpf', $cacheKey)) {
+				$status = \App\Cache::get('RBL:verifySpf', $cacheKey);
+			} else {
+				$status = null;
+				try {
+					$environment = new \SPFLib\Check\Environment($sender['ip'], '', $returnPath);
+					switch ((new \SPFLib\Checker())->check($environment, \SPFLib\Checker::FLAG_CHECK_MAILFROADDRESS)->getCode()) {
+						case \SPFLib\Check\Result::CODE_PASS:
+							$status = self::SPF_PASS;
+							break;
+						case \SPFLib\Check\Result::CODE_FAIL:
+						case \SPFLib\Check\Result::CODE_SOFTFAIL:
+							$status = self::SPF_FAIL;
+							break;
+					}
+				} catch (\Throwable $e) {
+					\App\Log::warning($e->getMessage(), __NAMESPACE__);
 				}
-				if ($email = $this->mailMimeParser->getHeader('from')->getEmail()) {
-					$return['domain'] = explode('@', $email)[1];
-				}
-			} catch (\Throwable $e) {
-				\App\Log::warning($e->getMessage(), __NAMESPACE__);
+				\App\Cache::save('RBL:verifySpf', $cacheKey, $status, \App\Cache::LONG);
+			}
+			if (isset($status)) {
+				$return['status'] = $status;
 			}
 		}
 		return $this->spfCache = $return + self::SPF[$return['status']];
@@ -556,7 +582,7 @@ class Rbl extends \App\Base
 				\App\Log::warning($e->getMessage(), __NAMESPACE__);
 			}
 		}
-		return $this->dkimCache = ['status' => $status, 'logs' => trim($logs)] + self::DKIM[$status];
+		return $this->dkimCache = \App\Utils::merge(['status' => $status, 'logs' => trim($logs)], self::DKIM[$status]);
 	}
 
 	/**
@@ -566,7 +592,7 @@ class Rbl extends \App\Base
 	 */
 	public function verifyDmarc(): array
 	{
-		$fromDomain = explode('@', $this->mailMimeParser->getHeader('from')->getEmail())[1];
+		$fromDomain = explode('@', $this->getHeaderEmail('from'))[1] ?? '';
 		$status = self::DMARC_NONE;
 		if (empty($fromDomain) || !($dmarcRecord = $this->getDmarcRecord($fromDomain))) {
 			return ['status' => $status, 'logs' => \App\Language::translateArgs('LBL_NO_DMARC_DNS', 'Settings:MailRbl', $fromDomain)] + self::DMARC[$status];
@@ -602,6 +628,9 @@ class Rbl extends \App\Base
 	 */
 	public function getDmarcRecord(string $domain): array
 	{
+		if (\App\Cache::has('RBL:getDmarcRecord', $domain)) {
+			return \App\Cache::get('RBL:getDmarcRecord', $domain);
+		}
 		$dns = dns_get_record('_dmarc.' . $domain, DNS_TXT);
 		if (!$dns) {
 			return [];
@@ -619,6 +648,7 @@ class Rbl extends \App\Base
 		if (empty($dkimParams['aspf'])) {
 			$dkimParams['aspf'] = 'r';
 		}
+		\App\Cache::save('RBL:getDmarcRecord', $domain, $dkimParams, \App\Cache::LONG);
 		return $dkimParams;
 	}
 
@@ -652,8 +682,8 @@ class Rbl extends \App\Base
 	private function verifyDmarcSpf(string $fromDomain, string $aspf): array
 	{
 		$mailFrom = '';
-		if ($returnPathHeader = $this->mailMimeParser->getHeader('Return-Path')) {
-			$mailFrom = explode('@', $returnPathHeader->getEmail())[1];
+		if ($returnPath = $this->getHeaderEmail('Return-Path')) {
+			$mailFrom = explode('@', $returnPath)[1];
 		}
 		if (!$mailFrom && !($mailFrom = $this->getSender()['from'] ?? '')) {
 			return ['status' => null];
@@ -682,18 +712,19 @@ class Rbl extends \App\Base
 	 *
 	 * @param int $record
 	 *
-	 * @return void
+	 * @return int
 	 */
-	public function updateList(int $record): void
+	public function updateList(int $record): int
 	{
 		$sender = $this->getSender();
+		$return = 0;
 		if (!empty($sender['ip'])) {
 			$dbCommand = \App\Db::getInstance('admin')->createCommand();
 			$id = false;
-			if ($ipsList = self::findIp($sender['ip'])) {
-				foreach ($ipsList as $ipList) {
-					if (2 !== (int) $ipList['type']) {
-						$id = $ipList['id'];
+			if ($rows = self::findIp($sender['ip'])) {
+				foreach ($rows as $row) {
+					if ((self::LIST_TYPE_BLACK_LIST !== (int) $row['type']) && (self::LIST_TYPE_PUBLIC_BLACK_LIST !== (int) $row['type'])) {
+						$id = $row['id'];
 						break;
 					}
 				}
@@ -715,10 +746,13 @@ class Rbl extends \App\Base
 			}
 			\App\Cache::delete('MailRblIpColor', $sender['ip']);
 			\App\Cache::delete('MailRblList', $sender['ip']);
+			$return = 2;
 			if (\Config\Components\Mail::$rcListSendReportAutomatically ?? false) {
 				self::sendReport(['id' => $record]);
+				$return = 3;
 			}
 		}
+		return $return;
 	}
 
 	/**
@@ -759,17 +793,22 @@ class Rbl extends \App\Base
 	 * Find ip in list.
 	 *
 	 * @param string $ip
+	 * @param bool   $onlyActive
 	 *
 	 * @return array
 	 */
-	public static function findIp(string $ip): array
+	public static function findIp(string $ip, $onlyActive = false): array
 	{
-		if (\App\Cache::has('MailRblList', $ip)) {
-			return \App\Cache::get('MailRblList', $ip);
+		$cacheName = "$ip|$onlyActive";
+		if (\App\Cache::has('MailRblList', $cacheName)) {
+			return \App\Cache::get('MailRblList', $cacheName);
 		}
-		$rows = (new \App\Db\Query())->from('s_#__mail_rbl_list')->where(['ip' => $ip])->orderBy(['type' => SORT_ASC])
-			->all(\App\Db::getInstance('admin'));
-		\App\Cache::save('MailRblList', $ip, $rows, \App\Cache::LONG);
+		$query = (new \App\Db\Query())->from('s_#__mail_rbl_list')->where(['ip' => $ip])->orderBy(['type' => SORT_ASC]);
+		if ($onlyActive) {
+			$query->andWhere(['status' => 0]);
+		}
+		$rows = $query->all(\App\Db::getInstance('admin'));
+		\App\Cache::save('MailRblList', $cacheName, $rows, \App\Cache::LONG);
 		return $rows;
 	}
 
@@ -821,29 +860,63 @@ class Rbl extends \App\Base
 	 *
 	 * @param array $data
 	 *
-	 * @return void
+	 * @return string
 	 */
-	public static function addReport(array $data): void
+	public static function addReport(array $data): string
 	{
 		$status = 0;
 		if (\Config\Components\Mail::$rcListAcceptAutomatically ?? false) {
 			$status = 1;
 		}
 		$db = \App\Db::getInstance('admin');
-		$db->createCommand()->insert('s_#__mail_rbl_request', [
+		$dbCommand = $db->createCommand();
+		$dbCommand->insert('s_#__mail_rbl_request', [
 			'status' => $status,
 			'datetime' => date('Y-m-d H:i:s'),
 			'user' => \App\User::getCurrentUserId(),
 			'type' => $data['type'],
 			'header' => $data['header'],
-			'body' => $data['body'] ?? null
+			'body' => $data['body'] ?? null,
 		])->execute();
 		$record = $db->getLastInsertID();
-		if ($status && $record) {
-			$rblRecord = self::getRequestById($record);
-			$rblRecord->parse();
-			$rblRecord->updateList($record);
+		$return = 'LBL_RC_ERROR_RBL_REPORT';
+		if ($record) {
+			$return = 'LBL_RC_ADDED_RBL_REPORT_LOCAL';
+			if ($status) {
+				$rblRecord = self::getRequestById($record);
+				$rblRecord->parse();
+				$sender = $rblRecord->getSender();
+				if (empty($sender['ip'])) {
+					$dbCommand->update('s_#__mail_rbl_request', ['status' => 0], ['id' => $record])->execute();
+					$return = 'LBL_NO_IP_ADDRESS';
+				} else {
+					$blacklist = 0 == $rblRecord->get('type');
+					$skipUpdate = false;
+					if ($rows = self::findIp($sender['ip'])) {
+						foreach ($rows as $row) {
+							if (0 == $row['status']) {
+								if ($blacklist && (self::LIST_TYPE_WHITE_LIST == $row['type'] || self::LIST_TYPE_PUBLIC_WHITE_LIST == $row['type'])) {
+									$return = 'LBL_RC_ADDED_RBL_REPORT_IP_WHITE';
+									$skipUpdate = true;
+									break;
+								}
+								if (!$blacklist && (self::LIST_TYPE_WHITE_LIST == $row['type'] || self::LIST_TYPE_PUBLIC_WHITE_LIST == $row['type'])) {
+									$return = 'LBL_RC_ADDED_RBL_REPORT_IP_BLACK';
+									$skipUpdate = true;
+									break;
+								}
+							}
+						}
+					}
+					if ($skipUpdate) {
+						$dbCommand->update('s_#__mail_rbl_request', ['status' => 0], ['id' => $record])->execute();
+					} elseif (3 === $rblRecord->updateList($record)) {
+						$return = 'LBL_RC_ADDED_RBL_REPORT_PUBLIC';
+					}
+				}
+			}
 		}
+		return $return;
 	}
 
 	/**
@@ -877,8 +950,8 @@ class Rbl extends \App\Base
 				'ik' => \App\YetiForce\Register::getInstanceKey(),
 				'ip' => $recordModel->getSender()['ip'] ?? '-',
 				'header' => $recordModel->get('header'),
-				'body' => $recordModel->get('body')
-			])
+				'body' => $recordModel->get('body'),
+			]),
 		]);
 		\App\Log::endProfile("POST|Rbl::sendReport|{$url}", __NAMESPACE__);
 		$body = \App\Json::decode($response->getBody()->getContents());
@@ -947,9 +1020,9 @@ class Rbl extends \App\Base
 		foreach (array_chunk(array_diff($publicKeys, $keys), 50, true) as $chunk) {
 			$insertData = [];
 			foreach ($chunk as $ip) {
-				$insertData[] = [$ip, 0, $type, $public[$ip]['source']];
+				$insertData[] = [$ip, 0, $type, $public[$ip]['source'], $public[$ip]['comment']];
 			}
-			$dbCommand->batchInsert('s_#__mail_rbl_list', ['ip', 'status', 'type', 'source'], $insertData)->execute();
+			$dbCommand->batchInsert('s_#__mail_rbl_list', ['ip', 'status', 'type', 'source', 'comment'], $insertData)->execute();
 		}
 		foreach (array_diff($keys, $publicKeys) as $ip) {
 			$dbCommand->delete('s_#__mail_rbl_list', ['id' => $rows[$ip]['id']])->execute();

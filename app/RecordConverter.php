@@ -5,8 +5,8 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Adrian Kon <a.kon@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
@@ -439,7 +439,7 @@ class RecordConverter extends Base
 	 */
 	public function getGroupRecords(array $records): array
 	{
-		$fieldModel = \Vtiger_Field_Model::getInstance($this->get('field_merge'), $this->sourceModuleModel);
+		$fieldModel = $this->sourceModuleModel->getField($this->get('field_merge'));
 		$focus = \CRMEntity::getInstance($this->sourceModule);
 		return (new Db\Query())->select([$fieldModel->getTableName() . ".{$fieldModel->getColumnName()}", $focus->tab_name_index[$fieldModel->getTableName()]])->from($fieldModel->getTableName())->where([$focus->tab_name_index[$fieldModel->getTableName()] => $records])->createCommand()->queryAllByGroup(2);
 	}
@@ -681,6 +681,7 @@ class RecordConverter extends Base
 	 */
 	public function checkFieldMergeExist()
 	{
+		$this->isFieldMergeExists = false;
 		if (isset($this->fieldMapping['field_merge'])) {
 			$destinyReferenceFields = $this->destinyModuleModel->getFieldsByReference();
 			$referenceDestinyField = $this->fieldMapping['field_merge'][$this->destinyModuleModel->getId()];
@@ -691,7 +692,6 @@ class RecordConverter extends Base
 				$this->isFieldMergeExists = true;
 			}
 		}
-		$this->isFieldMergeExists = false;
 	}
 
 	/**

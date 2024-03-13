@@ -5,8 +5,8 @@
  *
  * @package View
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -25,27 +25,21 @@ class Vtiger_TreeModal_View extends \App\Controller\Modal
 	 */
 	public $fieldModel;
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
-		$currentUserPriviligesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
-		if (!$currentUserPriviligesModel->hasModulePermission($request->getModule())) {
+		$userModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
+		if (!$userModel->hasModulePermission($request->getModule())) {
 			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
 		}
-		if (!\App\Privilege::isPermitted($request->getModule(), 'EditView')) {
-			throw new \App\Exceptions\NoPermitted('LBL_PERMISSION_DENIED', 406);
-		}
+
 		$this->fieldModel = Vtiger_Module_Model::getInstance($request->getModule())->getFieldByName($request->getByType('fieldName', 2));
-		if (!$this->fieldModel || !$this->fieldModel->isEditable()) {
+		if (!$this->fieldModel || !$this->fieldModel->isViewable() || !\in_array($this->fieldModel->getFieldDataType(), ['categoryMultipicklist', 'tree'])) {
 			throw new \App\Exceptions\NoPermitted('LBL_NO_PERMISSIONS_TO_FIELD');
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function preProcessAjax(App\Request $request)
 	{
 		$viewer = $this->getViewer($request);
@@ -54,9 +48,7 @@ class Vtiger_TreeModal_View extends \App\Controller\Modal
 		parent::preProcessAjax($request);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	protected function preProcessTplName(App\Request $request)
 	{
 		return 'Modals/TreeHeader.tpl';
@@ -71,10 +63,8 @@ class Vtiger_TreeModal_View extends \App\Controller\Modal
 	{
 		$moduleName = $request->getModule();
 		$type = false;
-		if ($request->isEmpty('template', true)) {
-			throw new \App\Exceptions\AppException(\App\Language::translate('ERR_TREE_NOT_FOUND', $moduleName));
-		}
-		$recordModel = Settings_TreesManager_Record_Model::getInstanceById($request->getInteger('template'));
+		$templateId = (int) $this->fieldModel->getFieldParams();
+		$recordModel = Settings_TreesManager_Record_Model::getInstanceById($templateId);
 		if (!$recordModel) {
 			throw new \App\Exceptions\AppException(\App\Language::translate('ERR_TREE_NOT_FOUND', $moduleName));
 		}
@@ -90,9 +80,7 @@ class Vtiger_TreeModal_View extends \App\Controller\Modal
 		$viewer->view('Modals/TreeModal.tpl', $moduleName);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getModalScripts(App\Request $request)
 	{
 		$moduleName = $request->getModule();
@@ -108,9 +96,7 @@ class Vtiger_TreeModal_View extends \App\Controller\Modal
 		return array_merge(parent::getModalScripts($request), $this->checkAndConvertJsScripts($jsFileNames));
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getModalCss(App\Request $request)
 	{
 		return array_merge(parent::getModalCss($request), $this->checkAndConvertCssStyles([

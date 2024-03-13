@@ -1,11 +1,14 @@
 <?php
-
 /**
  * Notification Record Model.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @package Model
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Tomasz Kur <t.kur@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class Notification_Record_Model extends Vtiger_Record_Model
 {
@@ -25,14 +28,15 @@ class Notification_Record_Model extends Vtiger_Record_Model
 		}
 		$relatedModule = $relatedRecords['module'];
 		$relatedId = $relatedRecords['id'];
-		if (\App\Record::isExists($relatedId)) {
+		if (\App\Record::STATE_DELETED !== \App\Record::getState($relatedId)) {
 			$textParser = \App\TextParser::getInstanceById($relatedId, $relatedModule);
 			$textParser->setContent($value)->parse();
 		} else {
 			$textParser = \App\TextParser::getInstance();
 			$textParser->setContent($value)->parseTranslations();
 		}
-		return nl2br($textParser->getContent());
+
+		return nl2br(str_replace("<br>\n", '<br>', $textParser->getContent()));
 	}
 
 	/**
@@ -86,13 +90,16 @@ class Notification_Record_Model extends Vtiger_Record_Model
 		$process = $this->get('process');
 		$link = $this->get('link');
 		$linkextend = $this->get('linkextend');
-		if (!empty($subprocess) && \App\Record::isExists($subprocess)) {
+		$sl = $this->get('subprocess_sl');
+		if (!empty($sl) && \App\Record::isExists($sl, '', [\App\Record::STATE_ACTIVE, \App\Record::STATE_ARCHIVED, \App\Record::STATE_TRASH])) {
+			$relatedId = $sl;
+		} elseif (!empty($subprocess) && \App\Record::isExists($subprocess, '', [\App\Record::STATE_ACTIVE, \App\Record::STATE_ARCHIVED, \App\Record::STATE_TRASH])) {
 			$relatedId = $subprocess;
-		} elseif (!empty($process) && \App\Record::isExists($process)) {
+		} elseif (!empty($process) && \App\Record::isExists($process, '', [\App\Record::STATE_ACTIVE, \App\Record::STATE_ARCHIVED, \App\Record::STATE_TRASH])) {
 			$relatedId = $process;
-		} elseif (!empty($link) && \App\Record::isExists($link)) {
+		} elseif (!empty($link) && \App\Record::isExists($link, '', [\App\Record::STATE_ACTIVE, \App\Record::STATE_ARCHIVED, \App\Record::STATE_TRASH])) {
 			$relatedId = $link;
-		} elseif (!empty($linkextend) && \App\Record::isExists($linkextend)) {
+		} elseif (!empty($linkextend) && \App\Record::isExists($linkextend, '', [\App\Record::STATE_ACTIVE, \App\Record::STATE_ARCHIVED, \App\Record::STATE_TRASH])) {
 			$relatedId = $linkextend;
 		} else {
 			return false;
@@ -139,10 +146,10 @@ class Notification_Record_Model extends Vtiger_Record_Model
 			\App\Log::trace('Exiting ' . __METHOD__ . ' - return true');
 			return false;
 		}
-		if ($relatedModule && 'PLL_USERS' !== $notificationType && \App\Record::isExists($relatedId)) {
+		if ($relatedModule && 'PLL_USERS' !== $notificationType && \App\Record::isExists($relatedId, '', [\App\Record::STATE_ACTIVE, \App\Record::STATE_ARCHIVED, \App\Record::STATE_TRASH])) {
 			$textParser = \App\TextParser::getInstanceById($relatedId, $relatedModule);
 			$this->setFromUserValue('description', $textParser->withoutTranslations()->setContent($this->get('description'))->parse()->getContent());
-			$this->setFromUserValue('title', \App\TextParser::textTruncate(\App\Purifier::purifyByType($textParser->setContent($this->get('title'))->parse()->getContent(), 'Text'), $this->getField('title')->get('maximumlength'), false));
+			$this->setFromUserValue('title', \App\TextUtils::textTruncate(\App\Purifier::purifyByType($textParser->setContent($this->get('title'))->parse()->getContent(), 'Text'), $this->getField('title')->getMaxValue(), false));
 		}
 		$users = $this->get('shownerid');
 		$usersCollection = $this->isEmpty('assigned_user_id') ? [] : [$this->get('assigned_user_id')];
@@ -180,21 +187,12 @@ class Notification_Record_Model extends Vtiger_Record_Model
 	 */
 	public function getIcon()
 	{
-		$icon = false;
+		$icon = [];
 		if ('PLL_USERS' === $this->get('notification_type')) {
-			$userModel = Users_Privileges_Model::getInstanceById($this->get('smcreatorid'));
-			$icon = [
-				'type' => 'image',
-				'title' => $userModel->getName(),
-				'src' => $userModel->getImage()['path'],
-				'class' => 'userImage',
-			];
+			$icon = \App\User::getUserModel($this->get('smcreatorid'))->getImage();
 		} else {
-			$relatedRecord = $this->getRelatedRecord();
 			$icon = [
-				'type' => 'icon',
-				'title' => \App\Language::translate($relatedRecord['module'], $relatedRecord['module']),
-				'class' => 'yfm-' . $relatedRecord['module'],
+				'icon' => 'fas fa-hdd',
 			];
 		}
 		return $icon;

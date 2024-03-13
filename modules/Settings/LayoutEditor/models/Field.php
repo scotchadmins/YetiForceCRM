@@ -6,11 +6,87 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
-class Settings_LayoutEditor_Field_Model extends Vtiger_Field_Model
+class Settings_LayoutEditor_Field_Model extends Settings_Vtiger_Field_Model
 {
+	/** @var Settings_Vtiger_Field_Model[] Item field models */
+	private $items = [];
+	/** @var Vtiger_Field_Model|null Source field model */
+	public $sourceFieldModel;
+	/** @var array Webservice app visibility */
+	const WEBSERVICE_APPS_VISIBILITY = [
+		0 => 'LBL_WSA_VISIBILITY_DEFAULT',
+		1 => 'LBL_DISPLAY_TYPE_1',
+		2 => 'LBL_DISPLAY_TYPE_2',
+		3 => 'LBL_DISPLAY_TYPE_3',
+		4 => 'LBL_DISPLAY_TYPE_4',
+		9 => 'LBL_DISPLAY_TYPE_9',
+		10 => 'LBL_DISPLAY_TYPE_10',
+		6 => 'LBL_DISPLAY_TYPE_6',
+	];
+
+	/** @var array Translations of field types */
+	public $fieldTypeLabel = [
+		'string' => 'Text',
+		'date' => 'Date',
+		'integer' => 'Integer',
+		'double' => 'Decimal',
+		'percentage' => 'Percent',
+		'phone' => 'Phone',
+		'email' => 'Email',
+		'time' => 'Time',
+		'picklist' => 'Picklist',
+		'url' => 'URL',
+		'multipicklistTags' => 'MultipicklistTags',
+		'text' => 'TextArea',
+		'languages' => 'LBL_LANGUAGE',
+		'multipicklist' => 'MultiSelectCombo',
+		'country' => 'Country',
+		'reference' => 'Related1M',
+		'userCreator' => 'LBL_USER',
+		'boolean' => 'Checkbox',
+		'image' => 'Image',
+		'datetime' => 'DateTime',
+		'currency' => 'Currency',
+		'skype' => 'Skype',
+		'tree' => 'Tree',
+		'multiReferenceValue' => 'MultiReferenceValue',
+		'multiReference' => 'MultiReference',
+		'rangeTime' => 'RangeTime',
+		'categoryMultipicklist' => 'CategoryMultipicklist',
+		'multiImage' => 'MultiImage',
+		'twitter' => 'Twitter',
+		'multiEmail' => 'MultiEmail',
+		'smtp' => 'Smtp',
+		'serverAccess' => 'ServerAccess',
+		'multiDomain' => 'MultiDomain',
+		'token' => 'Token',
+		'multiAttachment' => 'MultiAttachment',
+		'mapCoordinates' => 'MapCoordinates',
+		'advPercentage' => 'AdvPercentage',
+		'group' => 'Group'
+	];
+
+	/** @var array Webservice field data */
+	protected $webserviceData;
+
+	/**
+	 * Get field data type label.
+	 *
+	 * @return string
+	 */
+	public function getFieldDataTypeLabel(): string
+	{
+		if (300 === $this->getUIType()) {
+			$label = 'Editor';
+		} else {
+			$label = $this->fieldTypeLabel[$this->getFieldDataType()] ?? '';
+		}
+		return $label;
+	}
+
 	/**
 	 * Function to remove field.
 	 */
@@ -18,10 +94,6 @@ class Settings_LayoutEditor_Field_Model extends Vtiger_Field_Model
 	{
 		$db = \App\Db::getInstance();
 		try {
-			$uiType = $this->getUIType();
-			if (10 === $uiType) {
-				$reference = $this->getReferenceList();
-			}
 			parent::delete();
 
 			$fldModule = $this->getModuleName();
@@ -38,75 +110,50 @@ class Settings_LayoutEditor_Field_Model extends Vtiger_Field_Model
 			$db->createCommand()->delete('vtiger_cvcolumnlist', ['field_name' => $fieldname, 'module_name' => $fldModule])->execute();
 			$db->createCommand()->delete('vtiger_cvcolumnlist', [
 				'source_field_name' => $fieldname,
-				'cvid' => (new \App\Db\Query())->select(['cvid'])->from('vtiger_customview')->where(['entitytype' => $fldModule])
+				'cvid' => (new \App\Db\Query())->select(['cvid'])->from('vtiger_customview')->where(['entitytype' => $fldModule]),
 			])->execute();
 			$db->createCommand()->delete('u_#__cv_condition', ['field_name' => $fieldname, 'module_name' => $fldModule])->execute();
 			//Deleting from convert lead mapping vtiger_table- Jaguar
 			if ('Leads' === $fldModule) {
 				$db->createCommand()->delete('vtiger_convertleadmapping', ['leadfid' => $id])->execute();
-			} elseif ('Accounts' == $fldModule) {
+			} elseif ('Accounts' === $fldModule) {
 				$mapDelId = ['Accounts' => 'accountfid'];
 				$db->createCommand()->update('vtiger_convertleadmapping', [$mapDelId[$fldModule] => 0], [$mapDelId[$fldModule] => $id])->execute();
 			}
-
-			//HANDLE HERE - we have to remove the table for other picklist type values which are text area and multiselect combo box
-			if ('picklist' === $this->getFieldDataType() || 'multipicklist' === $this->getFieldDataType()) {
-				$query = (new \App\Db\Query())->from('vtiger_field')
-					->where(['fieldname' => $fieldname])
-					->andWhere(['in', 'uitype', [15, 16, 33]]);
-				$dataReader = $query->createCommand()->query();
-				if (!$dataReader->count()) {
-					$db->createCommand()->dropTable('vtiger_' . $fieldname)->execute();
-					//To Delete Sequence Table
-					if ($db->isTableExists('vtiger_' . $fieldname . '_seq')) {
-						$db->createCommand()->dropTable('vtiger_' . $fieldname . '_seq')->execute();
-					}
-					$db->createCommand()->delete('vtiger_picklist', ['name' => $fieldname])->execute();
-				}
-				$db->createCommand()->delete('vtiger_picklist_dependency', ['and', ['tabid' => $tabId], ['or', ['sourcefield' => $fieldname], ['targetfield' => $fieldname]]])->execute();
+			switch ($this->getFieldDataType()) {
+				case 'picklist':
+				case 'multipicklist':
+						$query = (new \App\Db\Query())->from('vtiger_field')
+							->where(['fieldname' => $fieldname])
+							->andWhere(['in', 'uitype', [15, 16, 33]]);
+						$dataReader = $query->createCommand()->query();
+						if (!$dataReader->count()) {
+							$db->createCommand()->dropTable('vtiger_' . $fieldname)->execute();
+							//To Delete Sequence Table
+							if ($db->isTableExists('vtiger_' . $fieldname . '_seq')) {
+								$db->createCommand()->dropTable('vtiger_' . $fieldname . '_seq')->execute();
+							}
+							$db->createCommand()->delete('vtiger_picklist', ['name' => $fieldname])->execute();
+						}
+					break;
+					case 'mapCoordinates':
+						\App\Fields\MapCoordinates::reloadHandler();
+						break;
+				default:
+					break;
 			}
-
-			if (305 === $uiType) {
-				$fieldParams = \App\Json::decode($this->get('fieldparams'));
-				$destModule = $fieldParams['module'];
-				$db->createCommand()->delete('s_#__multireference', ['source_module' => $fldModule, 'dest_module' => $destModule])->execute();
-				\App\Cache::delete('mrvfbm', "{$fldModule},{$destModule}");
-				\App\Cache::delete('getMultiReferenceModules', $destModule);
-			}
-			$tabIds = (new \App\Db\Query())
-				->select(['fieldid', 'tabid'])
-				->from('vtiger_field')
-				->where(['and',	['<>', 'presence', 1], ['uitype' => 305],	['and', ['like', 'fieldparams', '"field":"' . $id . '"']]
-				])->createCommand()->queryAllByGroup();
-			foreach ($tabIds as $fieldId => $tabId) {
-				$sourceModule = \App\Module::getModuleName($tabId);
-				$db->createCommand()->update('vtiger_field', ['presence' => 1], ['fieldid' => $fieldId])->execute();
-				\App\Cache::delete('mrvfbm', "{$sourceModule},{$fldModule}");
-				\App\Cache::delete('getMultiReferenceModules', $fldModule);
-			}
-
-			if (10 === $uiType && $reference) {
-				$db->createCommand()->delete('vtiger_relatedlists', ['field_name' => $fieldname, 'related_tabid' => $tabId, 'tabid' => array_map('App\Module::getModuleId', $reference)])->execute();
-				foreach ($reference as $module) {
-					\App\Relation::clearCacheByModule($module);
-				}
-				\App\Cache::delete('HierarchyByRelation', '');
-			}
-
 			$entityInfo = \App\Module::getEntityInfo($fldModule);
+			$searchModel = Settings_Search_Module_Model::getInstance('Settings:Search');
 			foreach (['fieldnameArr' => 'fieldname', 'searchcolumnArr' => 'searchcolumn'] as $key => $name) {
 				if (false !== ($fieldNameKey = array_search($fieldname, $entityInfo[$key]))) {
 					unset($entityInfo[$key][$fieldNameKey]);
 					$params = [
 						'name' => $name,
 						'tabid' => $tabId,
-						'value' => $entityInfo[$key]
+						'value' => $entityInfo[$key],
 					];
-					Settings_Search_Module_Model::save($params);
+					$searchModel->save($params);
 				}
-			}
-			if (11 === $uiType && ($extraFieldId = (new \App\Db\Query())->select(['fieldid'])->from('vtiger_field')->where(['fieldname' => "{$fieldname}_extra", 'tabid' => $tabId])->scalar())) {
-				self::getInstance($extraFieldId)->delete();
 			}
 		} catch (\Throwable $ex) {
 			\App\Log::error($ex->__toString());
@@ -152,20 +199,49 @@ class Settings_LayoutEditor_Field_Model extends Vtiger_Field_Model
 	 */
 	public static function makeFieldActive($fieldIdsList, $blockId)
 	{
-		$maxSequence = (new \App\Db\Query())->from('vtiger_field')->where(['block' => $blockId, 'presence' => [0, 2]])->max('sequence');
-		$db = \App\Db::getInstance();
-		$caseExpression = 'CASE';
+		$maxSequence = (new \App\Db\Query())->from('vtiger_field')
+			->where(['block' => $blockId, 'presence' => [0, 2]])->max('sequence');
 		foreach ($fieldIdsList as $fieldId) {
-			$caseExpression .= " WHEN fieldid = {$db->quoteValue($fieldId)} THEN {$db->quoteValue($maxSequence + 1)}";
+			++$maxSequence;
+			$fieldInstance = self::getInstance($fieldId);
+			$fieldInstance->set('sequence', $maxSequence);
+			$fieldInstance->set('presence', 2);
+			$fieldInstance->save();
 		}
-		$caseExpression .= ' ELSE sequence END';
-		$db->createCommand()
-			->update('vtiger_field', [
-				'presence' => 2,
-				'sequence' => new \yii\db\Expression($caseExpression),
-			], ['fieldid' => $fieldIdsList])->execute();
-		\App\Cache::clear();
-		\App\Colors::generate('picklist');
+	}
+
+	/**
+	 * Set source field model.
+	 *
+	 * @param Vtiger_Field_Model $fieldModel
+	 *
+	 * @return $this
+	 */
+	public function setSourceField(Vtiger_Field_Model $fieldModel)
+	{
+		$this->sourceFieldModel = $fieldModel;
+
+		return $this;
+	}
+
+	/**
+	 * Get source field model.
+	 *
+	 * @return Vtiger_Field_Model|null
+	 */
+	public function getSourceField(): ?Vtiger_Field_Model
+	{
+		return $this->sourceFieldModel;
+	}
+
+	/**
+	 * Get module model.
+	 *
+	 * @return Vtiger_Module_Model
+	 */
+	public function getModule()
+	{
+		return $this->getSourceField() ? $this->getSourceField()->getModule() : parent::getModule();
 	}
 
 	/**
@@ -173,19 +249,14 @@ class Settings_LayoutEditor_Field_Model extends Vtiger_Field_Model
 	 *
 	 * @return bool - true if we can make a field mandatory and non mandatory , false if we cant change previous state
 	 */
-	public function isMandatoryOptionDisabled()
+	public function isMandatoryOptionDisabled(): bool
 	{
-		$moduleModel = $this->getModule();
-		$complusoryMandatoryFieldList = $moduleModel->getCumplosoryMandatoryFieldList();
-		//uitypes for which mandatory switch is disabled
-		$mandatoryRestrictedUitypes = ['4', '70'];
-		if (\in_array($this->getName(), $complusoryMandatoryFieldList)) {
-			return true;
+		$compulsoryMandatoryFieldList = [];
+		if (!$this->getSourceField()) {
+			$compulsoryMandatoryFieldList = $this->getModule()->getEntityInstance()->mandatory_fields ?? [];
 		}
-		if (\in_array($this->get('uitype'), $mandatoryRestrictedUitypes)) {
-			return true;
-		}
-		return false;
+
+		return \in_array($this->getName(), $compulsoryMandatoryFieldList) || \in_array($this->get('uitype'), ['4', '70']);
 	}
 
 	/**
@@ -193,12 +264,13 @@ class Settings_LayoutEditor_Field_Model extends Vtiger_Field_Model
 	 *
 	 * @return bool
 	 */
-	public function isActiveOptionDisabled()
+	public function isActiveOptionDisabled(): bool
 	{
-		if (0 == $this->get('presence') || 306 == $this->get('uitype') || $this->isMandatoryOptionDisabled()) {
-			return true;
+		if (!($sourceField = $this->getSourceField())) {
+			$sourceField = $this;
 		}
-		return false;
+
+		return 0 === (int) $sourceField->get('presence') || 306 === (int) $sourceField->get('uitype') || $this->isMandatoryOptionDisabled();
 	}
 
 	/**
@@ -233,12 +305,22 @@ class Settings_LayoutEditor_Field_Model extends Vtiger_Field_Model
 	 *
 	 * @return bool
 	 */
-	public function isDefaultValueOptionDisabled()
+	public function isDefaultValueOptionDisabled(): bool
 	{
 		if ($this->isMandatoryOptionDisabled() || $this->isReferenceField() || 'image' === $this->getFieldDataType() || 'multiImage' === $this->getFieldDataType()) {
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * A function that will determine if the default value option is disabled for an WebserviceApps configuration.
+	 *
+	 * @return bool
+	 */
+	public function isDefaultValueForWebservice(): bool
+	{
+		return !(\in_array($this->get('uitype'), ['4', '70']) || 'image' === $this->getFieldDataType() || 'multiImage' === $this->getFieldDataType());
 	}
 
 	/**
@@ -254,10 +336,15 @@ class Settings_LayoutEditor_Field_Model extends Vtiger_Field_Model
 	/**
 	 * Function to check field is editable or not.
 	 *
+	 * @param string $viewName
+	 *
 	 * @return bool true/false
 	 */
-	public function isEditable()
+	public function isEditable(string $viewName = 'Edit'): bool
 	{
+		if ('ModComments' === $this->getModuleName() && \in_array($this->getName(), ['commentcontent', 'userid', 'created_user_id', 'customer', 'reasontoedit', 'parents', 'assigned_user_id', 'creator', 'modifiedtime', 'related_to', 'createdtime', 'parent_comments'])) {
+			return false;
+		}
 		return true;
 	}
 
@@ -310,12 +397,8 @@ class Settings_LayoutEditor_Field_Model extends Vtiger_Field_Model
 		return $fieldModelsList;
 	}
 
-	/**
-	 * Function to get the field details.
-	 *
-	 * @return <Array> - array of field values
-	 */
-	public function getFieldInfo()
+	/** {@inheritdoc} */
+	public function getFieldInfo(): array
 	{
 		$fieldInfo = parent::getFieldInfo();
 		$fieldInfo['isQuickCreateDisabled'] = $this->isQuickCreateOptionDisabled();
@@ -324,5 +407,215 @@ class Settings_LayoutEditor_Field_Model extends Vtiger_Field_Model
 		$fieldInfo['isMassEditDisabled'] = $this->isMassEditOptionDisabled();
 		$fieldInfo['isDefaultValueDisabled'] = $this->isDefaultValueOptionDisabled();
 		return $fieldInfo;
+	}
+
+	/**
+	 * Get webservice data.
+	 *
+	 * @param int $webserviceApp
+	 *
+	 * @return array
+	 */
+	public function getWebserviceData(int $webserviceApp): array
+	{
+		if (isset($this->webserviceData)) {
+			return $this->webserviceData;
+		}
+		return $this->webserviceData = (new \App\Db\Query())->from('w_#__fields_server')->where(['fieldid' => $this->getId(), 'serverid' => $webserviceApp])->one(\App\Db::getInstance('webservice')) ?: [];
+	}
+
+	/**
+	 * Load webservice data.
+	 *
+	 * @param int $webserviceApp
+	 *
+	 * @return void
+	 */
+	public function loadWebserviceData(int $webserviceApp): void
+	{
+		$data = $this->getWebserviceData($webserviceApp);
+		if (empty($data['is_default'])) {
+			$this->set('defaultvalue', '');
+		} else {
+			$this->set('defaultvalue', $data['default_value']);
+		}
+		if (!empty($data['visibility'])) {
+			$this->set('displaytype', $data['visibility']);
+		}
+	}
+
+	/**
+	 * Update webservice data.
+	 *
+	 * @param array $data
+	 * @param int   $webserviceApp
+	 *
+	 * @return void
+	 */
+	public function updateWebserviceData(array $data, int $webserviceApp): void
+	{
+		$createCommand = \App\Db::getInstance('webservice')->createCommand();
+		if ($this->getWebserviceData($webserviceApp)) {
+			$createCommand->update('w_#__fields_server', $data, ['fieldid' => $this->getId(), 'serverid' => $webserviceApp])->execute();
+		} else {
+			$createCommand->insert('w_#__fields_server', \App\Utils::merge($data, ['fieldid' => $this->getId(), 'serverid' => $webserviceApp]))->execute();
+		}
+		\App\Cache::delete('WebserviceAppsFields', $webserviceApp);
+	}
+
+	/**
+	 * Get fields instance by name.
+	 *
+	 * @param string $name
+	 *
+	 * @return Vtiger_Field_Model
+	 */
+	public function getFieldItemByName($name)
+	{
+		if (isset($this->items[$name])) {
+			return $this->items[$name];
+		}
+		$params = [];
+		$itemModel = null;
+		$qualifiedModuleName = 'Settings:LayoutEditor';
+		switch ($name) {
+			case 'icon':
+				$params = [
+					'name' => $name,
+					'column' => $name,
+					'label' => 'LBL_ICON',
+					'uitype' => 62,
+					'typeofdata' => 'V~O',
+					'maximumlength' => '255',
+					'purifyType' => \App\Purifier::TEXT,
+					'table' => 'vtiger_field',
+					'fieldDataType' => 'icon'
+				];
+				break;
+			case 'fieldlabel':
+				$params = [
+					'name' => $name,
+					'column' => $name,
+					'label' => 'LBL_LABEL',
+					'uitype' => 1,
+					'typeofdata' => 'V~M',
+					'maximumlength' => '50',
+					'purifyType' => \App\Purifier::TEXT
+				];
+				break;
+			case 'mandatory':
+				$params = [
+					'name' => $name,
+					'column' => $name,
+					'label' => 'LBL_MANDATORY_FIELD',
+					'uitype' => 56,
+					'typeofdata' => 'C~O',
+					'maximumlength' => '1',
+					'purifyType' => \App\Purifier::BOOL
+				];
+				break;
+			case 'presence':
+				$params = [
+					'name' => $name,
+					'column' => $name,
+					'label' => 'LBL_ACTIVE',
+					'uitype' => 56,
+					'typeofdata' => 'C~O',
+					'maximumlength' => '1',
+					'purifyType' => \App\Purifier::BOOL
+				];
+				break;
+			case 'quickcreate':
+				$params = [
+					'name' => $name,
+					'column' => $name,
+					'label' => 'LBL_QUICK_CREATE',
+					'uitype' => 56,
+					'typeofdata' => 'C~O',
+					'maximumlength' => '1',
+					'purifyType' => \App\Purifier::BOOL
+				];
+				break;
+			case 'summaryfield':
+				$params = [
+					'name' => $name,
+					'column' => $name,
+					'label' => 'LBL_SUMMARY_FIELD',
+					'uitype' => 56,
+					'typeofdata' => 'C~O',
+					'maximumlength' => '1',
+					'purifyType' => \App\Purifier::BOOL
+				];
+				break;
+			case 'header_field':
+				$params = [
+					'name' => $name,
+					'column' => $name,
+					'label' => 'LBL_HEADER_FIELD',
+					'uitype' => 56,
+					'typeofdata' => 'C~O',
+					'maximumlength' => '1',
+					'purifyType' => \App\Purifier::BOOL
+				];
+				break;
+			case 'masseditable':
+				$params = [
+					'name' => $name,
+					'column' => $name,
+					'label' => 'LBL_MASS_EDIT',
+					'uitype' => 56,
+					'typeofdata' => 'C~O',
+					'maximumlength' => '1',
+					'purifyType' => \App\Purifier::BOOL
+				];
+				break;
+			case 'generatedtype':
+				$params = [
+					'name' => $name,
+					'column' => $name,
+					'label' => 'LBL_GENERATED_TYPE',
+					'uitype' => 56,
+					'typeofdata' => 'C~O',
+					'maximumlength' => '1',
+					'purifyType' => \App\Purifier::BOOL,
+					'isEditableReadOnly' => !App\Config::developer('CHANGE_GENERATEDTYPE')
+				];
+				break;
+			case 'defaultvalue':
+				$params = [
+					'name' => $name,
+					'column' => $name,
+					'label' => 'LBL_DEFAULT_VALUE',
+					'uitype' => 56,
+					'typeofdata' => 'C~O',
+					'maximumlength' => '1',
+					'purifyType' => \App\Purifier::BOOL
+				];
+				break;
+			case 'fieldMask':
+				$params = [
+					'name' => $name,
+					'column' => $name,
+					'label' => 'LBL_FIELD_MASK',
+					'uitype' => 1,
+					'typeofdata' => 'V~O',
+					'maximumlength' => '25',
+					'purifyType' => \App\Purifier::TEXT,
+					'tooltip' => 'LBL_FIELD_MASK_INFO'
+				];
+				break;
+			default:
+				break;
+		}
+		if ($params) {
+			$itemModel = \Vtiger_Field_Model::init($qualifiedModuleName, $params, $name)->setSourceField($this);
+			if (null !== $this->get($name)) {
+				$itemModel->set('fieldvalue', $this->get($name));
+			} elseif (($defaultValue = $itemModel->get('defaultvalue')) !== null) {
+				$itemModel->set('fieldvalue', $defaultValue);
+			}
+		}
+
+		return $itemModel;
 	}
 }

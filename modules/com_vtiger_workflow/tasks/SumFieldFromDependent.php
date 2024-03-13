@@ -2,8 +2,8 @@
 /**
  * Add filed values from related module fields Handler Class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Dudek <a.dudek@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
@@ -16,17 +16,13 @@ class SumFieldFromDependent extends VTTask
 	 */
 	public $executeImmediately = true;
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getFieldNames()
 	{
 		return ['targetField', 'sourceField', 'conditions'];
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function doTask($recordModel)
 	{
 		[$referenceField, $moduleName, $fieldName] = explode('::', $this->targetField);

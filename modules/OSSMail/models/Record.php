@@ -1,34 +1,80 @@
 <?php
-
 /**
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * OSSMail record model file.
+ *
+ * @package Model
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
+/**
+ * OSSMail record model class.
+ */
 class OSSMail_Record_Model extends Vtiger_Record_Model
 {
+	/** @var int Mailbox Status: Active */
+	const MAIL_BOX_STATUS_ACTIVE = 0;
+
+	/** @var int Mailbox Status: Invalid access data */
+	const MAIL_BOX_STATUS_INVALID_ACCESS = 1;
+
+	/** @var int Mailbox Status: Blocked temporarily */
+	const MAIL_BOX_STATUS_BLOCKED_TEMP = 2;
+
+	/** @var int Mailbox Status: Disabled */
+	const MAIL_BOX_STATUS_DISABLED = 3;
+
+	/** @var int Mailbox Status: Blocked permanently */
+	const MAIL_BOX_STATUS_BLOCKED_PERM = 4;
+
+	/** @var string[] Mailbox status labels */
+	const MAIL_BOX_STATUS_LABELS = [
+		self::MAIL_BOX_STATUS_INVALID_ACCESS => 'LBL_ACCOUNT_INVALID_ACCESS',
+		self::MAIL_BOX_STATUS_DISABLED => 'LBL_ACCOUNT_IS_DISABLED',
+		self::MAIL_BOX_STATUS_BLOCKED_TEMP => 'LBL_ACCOUNT_IS_BLOCKED_TEMP',
+		self::MAIL_BOX_STATUS_BLOCKED_PERM => 'LBL_ACCOUNT_IS_BLOCKED_PERM',
+	];
+
+	/**
+	 * Get status label.
+	 *
+	 * @param int $status
+	 *
+	 * @return string
+	 */
+	public static function getStatusLabel(int $status): string
+	{
+		return self::MAIL_BOX_STATUS_LABELS[$status];
+	}
+
 	/**
 	 * Return accounts array.
 	 *
 	 * @param int|bool $user
 	 * @param bool     $onlyMy
 	 * @param bool     $password
+	 * @param bool     $onlyActive
 	 *
 	 * @return array
 	 */
-	public static function getAccountsList($user = false, $onlyMy = false, $password = false)
+	public static function getAccountsList($user = false, bool $onlyMy = false, bool $password = false, bool $onlyActive = true)
 	{
 		$users = [];
 		$query = (new \App\Db\Query())->from('roundcube_users');
+		if ($onlyActive) {
+			$query->where(['crm_status' => [self::MAIL_BOX_STATUS_INVALID_ACCESS, self::MAIL_BOX_STATUS_ACTIVE]]);
+		}
 		if ($user) {
-			$query->where(['user_id' => $user]);
+			$query->andWhere(['user_id' => $user]);
 		}
 		if ($onlyMy) {
 			$userModel = \App\User::getCurrentUserModel();
 			$crmUsers = $userModel->getGroups();
 			$crmUsers[] = $userModel->getId();
-			$query->andWhere(['crm_user_id' => $crmUsers]);
+			$query->innerJoin('roundcube_users_autologin', 'roundcube_users_autologin.rcuser_id = roundcube_users.user_id');
+			$query->andWhere(['roundcube_users_autologin.crmuser_id' => $crmUsers]);
 		}
 		if ($password) {
 			$query->andWhere(['<>', 'password', '']);
@@ -36,10 +82,9 @@ class OSSMail_Record_Model extends Vtiger_Record_Model
 		$dataReader = $query->createCommand()->query();
 		while ($row = $dataReader->read()) {
 			$row['actions'] = empty($row['actions']) ? [] : explode(',', $row['actions']);
-			$users[] = $row;
+			$users[$row['user_id']] = $row;
 		}
 		$dataReader->close();
-
 		return $users;
 	}
 
@@ -89,12 +134,13 @@ class OSSMail_Record_Model extends Vtiger_Record_Model
 	 * @param string $folder     Character encoding UTF7-IMAP
 	 * @param bool   $dieOnError
 	 * @param array  $config
+	 * @param array  $account
 	 *
-	 * @return resource
+	 * @return IMAP\Connection|false
 	 */
-	public static function imapConnect($user, $password, $host = false, $folder = 'INBOX', $dieOnError = true, $config = false)
+	public static function imapConnect($user, $password, $host = '', $folder = 'INBOX', $dieOnError = true, $config = [], array $account = [])
 	{
-		\App\Log::trace("Entering OSSMail_Record_Model::imapConnect($user , $password , $folder) method ...");
+		\App\Log::trace("Entering OSSMail_Record_Model::imapConnect($user , '****' , $folder) method ...");
 		if (!$config) {
 			$config = self::loadRoundcubeConfig();
 		}
@@ -102,33 +148,36 @@ class OSSMail_Record_Model extends Vtiger_Record_Model
 		if (isset(self::$imapConnectCache[$cacheName])) {
 			return self::$imapConnectCache[$cacheName];
 		}
-		if (!$host) {
-			$host = key($config['default_host']);
-		}
 		$parseHost = parse_url($host);
-		$validatecert = '';
+		if (empty($parseHost['host'])) {
+			$hosts = [];
+			if ($imapHost = $config['imap_host'] ?? '') {
+				$hosts = \is_string($imapHost) ? [$imapHost => $imapHost] : $imapHost;
+			}
+			foreach ($hosts as $configHost => $hostDomain) {
+				$parsedConfigHost = parse_url($configHost);
+				if (isset($parsedConfigHost['host']) && $parsedConfigHost['host'] === $host) {
+					$parseHost = $parsedConfigHost;
+					break;
+				}
+			}
+		}
+		$port = 143;
+		$sslMode = 'tls';
 		if (!empty($parseHost['host'])) {
 			$host = $parseHost['host'];
 			$sslMode = (isset($parseHost['scheme']) && \in_array($parseHost['scheme'], ['ssl', 'imaps', 'tls'])) ? $parseHost['scheme'] : null;
 			if (!empty($parseHost['port'])) {
 				$port = $parseHost['port'];
-			} elseif ($sslMode && 'tls' !== $sslMode && (!$config['default_port'] || 143 == $config['default_port'])) {
+			} elseif ($sslMode && 'tls' !== $sslMode) {
 				$port = 993;
 			}
-		} else {
-			if (993 == $config['default_port']) {
-				$sslMode = 'ssl';
-			} else {
-				$sslMode = 'tls';
-			}
 		}
-		if (empty($port)) {
-			$port = $config['default_port'];
-		}
+		$validateCert = '';
 		if (!$config['validate_cert'] && $config['imap_open_add_connection_type']) {
-			$validatecert = '/novalidate-cert';
+			$validateCert = '/novalidate-cert';
 		}
-		if ($config['imap_open_add_connection_type']) {
+		if ($config['imap_open_add_connection_type'] && $sslMode) {
 			$sslMode = '/' . $sslMode;
 		} else {
 			$sslMode = '';
@@ -142,20 +191,47 @@ class OSSMail_Record_Model extends Vtiger_Record_Model
 		if (isset($config['imap_params'])) {
 			$params = $config['imap_params'];
 		}
-		static::$imapConnectMailbox = "{{$host}:{$port}/imap{$sslMode}{$validatecert}}{$folder}";
-		\App\Log::trace('imap_open(({' . static::$imapConnectMailbox . ", $user , $password. $options, $maxRetries, " . var_export($params, true) . ') method ...');
-		\App\Log::beginProfile(__METHOD__ . '|imap_open', 'Mail|IMAP');
+		static::$imapConnectMailbox = "{{$host}:{$port}/imap{$sslMode}{$validateCert}}{$folder}";
+		\App\Log::trace('imap_open(({' . static::$imapConnectMailbox . ", $user , '****'. $options, $maxRetries, " . var_export($params, true) . ') method ...');
+		\App\Log::beginProfile(__METHOD__ . '|imap_open|' . $user, 'Mail|IMAP');
 		$mbox = imap_open(static::$imapConnectMailbox, $user, $password, $options, $maxRetries, $params);
-		\App\Log::endProfile(__METHOD__ . '|imap_open', 'Mail|IMAP');
+		\App\Log::endProfile(__METHOD__ . '|imap_open|' . $user, 'Mail|IMAP');
 		self::$imapConnectCache[$cacheName] = $mbox;
 		if ($mbox) {
+			if ($account) {
+				\App\Db::getInstance()->createCommand()
+					->update('roundcube_users', ['crm_error' => null, 'crm_status' => self::MAIL_BOX_STATUS_ACTIVE], ['user_id' => $account['user_id']])
+					->execute();
+			}
 			\App\Log::trace('Exit OSSMail_Record_Model::imapConnect() method ...');
-			register_shutdown_function(function () use ($mbox) {
-				\App\Log::beginProfile(__METHOD__ . '|imap_close', 'Mail|IMAP');
-				imap_close($mbox);
-				\App\Log::endProfile(__METHOD__ . '|imap_close', 'Mail|IMAP');
+			register_shutdown_function(function () use ($mbox, $user) {
+				try {
+					\App\Log::beginProfile('OSSMail_Record_Model|imap_close|' . $user, 'Mail|IMAP');
+					imap_close($mbox);
+					\App\Log::endProfile('OSSMail_Record_Model|imap_close|' . $user, 'Mail|IMAP');
+				} catch (\Throwable $e) {
+					\App\Log::error($e->getMessage() . PHP_EOL . $e->__toString());
+					throw $e;
+				}
 			});
 		} else {
+			if ($account) {
+				$status = self::MAIL_BOX_STATUS_ACTIVE == $account['crm_status'] ? self::MAIL_BOX_STATUS_INVALID_ACCESS : self::MAIL_BOX_STATUS_BLOCKED_TEMP;
+				[$date] = explode('||', $account['crm_error'] ?: '');
+				if (empty($date) || false === strtotime($date)) {
+					$date = date('Y-m-d H:i:s');
+				}
+				if (self::MAIL_BOX_STATUS_BLOCKED_TEMP === $status && strtotime('-' . (OSSMailScanner_Record_Model::getConfig('blocked')['permanentTime'] ?? '2 day')) > strtotime($date)) {
+					$status = self::MAIL_BOX_STATUS_BLOCKED_PERM;
+				}
+				\App\Db::getInstance()->createCommand()
+					->update('roundcube_users', [
+						'crm_error' => \App\TextUtils::textTruncate($date . '||' . imap_last_error(), 250),
+						'crm_status' => $status,
+						'failed_login' => date('Y-m-d H:i:s'),
+					], ['user_id' => $account['user_id']])
+					->execute();
+			}
 			\App\Log::error('Error OSSMail_Record_Model::imapConnect(' . static::$imapConnectMailbox . '): ' . imap_last_error());
 			if ($dieOnError) {
 				throw new \App\Exceptions\AppException('IMAP_ERROR' . ': ' . imap_last_error());
@@ -169,53 +245,47 @@ class OSSMail_Record_Model extends Vtiger_Record_Model
 	 *
 	 * @param array $users
 	 *
-	 * @return bool
-	 */
-	public static function updateMailBoxmsgInfo($users): bool
-	{
-		\App\Log::trace(__METHOD__ . ' - Start');
-		$dbCommand = \App\Db::getInstance()->createCommand();
-		if (0 == \count($users)) {
-			return false;
-		}
-		$sUsers = implode(',', $users);
-		$query = (new \App\Db\Query())->from('yetiforce_mail_quantities')->where(['userid' => $sUsers, 'status' => 1]);
-		if ($query->count()) {
-			return false;
-		}
-		$dbCommand->update('yetiforce_mail_quantities', ['status' => 1], ['userid' => $sUsers])->execute();
-		foreach ($users as $user) {
-			$account = self::getMailAccountDetail($user);
-			if (false !== $account) {
-				$result = (new \App\Db\Query())->from('yetiforce_mail_quantities')->where(['userid' => $user])->count();
-				$mbox = self::imapConnect($account['username'], \App\Encryption::getInstance()->decrypt($account['password']), $account['mail_host'], 'INBOX', false);
-				if ($mbox) {
-					\App\Log::beginProfile(__METHOD__ . '|imap_status', 'Mail|IMAP');
-					$info = imap_status($mbox, static::$imapConnectMailbox, SA_UNSEEN);
-					\App\Log::endProfile(__METHOD__ . '|imap_status', 'Mail|IMAP');
-					if ($result > 0) {
-						$dbCommand->update('yetiforce_mail_quantities', ['num' => $info->unseen, 'status' => 0], ['userid' => $user])->execute();
-					} else {
-						$dbCommand->insert('yetiforce_mail_quantities', ['num' => $info->unseen, 'userid' => $user])->execute();
-					}
-				}
-			}
-		}
-		\App\Log::trace(__METHOD__ . ' - End');
-		return true;
-	}
-
-	/**
-	 * Return users messages count.
-	 *
-	 * @param array $users
-	 *
 	 * @return array
 	 */
-	public static function getMailBoxmsgInfo($users): array
+	public static function updateMailBoxCounter(array $users): array
 	{
-		$query = (new \App\Db\Query())->select(['userid', 'num'])->from('yetiforce_mail_quantities')->where(['userid' => $users]);
-		return $query->createCommand()->queryAllByGroup(0);
+		if (empty($users)) {
+			return [];
+		}
+		$dbCommand = \App\Db::getInstance()->createCommand();
+		$interval = \App\Mail::getConfig('mailIcon', 'timeCheckingMail') ?: 30;
+		$date = strtotime("-{$interval} seconds");
+		$counter = [];
+		$all = (new \App\Db\Query())->from('u_#__mail_quantities')->where(['userid' => $users])->indexBy('userid')->all();
+		$accounts = OSSMail_Autologin_Model::getAutologinUsers();
+		foreach ($users as $user) {
+			if (empty($all[$user]['date']) || $date > strtotime($all[$user]['date'])) {
+				if (isset($accounts[$user])) {
+					if (empty($all[$user])) {
+						$dbCommand->insert('u_#__mail_quantities', ['userid' => $user, 'num' => 0, 'date' => date('Y-m-d H:i:s')])->execute();
+					} else {
+						$dbCommand->update('u_#__mail_quantities', ['date' => date('Y-m-d H:i:s')], ['userid' => $user])->execute();
+					}
+					try {
+						$mailAccount = \App\Mail\Account::getInstanceById($user);
+						$mailbox = $mailAccount->openImap();
+						$folder = $mailbox->getFolderByName('INBOX');
+						$count = 0;
+						if ($folder) {
+							$count = $folder->query()->unseen()->count();
+						}
+						$counter[$user] = $count;
+						$dbCommand->update('u_#__mail_quantities', ['num' => $count, 'date' => date('Y-m-d H:i:s')], ['userid' => $user])->execute();
+					} catch (\Throwable $th) {
+						\App\Log::error($th->__toString());
+					}
+				}
+			} else {
+				$counter[$user] = $all[$user]['num'] ?? 0;
+			}
+		}
+
+		return $counter;
 	}
 
 	/**
@@ -258,12 +328,14 @@ class OSSMail_Record_Model extends Vtiger_Record_Model
 		$mail->set('reply_toaddress', \App\Purifier::purify($mail->getEmail('reply_to')));
 		$mail->set('cc_email', \App\Purifier::purify($mail->getEmail('cc')));
 		$mail->set('bcc_email', \App\Purifier::purify($mail->getEmail('bcc')));
-		$mail->set('subject', isset($header->subject) ? \App\TextParser::textTruncate(\App\Purifier::purify(self::decodeText($header->subject)), 65535, false) : '');
+		$mail->set('firstLetterBg', strtoupper(\App\TextUtils::textTruncate(trim(strip_tags(App\Purifier::purify($mail->getEmail('from')))), 1, false)));
+		$mail->set('subject', isset($header->subject) ? \App\TextUtils::textTruncate(\App\Purifier::purify(self::decodeText($header->subject)), 65535, false) : '');
 		$mail->set('date', date('Y-m-d H:i:s', $header->udate));
 		if ($fullMode) {
 			$structure = self::getBodyAttach($mbox, $id, $msgno);
 			$mail->set('body', $structure['body']);
 			$mail->set('attachments', $structure['attachment']);
+			$mail->set('isHtml', $structure['isHtml']);
 
 			$clean = '';
 			\App\Log::beginProfile(__METHOD__ . '|imap_fetch_overview', 'Mail|IMAP');
@@ -299,7 +371,7 @@ class OSSMail_Record_Model extends Vtiger_Record_Model
 		if (isset(self::$usersCache[$userid])) {
 			return self::$usersCache[$userid];
 		}
-		$user = (new \App\Db\Query())->from('roundcube_users')->where(['user_id' => $userid])->one();
+		$user = (new \App\Db\Query())->from('roundcube_users')->where(['user_id' => $userid, 'crm_status' => [self::MAIL_BOX_STATUS_INVALID_ACCESS, self::MAIL_BOX_STATUS_ACTIVE]])->one();
 		self::$usersCache[$userid] = $user;
 		return $user;
 	}
@@ -379,6 +451,7 @@ class OSSMail_Record_Model extends Vtiger_Record_Model
 		return [
 			'body' => $body,
 			'attachment' => $attachment,
+			'isHtml' => !empty($mail['textHtml']),
 		];
 	}
 
@@ -396,11 +469,11 @@ class OSSMail_Record_Model extends Vtiger_Record_Model
 	{
 		if ($partNum) {
 			\App\Log::beginProfile(__METHOD__ . '|imap_fetchbody', 'Mail|IMAP');
-			$data = imap_fetchbody($mbox, $mail['id'], $partNum, FT_UID | FT_PEEK);
+			$data = $orgData = imap_fetchbody($mbox, $mail['id'], $partNum, FT_UID | FT_PEEK);
 			\App\Log::endProfile(__METHOD__ . '|imap_fetchbody', 'Mail|IMAP');
 		} else {
 			\App\Log::beginProfile(__METHOD__ . '|imap_body', 'Mail|IMAP');
-			$data = imap_body($mbox, $mail['id'], FT_UID | FT_PEEK);
+			$data = $orgData = imap_body($mbox, $mail['id'], FT_UID | FT_PEEK);
 			\App\Log::endProfile(__METHOD__ . '|imap_body', 'Mail|IMAP');
 		}
 		if (1 == $partStructure->encoding) {
@@ -461,10 +534,16 @@ class OSSMail_Record_Model extends Vtiger_Record_Model
 				if (!isset($mail['textPlain'])) {
 					$mail['textPlain'] = '';
 				}
+				if (isset($params['format']) && 'flowed' === $params['format']) {
+					$uuDecode['text'] = self::unfoldFlowed($uuDecode['text'], isset($params['delsp']) && 'yes' === strtolower($params['delsp']));
+				}
 				$mail['textPlain'] .= $uuDecode['text'];
 			} else {
 				if (!isset($mail['textHtml'])) {
 					$mail['textHtml'] = '';
+				}
+				if ($data && '<' !== $data[0] && '<' === $orgData[0]) {
+					$data = $orgData;
 				}
 				$mail['textHtml'] .= $data;
 			}
@@ -526,6 +605,65 @@ class OSSMail_Record_Model extends Vtiger_Record_Model
 	}
 
 	/**
+	 * Parse format=flowed message body.
+	 *
+	 * @param string $text
+	 * @param bool   $delSp
+	 *
+	 * @return string
+	 */
+	protected static function unfoldFlowed(string $text, bool $delSp = false): string
+	{
+		$text = preg_split('/\r?\n/', $text);
+		$last = -1;
+		$qLevel = 0;
+		foreach ($text as $idx => $line) {
+			if ($q = strspn($line, '>')) {
+				$line = substr($line, $q);
+				if (isset($line[0]) && ' ' === $line[0]) {
+					$line = substr($line, 1);
+				}
+				if ($q == $qLevel
+					&& isset($text[$last]) && ' ' == $text[$last][\strlen($text[$last]) - 1]
+					&& !preg_match('/^>+ {0,1}$/', $text[$last])
+				) {
+					if ($delSp) {
+						$text[$last] = substr($text[$last], 0, -1);
+					}
+					$text[$last] .= $line;
+					unset($text[$idx]);
+				} else {
+					$last = $idx;
+				}
+			} else {
+				if ('-- ' == $line) {
+					$last = $idx;
+				} else {
+					if (isset($line[0]) && ' ' === $line[0]) {
+						$line = substr($line, 1);
+					}
+					if (isset($text[$last]) && $line && !$qLevel
+						&& '-- ' !== $text[$last]
+						&& isset($text[$last][\strlen($text[$last]) - 1]) && ' ' === $text[$last][\strlen($text[$last]) - 1]
+					) {
+						if ($delSp) {
+							$text[$last] = substr($text[$last], 0, -1);
+						}
+						$text[$last] .= $line;
+						unset($text[$idx]);
+					} else {
+						$text[$idx] = $line;
+						$last = $idx;
+					}
+				}
+			}
+			$qLevel = $q;
+		}
+
+		return implode("\r\n", $text);
+	}
+
+	/**
 	 * Check if url is encoded.
 	 *
 	 * @param string $string
@@ -572,7 +710,7 @@ class OSSMail_Record_Model extends Vtiger_Record_Model
 		$account = self::getAccountsList($user);
 		$account = reset($account);
 		$folders = false;
-		$mbox = self::imapConnect($account['username'], \App\Encryption::getInstance()->decrypt($account['password']), $account['mail_host'], 'INBOX', false);
+		$mbox = self::imapConnect($account['username'], \App\Encryption::getInstance()->decrypt($account['password']), $account['mail_host'], 'INBOX', false, [], $account);
 		if ($mbox) {
 			$folders = [];
 			$ref = '{' . $account['mail_host'] . '}';
@@ -603,17 +741,22 @@ class OSSMail_Record_Model extends Vtiger_Record_Model
 	/**
 	 * Fetch mails from IMAP.
 	 *
-	 * @param int $user
+	 * @param int|null $user
 	 *
 	 * @return array
 	 */
-	public static function getMailsFromIMAP($user = false)
+	public static function getMailsFromIMAP(?int $user = null)
 	{
-		$account = self::getAccountsList($user, true);
+		$accounts = self::getAccountsList(false, true);
 		$mails = [];
 		$mailLimit = 5;
-		if ($account) {
-			$imap = self::imapConnect($account[0]['username'], \App\Encryption::getInstance()->decrypt($account[0]['password']), $account[0]['mail_host']);
+		if ($accounts) {
+			if ($user && isset($accounts[$user])) {
+				$account = $accounts[$user];
+			} else {
+				$account = reset($accounts);
+			}
+			$imap = self::imapConnect($account['username'], \App\Encryption::getInstance()->decrypt($account['password']), $account['mail_host'], 'INBOX', true, [], $account);
 			\App\Log::beginProfile(__METHOD__ . '|imap_num_msg', 'Mail|IMAP');
 			$numMessages = imap_num_msg($imap);
 			\App\Log::endProfile(__METHOD__ . '|imap_num_msg', 'Mail|IMAP');
@@ -647,5 +790,18 @@ class OSSMail_Record_Model extends Vtiger_Record_Model
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Update user data for account.
+	 *
+	 * @param int   $userId
+	 * @param array $data
+	 *
+	 * @return bool
+	 */
+	public static function setAccountUserData(int $userId, array $data): bool
+	{
+		return \App\Db::getInstance()->createCommand()->update('roundcube_users', $data, ['user_id' => $userId])->execute();
 	}
 }

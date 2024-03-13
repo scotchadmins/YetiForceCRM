@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce Sp. z o.o.
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Users_DetailRecordStructure_Model extends Vtiger_DetailRecordStructure_Model
@@ -28,7 +28,7 @@ class Users_DetailRecordStructure_Model extends Vtiger_DetailRecordStructure_Mod
 			if (!empty($fieldModelList)) {
 				$values[$blockLabel] = [];
 				foreach ($fieldModelList as $fieldName => $fieldModel) {
-					$fieldModel->set('rocordId', $recordId);
+					$fieldModel->set('recordId', $recordId);
 					if (156 == $fieldModel->get('uitype') && true === $currentUserModel->isAdminUser()) {
 						$fieldModel->set('editable', $currentUserModel->getId() !== $recordId);
 						$fieldValue = false;

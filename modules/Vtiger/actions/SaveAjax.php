@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Vtiger_SaveAjax_Action extends Vtiger_Save_Action
@@ -29,15 +29,14 @@ class Vtiger_SaveAjax_Action extends Vtiger_Save_Action
 			if (!$fieldModel->isViewable()) {
 				continue;
 			}
-			$recordFieldValue = $this->record->get($fieldName);
 			$prevDisplayValue = false;
 			if (false !== ($recordFieldValuePrev = $this->record->getPreviousValue($fieldName))) {
 				$prevDisplayValue = $fieldModel->getDisplayValue($recordFieldValuePrev, $this->record->getId(), $this->record);
 			}
 			$result[$fieldName] = [
-				'value' => \App\Purifier::encodeHtml($recordFieldValue),
-				'display_value' => $fieldModel->getDisplayValue($recordFieldValue, $this->record->getId(), $this->record),
-				'prev_display_value' => $prevDisplayValue
+				'value' => \App\Purifier::encodeHtml($this->record->getRawValue($fieldName)),
+				'display_value' => $fieldModel->getDisplayValue($this->record->get($fieldName), $this->record->getId(), $this->record),
+				'prev_display_value' => $prevDisplayValue,
 			];
 		}
 		$result['_recordLabel'] = $this->record->getName();
@@ -46,6 +45,13 @@ class Vtiger_SaveAjax_Action extends Vtiger_Save_Action
 		$result['_isEditable'] = $this->record->isEditable();
 		$result['_isViewable'] = $this->record->isViewable();
 		$result['_reload'] = \count($this->record->getPreviousValue()) > 1;
+		if (method_exists($this, 'addCustomResult')) {
+			$this->addCustomResult($result);
+		}
+		$eventHandler = $this->record->getEventHandler();
+		$eventHandler->setParams($result);
+		$eventHandler->trigger('EntityAfterSaveAjax');
+		$result = $eventHandler->getParams();
 
 		$response = new Vtiger_Response();
 		$response->setEmitType(Vtiger_Response::$EMIT_JSON);
@@ -63,7 +69,7 @@ class Vtiger_SaveAjax_Action extends Vtiger_Save_Action
 	public function getRecordModelFromRequest(App\Request $request)
 	{
 		if ('QuickEdit' !== $request->getByType('fromView') && !$request->isEmpty('record')) {
-			$recordModel = $this->record ? $this->record : Vtiger_Record_Model::getInstanceById($request->getInteger('record'), $request->getModule());
+			$recordModel = $this->record ?: Vtiger_Record_Model::getInstanceById($request->getInteger('record'), $request->getModule());
 			$fieldModel = $recordModel->getModule()->getFieldByName($request->getByType('field', 2));
 			if ($fieldModel && $fieldModel->isEditable()) {
 				$fieldModel->getUITypeModel()->setValueFromRequest($request, $recordModel, 'value');
@@ -88,6 +94,7 @@ class Vtiger_SaveAjax_Action extends Vtiger_Save_Action
 	public function setRelatedFieldsInHierarchy(Vtiger_Record_Model $recordModel, $fieldName)
 	{
 		$fieldValue = $recordModel->get($fieldName);
+		$viewName = $recordModel->isNew() ? 'Create' : 'Edit';
 		$relatedModules = \App\ModuleHierarchy::getRelationFieldByHierarchy($recordModel->getModuleName(), $fieldName);
 		if ($relatedModules && !empty($fieldValue) && $recordModel->getPreviousValue($fieldName) !== $fieldValue) {
 			$sourceModule = \App\Record::getType($fieldValue);
@@ -98,7 +105,7 @@ class Vtiger_SaveAjax_Action extends Vtiger_Save_Action
 						$toModel = $recordModel->getModule()->getFieldByName($to);
 						$relFieldModel = $relRecordModel->getModule()->getFieldByName($from[0]);
 						$relFieldValue = $relRecordModel->get($from[0]);
-						if ($relFieldValue && $relFieldModel && $toModel && $toModel->isWritable()) {
+						if ($relFieldValue && $relFieldModel && $toModel && $toModel->isWritable($viewName)) {
 							if ($toModel->isReferenceField() || $relFieldModel->isReferenceField()) {
 								$sourceType = \App\Record::getType($relFieldValue);
 								if (\in_array($sourceType, $toModel->getReferenceList())) {

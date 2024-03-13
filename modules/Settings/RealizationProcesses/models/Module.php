@@ -3,15 +3,15 @@
 /**
  * Settings RealizationProcesses module model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class Settings_RealizationProcesses_Module_Model extends Settings_Vtiger_Module_Model
 {
 	/**
 	 * Gets status.
 	 *
-	 * @return - array of status
+	 * @return array - array of status
 	 */
 	public static function getStatusNotModify()
 	{
@@ -42,7 +42,7 @@ class Settings_RealizationProcesses_Module_Model extends Settings_Vtiger_Module_
 	 * @param mixed $moduleId
 	 * @param mixed $status
 	 *
-	 * @return - array of status
+	 * @return array - array of status
 	 */
 	public static function updateStatusNotModify($moduleId, $status)
 	{

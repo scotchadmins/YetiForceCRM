@@ -6,14 +6,12 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Users_Save_Action extends Vtiger_Save_Action
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		$moduleName = $request->getModule();
@@ -26,15 +24,13 @@ class Users_Save_Action extends Vtiger_Save_Action
 			$this->record = Vtiger_Record_Model::getInstanceById($record, $moduleName);
 		} else {
 			$this->record = Vtiger_Record_Model::getCleanInstance($moduleName);
-			if (!$this->record->isCreateable()) {
+			if (!$this->record->isCreatable()) {
 				throw new \App\Exceptions\NoPermittedToRecord('ERR_NO_PERMISSIONS_FOR_THE_RECORD', 406);
 			}
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	protected function getRecordModelFromRequest(App\Request $request)
 	{
 		parent::getRecordModelFromRequest($request);
@@ -46,9 +42,7 @@ class Users_Save_Action extends Vtiger_Save_Action
 		return $this->record;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
 		if ($mode = $request->getMode()) {
@@ -75,8 +69,6 @@ class Users_Save_Action extends Vtiger_Save_Action
 				return false;
 			}
 			$this->saveRecord($request);
-			$settingsModuleModel = Settings_Users_Module_Model::getInstance();
-			$settingsModuleModel->refreshSwitchUsers();
 			if ($request->getBoolean('relationOperation')) {
 				$parentRecordModel = Vtiger_Record_Model::getInstanceById($request->getInteger('sourceRecord'), $request->getByType('sourceModule', 2));
 				$loadUrl = $parentRecordModel->getDetailViewUrl();

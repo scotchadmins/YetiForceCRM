@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com.
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 require_once 'modules/com_vtiger_workflow/VTWorkflowUtils.php';
 
@@ -63,10 +63,12 @@ class VTUpdateFieldsTask extends VTTask
 				}
 				$recordModel->set($fieldName, App\Purifier::decodeHtml($fieldValue));
 			}
-			$recordModel->setHandlerExceptions(['disableHandlerClasses' => ['Vtiger_Workflow_Handler']]);
-			$recordModel->save();
-			foreach (array_keys($recordModel->getPreviousValue()) as $fieldName) {
-				$rawRecordModel->set($fieldName, $recordModel->get($fieldName));
+			if ($recordModel->getPreviousValue()) {
+				$recordModel->setHandlerExceptions(['disableHandlerClasses' => ['Vtiger_Workflow_Handler']]);
+				$recordModel->save();
+				foreach (array_keys($recordModel->getPreviousValue()) as $fieldName) {
+					$rawRecordModel->set($fieldName, $recordModel->get($fieldName));
+				}
 			}
 		}
 	}

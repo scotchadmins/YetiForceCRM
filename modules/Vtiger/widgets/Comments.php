@@ -5,8 +5,8 @@
  *
  * @package Widget
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class Vtiger_Comments_Widget extends Vtiger_Basic_Widget
 {
@@ -17,9 +17,7 @@ class Vtiger_Comments_Widget extends Vtiger_Basic_Widget
 	 */
 	public $dbParams = ['relatedmodule' => 'ModComments'];
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function isPermitted(): bool
 	{
 		return parent::isPermitted() && $this->moduleModel->isCommentEnabled();
@@ -35,9 +33,7 @@ class Vtiger_Comments_Widget extends Vtiger_Basic_Widget
 		return 'module=' . $this->Module . '&view=Detail&record=' . $this->Record . '&mode=showRecentComments&page=1&limit=' . $this->Data['limit'];
 	}
 
-	/**
-	 * Function return config template name.
-	 */
+	/** {@inheritdoc} */
 	public function getConfigTplName()
 	{
 		return 'CommentsConfig';

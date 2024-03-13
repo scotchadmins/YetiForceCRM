@@ -4,8 +4,8 @@
  *
  * @package   Settings.Model
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -97,21 +97,26 @@ class Settings_FieldsDependency_Record_Model extends Settings_Vtiger_Record_Mode
 	 */
 	public static function sanitize(array $data): array
 	{
-		if (\App\TextParser::getTextLength($data['name']) > 100) {
+		if (\App\TextUtils::getTextLength($data['name']) > 100) {
 			throw new \App\Exceptions\AppException('ERR_EXCEEDED_NUMBER_CHARACTERS||100', 406);
 		}
 		if (isset($data['id'])) {
 			$data['id'] = \App\Purifier::purifyByType($data['id'], 'Integer');
 		}
-		$data['name'] = \App\Purifier::purifyByType($data['name'], 'Text');
 		$data['status'] = $data['status'] ? 0 : 1;
 		$data['mandatory'] = (int) $data['mandatory'];
 		$data['gui'] = (int) $data['gui'];
 		$data['tabid'] = (int) $data['tabid'];
-		$data['conditionsFields'] = \App\Json::encode(\App\Condition::getFieldsFromConditions($data['conditions'])['baseModule'] ?? []);
-		$data['conditions'] = \App\Json::encode($data['conditions']);
-		$data['views'] = \App\Json::encode($data['views']);
-		$data['fields'] = \App\Json::encode($data['fields']);
+		$conditions = \is_array($data['conditions']) ? $data['conditions'] : \App\Json::decode($data['conditions']);
+		$data['conditionsFields'] = \App\Json::encode(\App\Condition::getFieldsFromConditions($conditions)['baseModule'] ?? []);
+		$data['conditions'] = \App\Json::encode($conditions);
+		if (\is_array($data['views'])) {
+			$data['views'] = \App\Json::encode($data['views']);
+		}
+		if (\is_array($data['fields'])) {
+			$data['fields'] = \App\Json::encode($data['fields']);
+		}
+
 		return $data;
 	}
 
@@ -130,8 +135,9 @@ class Settings_FieldsDependency_Record_Model extends Settings_Vtiger_Record_Mode
 		} else {
 			$db->createCommand()->insert('s_#__fields_dependency', $data)->execute();
 		}
-		\App\Cache::delete('FieldsDependency', $data['tabid']);
 		$this->checkHandler();
+		\App\Cache::delete('FieldsDependency', $this->get('tabid'));
+		\App\FieldsDependency::$recordModelCache = [];
 	}
 
 	/**
@@ -143,6 +149,7 @@ class Settings_FieldsDependency_Record_Model extends Settings_Vtiger_Record_Mode
 			->delete('s_#__fields_dependency', ['id' => $this->getId()])
 			->execute();
 		\App\Cache::delete('FieldsDependency', $this->get('tabid'));
+		\App\FieldsDependency::$recordModelCache = [];
 		$this->checkHandler();
 		return $return;
 	}
@@ -163,16 +170,12 @@ class Settings_FieldsDependency_Record_Model extends Settings_Vtiger_Record_Mode
 				$value = \App\Language::translate($moduleName, $moduleName);
 				break;
 			case 'views':
-				$value = implode(', ', array_map(function ($val) {
-					return \App\Language::translate(\App\FieldsDependency::VIEWS[$val], 'Settings:FieldsDependency');
-				}, \App\Json::decode($value) ?? []));
+				$value = implode(', ', array_map(fn ($val) => \App\Language::translate(\App\FieldsDependency::VIEWS[$val], 'Settings:FieldsDependency'), \App\Json::decode($value) ?? []));
 				break;
 			case 'fields':
 				$moduleModel = Vtiger_Module_Model::getInstance($this->get('tabid'));
-				$value = implode(', ', array_map(function ($fieldName) use ($moduleModel) {
-					return $moduleModel->getField($fieldName)->getFullLabelTranslation();
-				}, \App\Json::decode($value) ?? []));
-				$value = "<div class=\"js-popover-tooltip ml-2 mr-2 d-inline mt-2\" data-js=\"popover\" data-content=\"$value\">" . \App\TextParser::textTruncate($value) . '</div>';
+				$value = implode(', ', array_map(fn ($fieldName) => $moduleModel->getFieldByName($fieldName)->getFullLabelTranslation(), \App\Json::decode($value) ?? []));
+				$value = "<div class=\"js-popover-tooltip ml-2 mr-2 d-inline mt-2\" data-js=\"popover\" data-content=\"$value\">" . \App\TextUtils::textTruncate($value) . '</div>';
 				break;
 			case 'mandatory':
 			case 'gui':
@@ -180,6 +183,9 @@ class Settings_FieldsDependency_Record_Model extends Settings_Vtiger_Record_Mode
 				break;
 			case 'status':
 				$value = \App\Language::translate($value ? 'LBL_NO' : 'LBL_YES');
+				break;
+			default:
+				$value = \App\Purifier::encodeHtml($value);
 				break;
 		}
 		return $value;

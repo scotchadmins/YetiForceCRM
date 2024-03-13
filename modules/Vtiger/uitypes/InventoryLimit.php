@@ -5,9 +5,9 @@
  *
  * @package   UIType
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
- * @author YetiForce.com
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @author YetiForce S.A.
  */
 class Vtiger_InventoryLimit_UIType extends Vtiger_Picklist_UIType
 {
@@ -51,7 +51,6 @@ class Vtiger_InventoryLimit_UIType extends Vtiger_Picklist_UIType
 	public function getDisplayValue($value, $record = false, $recordModel = false, $rawText = false, $length = false)
 	{
 		$limits = $this->getPicklistValues();
-
 		return \App\Purifier::encodeHtml($limits[$value] ?? '');
 	}
 
@@ -109,6 +108,6 @@ class Vtiger_InventoryLimit_UIType extends Vtiger_Picklist_UIType
 	/** {@inheritdoc} */
 	public function getQueryOperators()
 	{
-		return ['e', 'n', 'y', 'ny'];
+		return ['e', 'n', 'y', 'ny', 'ef', 'nf'];
 	}
 }

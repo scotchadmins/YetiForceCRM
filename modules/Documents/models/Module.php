@@ -6,10 +6,14 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Documents_Module_Model extends Vtiger_Module_Model
 {
+	/** {@inheritdoc} */
+	public $allowTypeChange = false;
+
 	/**
 	 * Functions tells if the module supports workflow.
 	 *
@@ -46,16 +50,14 @@ class Documents_Module_Model extends Vtiger_Module_Model
 		]);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getModalRecordsListFields(App\QueryGenerator $queryGenerator, $sourceModule = false)
 	{
 		$popupFields = parent::getModalRecordsListFields($queryGenerator, $sourceModule);
 		$headerFields = $queryGenerator->getListViewFields();
 		foreach (['filestatus', 'filesize', 'filelocationtype'] as $fieldName) {
 			if (!isset($headerFields[$fieldName])) {
-				$fieldModel = Vtiger_Field_Model::getInstance($fieldName, $this);
+				$fieldModel = $this->getFieldByName($fieldName);
 				if ($fieldModel->getPermissions()) {
 					$queryGenerator->setField($fieldName);
 				}
@@ -72,9 +74,7 @@ class Documents_Module_Model extends Vtiger_Module_Model
 		return 'notes_title';
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getSettingLinks(): array
 	{
 		Vtiger_Loader::includeOnce('~~modules/com_vtiger_workflow/VTWorkflowUtils.php');
@@ -131,5 +131,20 @@ class Documents_Module_Model extends Vtiger_Module_Model
 			->from('vtiger_trees_templates_data')
 			->where(['templateid' => $templateId])
 			->createCommand()->queryAllByGroup();
+	}
+
+	/** {@inheritdoc} */
+	public function getCustomLinkLabel(int $id, string $label): string
+	{
+		$recordModel = \Vtiger_Record_Model::getInstanceById($id, $this->getName());
+		$link = '';
+		if ('I' === $recordModel->get('filelocationtype') && ($href = $recordModel->getDownloadFileURL())) {
+			$title = App\Language::translate('LBL_DOWNLOAD_FILE', 'Documents');
+			$link = "<a href=\"{$href}\" title=\"{$title}\"><span class=\"fas fa-download ml-1\"></span></a>";
+		} elseif ($recordModel->get('filename')) {
+			$href = \App\Purifier::encodeHtml($recordModel->get('filename'));
+			$link = "<a href=\"{$href}\" title=\"{$href}\" target=\"_blank\" rel=\"noreferrer noopener\"><span class=\"fa-solid fa-link ml-1\"></span></a>";
+		}
+		return \App\Purifier::encodeHtml($label) . $link;
 	}
 }

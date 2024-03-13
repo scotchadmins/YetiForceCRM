@@ -3,9 +3,9 @@
 /**
  * Brute force save action class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
- * @author YetiForce.com
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @author YetiForce S.A.
  */
 class Settings_BruteForce_SaveAjax_Action extends Settings_Vtiger_Index_Action
 {

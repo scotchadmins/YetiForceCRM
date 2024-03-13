@@ -4,32 +4,26 @@
  *
  * @package   Model
  *
- * @copyright YetiForce Sp. z o.o.
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Rafal Pospiech <r.pospiech@yetiforce.com>
  */
 class Settings_SlaPolicy_Record_Model extends Settings_Vtiger_Record_Model
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getId()
 	{
 		return $this->get('id');
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	protected function setId($id)
 	{
 		$this->set('id', $id);
 		return $this;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getName()
 	{
 		return $this->get('name');
@@ -102,13 +96,14 @@ class Settings_SlaPolicy_Record_Model extends Settings_Vtiger_Record_Model
 			$data['id'] = \App\Purifier::purifyByType($data['id'], 'Integer');
 		}
 		$data['name'] = \App\Purifier::purifyByType($data['name'], 'Text');
-		if (\App\TextParser::getTextLength($data['name']) > 255) {
+		if (\App\TextUtils::getTextLength($data['name']) > 255) {
 			throw new \App\Exceptions\AppException('ERR_EXCEEDED_NUMBER_CHARACTERS||255', 406);
 		}
 		$data['tabid'] = \App\Purifier::purifyByType($data['tabid'], 'Integer');
-		$data['reaction_time'] = \App\Purifier::purifyByType($data['reaction_time'], 'TimePeriod');
-		$data['idle_time'] = \App\Purifier::purifyByType($data['idle_time'], 'TimePeriod');
-		$data['resolve_time'] = \App\Purifier::purifyByType($data['resolve_time'], 'TimePeriod');
+		$data['reaction_time'] = \App\Purifier::purifyByType($data['reaction_time'], 'timePeriod');
+		$data['idle_time'] = \App\Purifier::purifyByType($data['idle_time'], 'timePeriod');
+		$data['resolve_time'] = \App\Purifier::purifyByType($data['resolve_time'], 'timePeriod');
+		$data['available_for_record_time_count'] = \App\Purifier::purifyByType($data['available_for_record_time_count'], 'Bool');
 		if ($data['business_hours']) {
 			$data['business_hours'] = explode(',', $data['business_hours']);
 			foreach ($data['business_hours'] as $index => $businessHoursId) {
@@ -126,8 +121,7 @@ class Settings_SlaPolicy_Record_Model extends Settings_Vtiger_Record_Model
 	{
 		$data = static::validate($this->getData());
 		$db = \App\Db::getInstance('admin');
-		$recordId = $this->getId();
-		if ($recordId) {
+		if ($recordId = $this->getId()) {
 			$db->createCommand()->update('s_#__sla_policy', $data, ['id' => $recordId])->execute();
 		} else {
 			$db->createCommand()->insert('s_#__sla_policy', $data)->execute();
@@ -142,10 +136,11 @@ class Settings_SlaPolicy_Record_Model extends Settings_Vtiger_Record_Model
 	 */
 	public function delete()
 	{
-		return \App\Db::getInstance('admin')->createCommand()
+		$result = \App\Db::getInstance('admin')->createCommand()
 			->delete('s_#__sla_policy', ['id' => $this->getId()])
 			->execute();
 		\App\Cache::clear();
+		return $result;
 	}
 
 	/**
@@ -167,15 +162,13 @@ class Settings_SlaPolicy_Record_Model extends Settings_Vtiger_Record_Model
 			$value = implode(', ', array_column(\App\Utils\ServiceContracts::getBusinessHoursByIds(explode(',', $value)), 'name'));
 		} elseif (\in_array($key, ['reaction_time', 'idle_time', 'resolve_time'])) {
 			$value = \App\Fields\TimePeriod::getLabel($value);
+		} else {
+			$value = \App\Purifier::encodeHtml($value);
 		}
 		return $value;
 	}
 
-	/**
-	 * Function to get the list view actions for the record.
-	 *
-	 * @return array - Associate array of Vtiger_Link_Model instances
-	 */
+	/** {@inheritdoc} */
 	public function getRecordLinks(): array
 	{
 		$links = [];
@@ -185,14 +178,14 @@ class Settings_SlaPolicy_Record_Model extends Settings_Vtiger_Record_Model
 				'linklabel' => 'LBL_EDIT_RECORD',
 				'linkurl' => $this->getModule()->getEditRecordUrl($this->getId()),
 				'linkicon' => 'yfi yfi-full-editing-view',
-				'linkclass' => 'btn btn-primary btn-sm'
+				'linkclass' => 'btn btn-primary btn-sm',
 			],
 			[
 				'linktype' => 'LISTVIEWRECORD',
 				'linklabel' => 'LBL_DELETE_RECORD',
 				'linkurl' => 'javascript:Settings_Vtiger_List_Js.deleteById(' . $this->getId() . ', true);',
 				'linkicon' => 'fas fa-trash-alt',
-				'linkclass' => 'btn text-white btn-danger btn-sm'
+				'linkclass' => 'btn text-white btn-danger btn-sm',
 			],
 		];
 		foreach ($recordLinks as $recordLink) {

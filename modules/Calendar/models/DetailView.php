@@ -6,43 +6,12 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Calendar_DetailView_Model extends Vtiger_DetailView_Model
 {
-	/**
-	 * {@inheritdoc}
-	 */
-	public function getDetailViewRelatedLinks()
-	{
-		$recordModel = $this->getRecord();
-		$relatedLinks = [[
-			'linktype' => 'DETAILVIEWTAB',
-			'linklabel' => 'LBL_RECORD_DETAILS',
-			'linkurl' => $recordModel->getDetailViewUrl() . '&mode=showDetailViewByMode&requestMode=full',
-			'linkicon' => '',
-			'linkKey' => 'LBL_RECORD_DETAILS',
-			'related' => 'Details',
-		]];
-		$parentModuleModel = $this->getModule();
-		if ($parentModuleModel->isTrackingEnabled() && $parentModuleModel->isPermitted('ModTracker')) {
-			$relatedLinks[] = [
-				'linktype' => 'DETAILVIEWTAB',
-				'linklabel' => 'LBL_UPDATES',
-				'linkurl' => $recordModel->getDetailViewUrl() . '&mode=showRecentActivities&page=1',
-				'linkicon' => '',
-				'related' => 'ModTracker',
-				'countRelated' => App\Config::module('ModTracker', 'UNREVIEWED_COUNT') && $parentModuleModel->isPermitted('ReviewingUpdates'),
-				'badgeClass' => 'bgDanger',
-			];
-		}
-		return $relatedLinks;
-	}
-
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getDetailViewLinks(array $linkParams): array
 	{
 		$linkModelList = parent::getDetailViewLinks($linkParams);
@@ -59,7 +28,7 @@ class Calendar_DetailView_Model extends Vtiger_DetailView_Model
 				'linkclass' => 'btn-outline-dark btn-sm showModal closeCalendarRekord',
 			]);
 		}
-		if ($recordModel->isEditable() && \App\Config::main('isActiveSendingMails') && \App\Privilege::isPermitted('OSSMail') && 1 === \App\User::getCurrentUserModel()->getDetail('internal_mailer')) {
+		if ($recordModel->isEditable() && \App\Mail::checkInternalMailClient()) {
 			$linkModelList['DETAIL_VIEW_ADDITIONAL'][] = Vtiger_Link_Model::getInstanceFromValues([
 				'linktype' => 'DETAIL_VIEW_ADDITIONAL',
 				'linklabel' => 'LBL_SEND_CALENDAR',
@@ -88,11 +57,11 @@ class Calendar_DetailView_Model extends Vtiger_DetailView_Model
 			$linkModelList['DETAIL_VIEW_EXTENDED'][] = Vtiger_Link_Model::getInstanceFromValues([
 				'linktype' => 'DETAIL_VIEW_EXTENDED',
 				'linklabel' => 'LBL_MOVE_TO_TRASH',
-				'linkurl' => 'javascript:Calendar_Detail_Js.deleteRecord("index.php?module=' . $recordModel->getModuleName() . '&action=State&state=Trash&record=' . $recordModel->getId() . '")',
+				'dataUrl' => 'index.php?module=' . $recordModel->getModuleName() . '&action=State&state=Trash&record=' . $recordModel->getId(),
+				'linkdata' => ['confirm' => \App\Language::translate('LBL_MOVE_TO_TRASH_DESC')],
 				'linkicon' => 'fas fa-trash-alt',
-				'linkclass' => 'btn-outline-dark btn-sm entityStateBtn',
+				'linkclass' => 'entityStateBtn btn-outline-dark btn-sm js-record-action',
 				'style' => empty($stateColors['Trash']) ? '' : "background: {$stateColors['Trash']};",
-				'title' => \App\Language::translate('LBL_MOVE_TO_TRASH'),
 			]);
 		}
 		if (!$recordModel->isReadOnly() && $recordModel->privilegeToDelete() && 1 === $recordModel->get('reapeat')) {
@@ -104,10 +73,10 @@ class Calendar_DetailView_Model extends Vtiger_DetailView_Model
 			$linkModelList['DETAIL_VIEW_EXTENDED'][] = Vtiger_Link_Model::getInstanceFromValues([
 				'linktype' => 'DETAIL_VIEW_EXTENDED',
 				'linklabel' => 'LBL_DELETE_RECORD_COMPLETELY',
-				'linkurl' => 'javascript:Calendar_Detail_Js.deleteRecord("index.php?module=' . $recordModel->getModuleName() . '&action=Delete&record=' . $recordModel->getId() . '")',
+				'dataUrl' => 'index.php?module=' . $recordModel->getModuleName() . '&action=Delete&record=' . $recordModel->getId(),
+				'linkdata' => ['confirm' => \App\Language::translate('LBL_DELETE_RECORD_COMPLETELY_DESC')],
 				'linkicon' => 'fas fa-eraser',
-				'linkclass' => 'btn-outline-dark btn-sm',
-				'title' => \App\Language::translate('LBL_DELETE_RECORD_COMPLETELY'),
+				'linkclass' => 'btn-dark btn-sm js-record-action',
 			]);
 		}
 		return $linkModelList;

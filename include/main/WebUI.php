@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 require_once 'include/ConfigUtils.php';
 require_once 'include/utils/CommonUtils.php';
@@ -51,7 +51,7 @@ class Vtiger_WebUI extends Vtiger_EntryPoint
 			if ($request->isAjax()) {
 				throw new \App\Exceptions\Unauthorized('LBL_LOGIN_IS_REQUIRED', 401);
 			}
-			header('location: index.php');
+			header('location: index.php?module=Users&view=Login');
 			return true;
 		}
 		return false;
@@ -106,29 +106,21 @@ class Vtiger_WebUI extends Vtiger_EntryPoint
 			$view = $request->getByType('view', 2);
 			$action = $request->getByType('action', 2);
 			$response = false;
-			if (!$hasLogin && 'GET' === $_SERVER['REQUEST_METHOD'] && ($returnUrl = $request->getServer('QUERY_STRING')) && !\App\Session::has('return_params')) {
+			if (!$hasLogin && 'GET' === $_SERVER['REQUEST_METHOD'] && 'Users' !== $moduleName && ($returnUrl = $request->getServer('QUERY_STRING')) && !\App\Session::has('return_params')) {
 				//Take the url that user would like to redirect after they have successfully logged in.
 				\App\Session::set('return_params', str_replace('&amp;', '&', $returnUrl));
 			}
 			if (empty($moduleName)) {
 				if ($hasLogin) {
-					$defaultModule = App\Config::main('default_module');
-					if (!empty($defaultModule) && 'Home' !== $defaultModule && \App\Privilege::isPermitted($defaultModule)) {
-						$moduleName = $defaultModule;
-						$qualifiedModuleName = $defaultModule;
-						if (empty($view = Vtiger_Module_Model::getInstance($moduleName)->getDefaultViewName())) {
-							$view = 'List';
-						}
-					} else {
-						$qualifiedModuleName = $moduleName = 'Home';
+					$qualifiedModuleName = $moduleName = \App\Module::getDefaultModule();
+					if ('Home' === $moduleName) {
 						$view = 'DashBoard';
+					} else {
+						$view = Vtiger_Module_Model::getInstance($moduleName)->getDefaultViewName() ?: 'List';
 					}
-				} else {
-					$qualifiedModuleName = $moduleName = 'Users';
-					$view = 'Login';
+					$request->set('module', $moduleName);
+					$request->set('view', $view);
 				}
-				$request->set('module', $moduleName);
-				$request->set('view', $view);
 			}
 			if (!empty($action)) {
 				$componentType = 'Action';
@@ -144,7 +136,7 @@ class Vtiger_WebUI extends Vtiger_EntryPoint
 			}
 			if ('Login' === $view && 'Users' === $moduleName) {
 				if (!\App\Session::has('CSP_TOKEN')) {
-					\App\Session::set('CSP_TOKEN', hash('sha256', \App\Encryption::generatePassword(10)));
+					\App\Controller\Headers::generateCspToken();
 				}
 				if ($hasLogin) {
 					header('location: index.php');
@@ -168,9 +160,7 @@ class Vtiger_WebUI extends Vtiger_EntryPoint
 				\App\Log::error("HandlerClass: $handlerClass", 'Loader');
 				throw new \App\Exceptions\AppException('LBL_HANDLER_NOT_FOUND', 405);
 			}
-			if ($handler->csrfActive) {
-				$handler->validateRequest($request);
-			}
+			$handler->validateRequest($request);
 			if ($handler->loginRequired() && $this->checkLogin($request)) {
 				return true;
 			}
@@ -218,7 +208,7 @@ class Vtiger_WebUI extends Vtiger_EntryPoint
 				throw $e;
 			}
 		}
-		if (\is_object($response)) {
+		if (isset($response) && \is_object($response)) {
 			$response->emit();
 		}
 	}
@@ -284,18 +274,5 @@ class Vtiger_WebUI extends Vtiger_EntryPoint
 			return true;
 		}
 		$handler->postProcess($request);
-	}
-
-	/**
-	 * Content Security Policy token.
-	 *
-	 * @return void
-	 */
-	public function cspInitToken(): void
-	{
-		if (!App\Session::has('CSP_TOKEN') || App\Session::get('CSP_TOKEN_TIME') < time()) {
-			App\Session::set('CSP_TOKEN', \base64_encode(\random_bytes(16)));
-			App\Session::set('CSP_TOKEN_TIME', strtotime('+' . \Config\Security::$cspHeaderTokenTime));
-		}
 	}
 }

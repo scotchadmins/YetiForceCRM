@@ -4,8 +4,8 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -21,17 +21,18 @@ class Phone
 	 *
 	 * @param string      $phoneNumber
 	 * @param string|null $phoneCountry
+	 * @param int         $numberFormat the PhoneNumberFormat the phone number should be formatted into
 	 *
 	 * @return array|bool
 	 */
-	public static function getDetails(string $phoneNumber, ?string $phoneCountry = null)
+	public static function getDetails(string $phoneNumber, ?string $phoneCountry = null, int $numberFormat = \libphonenumber\PhoneNumberFormat::NATIONAL)
 	{
 		$phoneUtil = \libphonenumber\PhoneNumberUtil::getInstance();
 		try {
 			$swissNumberProto = $phoneUtil->parse($phoneNumber, $phoneCountry);
 			if ($phoneUtil->isValidNumber($swissNumberProto)) {
 				return [
-					'number' => $phoneUtil->format($swissNumberProto, \libphonenumber\PhoneNumberFormat::INTERNATIONAL),
+					'number' => $phoneUtil->format($swissNumberProto, $numberFormat),
 					'geocoding' => \libphonenumber\geocoding\PhoneNumberOfflineGeocoder::getInstance()->getDescriptionForNumber($swissNumberProto, \App\Language::getLanguage()),
 					'carrier' => \libphonenumber\PhoneNumberToCarrierMapper::getInstance()->getNameForValidNumber($swissNumberProto, \App\Language::getShortLanguageName()),
 					'country' => $phoneUtil->getRegionCodeForNumber($swissNumberProto),
@@ -56,7 +57,7 @@ class Phone
 	 *
 	 * @return bool
 	 */
-	public static function verifyNumber($phoneNumber, $phoneCountry)
+	public static function verifyNumber(string $phoneNumber, ?string $phoneCountry = null)
 	{
 		$phoneUtil = \libphonenumber\PhoneNumberUtil::getInstance();
 		if ($phoneCountry && !\in_array($phoneCountry, $phoneUtil->getSupportedRegions())) {
@@ -82,27 +83,37 @@ class Phone
 	}
 
 	/**
-	 * Get proper number.
+	 * Parse phone number.
 	 *
-	 * @param string   $numberToCheck
-	 * @param int|null $userId
+	 * @param string      $fieldName
+	 * @param array       $parsedData
+	 * @param string|null $phoneCountry
 	 *
-	 * @return false|string Return false if wrong number
+	 * @return array
 	 */
-	public static function getProperNumber(string $numberToCheck, ?int $userId = null)
+	public static function parsePhone(string $fieldName, array $parsedData, ?string $phoneCountry = null): array
 	{
-		if (null === $userId) {
-			$userId = \App\User::getCurrentUserId();
-		}
-		$returnVal = false;
-		if (static::getDetails($numberToCheck)) {
-			$returnVal = $numberToCheck;
-		} else {
-			$country = \App\User::getUserModel($userId)->getDetail('sync_carddav_default_country');
-			if (!empty($country) && ($phoneDetails = static::getDetails($numberToCheck, Country::getCountryCode($country))) && isset($phoneDetails['number'])) {
-				$returnVal = $phoneDetails['number'];
+		if (\App\Config::component('Phone', 'advancedVerification', false)) {
+			$phoneUtil = \libphonenumber\PhoneNumberUtil::getInstance();
+			$phone = trim($parsedData[$fieldName]);
+			try {
+				$swissNumberProto = $phoneUtil->parse($phone, $phoneCountry);
+				$international = $phoneUtil->format($swissNumberProto, \libphonenumber\PhoneNumberFormat::INTERNATIONAL);
+			} catch (\libphonenumber\NumberParseException $e) {
+				$international = false;
+				foreach ($phoneUtil->findNumbers($phone, $phoneCountry) as $phoneNumberMatch) {
+					$international = $phoneUtil->format($phoneNumberMatch->number(), \libphonenumber\PhoneNumberFormat::INTERNATIONAL);
+					$parsedData[$fieldName . '_extra'] = trim(str_replace($phoneNumberMatch->rawString(), '', $phone));
+					break;
+				}
+			}
+			if ($international) {
+				$parsedData[$fieldName] = $international;
+			} else {
+				$parsedData[$fieldName . '_extra'] = $phone;
+				unset($parsedData[$fieldName]);
 			}
 		}
-		return $returnVal;
+		return $parsedData;
 	}
 }

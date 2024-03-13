@@ -5,8 +5,8 @@
  *
  * @package   InventoryField
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
@@ -28,12 +28,8 @@ class Vtiger_Currency_InventoryField extends Vtiger_Basic_InventoryField
 	protected $customPurifyType = [
 		'currencyparam' => App\Purifier::TEXT
 	];
-
 	/** {@inheritdoc} */
-	public function getEditTemplateName()
-	{
-		return 'inventoryTypes/Currency.tpl';
-	}
+	protected $params = ['reset_currency'];
 
 	/** {@inheritdoc} */
 	public function getDisplayValue($value, array $rowData = [], bool $rawText = false)
@@ -82,10 +78,34 @@ class Vtiger_Currency_InventoryField extends Vtiger_Basic_InventoryField
 	{
 		if ($columnName === $this->getColumnName()) {
 			if (!is_numeric($value) || !isset(\App\Fields\Currency::getAll()[$value])) {
-				throw new \App\Exceptions\Security("ERR_ILLEGAL_FIELD_VALUE||$columnName||$value", 406);
+				throw new \App\Exceptions\Security("ERR_ILLEGAL_FIELD_VALUE||$columnName||" . print_r($value, true), 406);
 			}
-		} elseif (App\TextParser::getTextLength($value) > $this->customMaximumLength[$columnName]) {
-			throw new \App\Exceptions\Security("ERR_VALUE_IS_TOO_LONG||$columnName||$value", 406);
+		} elseif (!\is_array($value) && \App\TextUtils::getTextLength($value) > $this->customMaximumLength[$columnName]) {
+			throw new \App\Exceptions\Security("ERR_VALUE_IS_TOO_LONG||$columnName||" . print_r($value, true), 406);
 		}
+	}
+
+	/** {@inheritdoc} */
+	public function compare($value, $prevValue, string $column): bool
+	{
+		return $column === $this->getColumnName() ? (int) $value === (int) $prevValue : parent::compare($value, $prevValue, $column);
+	}
+
+	/** {@inheritdoc} */
+	public function getConfigFieldsData(): array
+	{
+		$data = parent::getConfigFieldsData();
+		$data['reset_currency'] = [
+			'name' => 'reset_currency',
+			'label' => 'LBL_INV_CURRENCY_RESET',
+			'uitype' => 56,
+			'maximumlength' => '1',
+			'typeofdata' => 'C~O',
+			'purifyType' => \App\Purifier::INTEGER,
+			'defaultvalue' => 0,
+			'tooltip' => 'LBL_INV_CURRENCY_RESET_DESC'
+		];
+
+		return $data;
 	}
 }

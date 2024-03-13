@@ -1,15 +1,19 @@
 <?php
+/**
+ * System warnings basic file.
+ *
+ * @package App
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ */
 
 namespace App;
 
 /**
  * System warnings basic class.
- *
- * @package App
- *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
- * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class SystemWarnings
 {
@@ -51,9 +55,9 @@ class SystemWarnings
 	 * @param array $folders
 	 * @param mixed $active
 	 *
-	 * @return array
+	 * @return \App\SystemWarnings\Template[]
 	 */
-	public static function getWarnings($folders, $active = true)
+	public static function getWarnings($folders, $active = true): array
 	{
 		if (empty($folders)) {
 			return [];
@@ -76,14 +80,10 @@ class SystemWarnings
 					$instace = new $className();
 					if ($instace->preProcess()) {
 						$isIgnored = 2 === $instace->getStatusValue();
-						$show = true;
-						if (!$isIgnored) {
+						if (!$active || !$isIgnored) {
 							$instace->process();
 						}
-						if ($active && ($isIgnored || 1 === $instace->getStatus())) {
-							$show = false;
-						}
-						if ($show) {
+						if (!$active || (!$isIgnored && 1 !== $instace->getStatus())) {
 							$instace->setFolder($folder);
 							$actions[$instace->getPriority() . $fileName] = $instace;
 						}
@@ -92,35 +92,6 @@ class SystemWarnings
 			}
 		}
 		krsort($actions);
-
 		return $actions;
-	}
-
-	/**
-	 * Returns number of warnings.
-	 *
-	 * @return int
-	 */
-	public static function getWarningsCount()
-	{
-		$i = 0;
-		foreach ($iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(self::FOLDERS, \RecursiveDirectoryIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST) as $item) {
-			if ($item->isFile() && 'Template' != $item->getBasename('.php')) {
-				$subPath = $iterator->getSubPath();
-				$fileName = $item->getBasename('.php');
-				$folder = str_replace('/', '\\', $subPath);
-				$className = "\\App\\SystemWarnings\\$folder\\$fileName";
-				$instace = new $className();
-				if ($instace->preProcess()) {
-					if (2 != $instace->getStatus()) {
-						$instace->process();
-					}
-					if (0 == $instace->getStatus()) {
-						++$i;
-					}
-				}
-			}
-		}
-		return $i;
 	}
 }

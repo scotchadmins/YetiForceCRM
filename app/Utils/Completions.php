@@ -5,9 +5,10 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Adach <a.adach@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
 namespace App\Utils;
@@ -70,20 +71,12 @@ class Completions
 	 */
 	public static function decode(string $text, string $format = self::FORMAT_HTML): string
 	{
-		$emojis = static::getEmojis();
-		$textOut = \preg_replace_callback(
-			static::EMOJI_REGEX,
-			function (array $matches) use ($emojis) {
-				return $emojis[$matches[0]] ?? $matches[0];
-			},
-			$text
-		);
+		$text = self::decodeEmoji($text);
+		$text = self::decodeCustomTag($text);
 		return \preg_replace_callback(
 			static::ROW_REGEX,
-			function (array $matches) use ($format) {
-				return static::decodeRow($matches[0], $matches[1], (int) $matches[2], $matches[3], $format);
-			},
-			$textOut
+			fn (array $matches) => static::decodeRow($matches[0], $matches[1], (int) $matches[2], $matches[3], $format),
+			$text
 		);
 	}
 
@@ -99,11 +92,41 @@ class Completions
 		$emojis = static::getEmojis();
 		return \preg_replace_callback(
 			static::EMOJI_REGEX,
-			function (array $matches) use ($emojis) {
-				return $emojis[$matches[0]] ?? $matches[0];
-			},
+			fn (array $matches) => $emojis[$matches[0]] ?? $matches[0],
 			$text
 		);
+	}
+
+	/**
+	 * Decode custom yetiforce tag.
+	 *
+	 * @see https://github.com/YetiForceCompany/lib_roundcube/tree/developer/plugins/yetiforce/yetiforce.php#:~:text=function%20decodeCustomTag Function: decodeCustomTag
+	 *
+	 * @param string $text
+	 *
+	 * @return string
+	 */
+	public static function decodeCustomTag(string $text): string
+	{
+		if (false !== strpos($text, '<yetiforce')) {
+			$text = preg_replace_callback('/<yetiforce\s(.*)><\/yetiforce>/', function (array $matches) {
+				$attributes = \App\TextUtils::getTagAttributes($matches[0]);
+				$return = '';
+				if (!empty($attributes['type']) && !empty($attributes['crm-id'])) {
+					switch ($attributes['type']) {
+						case 'Documents':
+								$width = \App\Purifier::encodeHtml($attributes['width'] ?? '');
+								$height = \App\Purifier::encodeHtml($attributes['height'] ?? '');
+								$return = '<img src="file.php?module=Documents&action=DownloadFile&record=' . $attributes['crm-id'] . '&fileid=' . $attributes['attachment-id'] . "&show=true\" width=\"{$width}\" height=\"{$height}\"/>";
+							break;
+						default:
+							break;
+					}
+				}
+				return $return;
+			}, $text);
+		}
+		return $text;
 	}
 
 	/**
@@ -120,9 +143,7 @@ class Completions
 		$emojis = static::getEmojis();
 		$textOut = \preg_replace_callback(
 			static::EMOJI_REGEX,
-			function (array $matches) use ($emojis) {
-				return $emojis[$matches[0]] ?? $matches[0];
-			},
+			fn (array $matches) => $emojis[$matches[0]] ?? $matches[0],
 			$text
 		);
 		return \preg_replace_callback(

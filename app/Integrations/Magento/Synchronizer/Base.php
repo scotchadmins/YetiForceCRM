@@ -2,12 +2,13 @@
 /**
  * Synchronize.
  *
- * The file is part of the paid functionality. Using the file is allowed only after purchasing a subscription. File modification allowed only with the consent of the system producer.
+ * The file is part of the paid functionality. Using the file is allowed only after purchasing a subscription.
+ * File modification allowed only with the consent of the system producer.
  *
  * @package Integration
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Tomasz Kur <t.kur@yetiforce.com>
  * @author    Arkadiusz Dudek <a.dudek@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
@@ -20,30 +21,14 @@ namespace App\Integrations\Magento\Synchronizer;
  */
 abstract class Base
 {
-	/**
-	 * Connector.
-	 *
-	 * @var \App\Integrations\Magento\Connector\Token
-	 */
-	protected $connector;
-	/**
-	 * Last scan config data.
-	 *
-	 * @var array
-	 */
+	/** @var array Last scan config data. */
 	public $lastScan = [];
-	/**
-	 * Config.
-	 *
-	 * @var \App\Integrations\Magento\Config
-	 */
+	/** @var \App\Integrations\Magento\Config Config instance. */
 	public $config;
-	/**
-	 * Controller.
-	 *
-	 * @var \App\Integrations\Magento\Controller
-	 */
+	/** @var \App\Integrations\Magento\Controller Controller instance. */
 	public $controller;
+	/** @var \App\Integrations\Magento\Connector\Base Connector. */
+	protected $connector;
 
 	/**
 	 * Constructor.
@@ -188,7 +173,7 @@ abstract class Base
 				'discountparam' => '{"aggregationType":"individual","individualDiscountType":"amount","individualDiscount":' . $data['shipping']['total']['shipping_discount_amount'] . '}',
 				'purchase' => 0,
 				'taxparam' => '{"aggregationType":"individual","individualTax":' . round($tax) . '}',
-				'comment1' => ''
+				'comment1' => '',
 			];
 		}
 		return [];
@@ -239,13 +224,13 @@ abstract class Base
 	 */
 	public function log(string $category, ?\Throwable $ex = null): void
 	{
-		\App\DB::getInstance('admin')->createCommand()
+		\App\DB::getInstance('log')->createCommand()
 			->insert('l_#__magento', [
 				'time' => date('Y-m-d H:i:s'),
-				'category' => null === $ex ? '' : $category,
+				'category' => $ex ? $category : 'info',
 				'message' => $ex ? $ex->getMessage() : $category,
 				'code' => $ex ? $ex->getCode() : 500,
-				'trace' => $ex ? $ex->__toString() : '',
+				'trace' => $ex ? $ex->__toString() : null,
 			])->execute();
 	}
 }

@@ -4,9 +4,10 @@
  *
  * @package   Controller
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 namespace App\Controller;
@@ -17,11 +18,6 @@ namespace App\Controller;
 abstract class Action extends Base
 {
 	/**
-	 * {@inheritdoc}
-	 */
-	public $csrfActive = false;
-
-	/**
 	 * Process action.
 	 *
 	 * @param \App\Request $request
@@ -31,9 +27,7 @@ abstract class Action extends Base
 		return true;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function validateRequest(\App\Request $request)
 	{
 		$request->validateWriteAccess();

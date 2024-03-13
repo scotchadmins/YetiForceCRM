@@ -2,8 +2,8 @@
 /**
  * Mail scanner action creating HelpDesk.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -46,8 +46,8 @@ class OSSMailScanner_CreatedHelpDesk_ScannerAction extends OSSMailScanner_BindHe
 	 */
 	public function add()
 	{
-		$contactId = (int) $this->mail->findEmailAdress('from_email', 'Contacts', false);
-		$parentId = (int) $this->mail->findEmailAdress('from_email', 'Accounts', false);
+		$contactId = (int) $this->mail->findEmailAddress('from_email', 'Contacts', false);
+		$parentId = (int) $this->mail->findEmailAddress('from_email', 'Accounts', false);
 		$record = Vtiger_Record_Model::getCleanInstance('HelpDesk');
 		if (!$contactId && !$parentId && !\Config\Modules\OSSMailScanner::$helpdeskCreateWithoutNoRelation) {
 			return 0;
@@ -79,12 +79,8 @@ class OSSMailScanner_CreatedHelpDesk_ScannerAction extends OSSMailScanner_BindHe
 		}
 		$accountOwner = $this->mail->getAccountOwner();
 		$record->set('assigned_user_id', $accountOwner);
-		$maxLengthSubject = $record->getField('ticket_title')->get('maximumlength');
-		$subject = \App\Purifier::purify($this->mail->get('subject'));
-		$record->setFromUserValue('ticket_title', $maxLengthSubject ? \App\TextParser::textTruncate($subject, $maxLengthSubject, false) : $subject);
-		$maxLengthDescription = $record->getField('description')->get('maximumlength');
-		$description = \App\Purifier::purifyHtml($this->mail->get('body'));
-		$record->set('description', $maxLengthDescription ? \App\TextParser::htmlTruncate($description, $maxLengthDescription, false) : $description);
+		$record->setFromUserValue('ticket_title', \App\TextUtils::textTruncate($this->mail->get('subject'), $record->getField('ticket_title')->getMaxValue()));
+		$record->set('description', \App\TextUtils::htmlTruncate($this->mail->getContent(), $record->getField('description')->getMaxValue()));
 		if (!empty(\Config\Modules\OSSMailScanner::$helpdeskCreateDefaultStatus)) {
 			$record->set('ticketstatus', \Config\Modules\OSSMailScanner::$helpdeskCreateDefaultStatus);
 		}
@@ -99,7 +95,7 @@ class OSSMailScanner_CreatedHelpDesk_ScannerAction extends OSSMailScanner_BindHe
 				'reverse' => true,
 				'relatedModule' => 'OSSMailView',
 				'relatedRecords' => [$mailId],
-				'params' => $this->mail->get('date')
+				'params' => $this->mail->get('date'),
 			];
 		}
 		$record->save();

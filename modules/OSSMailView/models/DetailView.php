@@ -3,34 +3,29 @@
 /**
  * OSSMailView DetailView model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 class OSSMailView_DetailView_Model extends Vtiger_DetailView_Model
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getDetailViewLinks(array $linkParams): array
 	{
-		$currentUserModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
 		$recordModel = $this->getRecord();
 		$linkModelList = parent::getDetailViewLinks($linkParams);
 		unset($linkModelList['DETAIL_VIEW_ADDITIONAL']);
 
-		$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
-		$permission = $userPrivilegesModel->hasModulePermission('OSSMail') && !$recordModel->isReadOnly();
-		if ($permission && App\Config::main('isActiveSendingMails') && \App\Privilege::isPermitted('OSSMail')) {
+		if (!$recordModel->isReadOnly() && \Config\Main::$isActiveSendingMails) {
 			$recordId = $recordModel->getId();
-			if (1 == $currentUserModel->get('internal_mailer')) {
-				$config = OSSMail_Module_Model::getComposeParameters();
+			if ('InternalClient' === \App\Mail::getMailComposer()) {
+				$popup = \App\User::getCurrentUserModel()->getDetail('mail_popup');
 				$url = OSSMail_Module_Model::getComposeUrl();
 
 				$detailViewLinks[] = [
 					'linktype' => 'DETAIL_VIEW_ADDITIONAL',
 					'linklabel' => '',
 					'linkhint' => 'LBL_REPLY',
-					'linkdata' => ['url' => $url . '&mid=' . $recordId . '&type=reply', 'popup' => $config['popup']],
+					'linkdata' => ['url' => $url . '&mid=' . $recordId . '&type=reply', 'popup' => $popup],
 					'linkicon' => 'fas fa-reply',
 					'linkclass' => 'btn-outline-dark btn-sm sendMailBtn',
 				];
@@ -38,7 +33,7 @@ class OSSMailView_DetailView_Model extends Vtiger_DetailView_Model
 					'linktype' => 'DETAIL_VIEW_ADDITIONAL',
 					'linklabel' => '',
 					'linkhint' => 'LBL_REPLYALLL',
-					'linkdata' => ['url' => $url . '&mid=' . $recordId . '&type=replyAll', 'popup' => $config['popup']],
+					'linkdata' => ['url' => $url . '&mid=' . $recordId . '&type=replyAll', 'popup' => $popup],
 					'linkicon' => 'fas fa-reply-all',
 					'linkclass' => 'btn-outline-dark btn-sm sendMailBtn',
 				];
@@ -46,7 +41,7 @@ class OSSMailView_DetailView_Model extends Vtiger_DetailView_Model
 					'linktype' => 'DETAIL_VIEW_ADDITIONAL',
 					'linklabel' => '',
 					'linkhint' => 'LBL_FORWARD',
-					'linkdata' => ['url' => $url . '&mid=' . $recordId . '&type=forward', 'popup' => $config['popup']],
+					'linkdata' => ['url' => $url . '&mid=' . $recordId . '&type=forward', 'popup' => $popup],
 					'linkicon' => 'fas fa-share',
 					'linkclass' => 'btn-outline-dark btn-sm sendMailBtn',
 				];

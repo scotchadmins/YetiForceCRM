@@ -4,8 +4,8 @@
  *
  * @package   Controller
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
@@ -16,9 +16,7 @@ namespace App\Controller\Components\View;
  */
 class InterestsConflict extends \App\Controller\View\Page
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(\App\Request $request)
 	{
 		switch ($request->getMode()) {
@@ -41,25 +39,19 @@ $this->pageTitle = \App\Language::translate('LBL_CONFIRMATIONS', 'Settings:Inter
 		return true;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getPageTitle(\App\Request $request)
 	{
 		return \App\Language::translate('LBL_CONFLICT_OF_INTEREST') . ' - ' . $this->pageTitle;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getBreadcrumbTitle(\App\Request $request)
 	{
 		return \App\Language::translate('LBL_CONFLICT_OF_INTEREST') . ' - ' . $this->pageTitle;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(\App\Request $request)
 	{
 		$viewer = $this->getViewer($request);
@@ -80,24 +72,19 @@ $this->pageTitle = \App\Language::translate('LBL_CONFIRMATIONS', 'Settings:Inter
 		$viewer->view('InterestsConflict.tpl', $request->getModule());
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getFooterScripts(\App\Request $request)
 	{
 		return array_merge(parent::getFooterScripts($request), $this->checkAndConvertJsScripts([
 			'~libraries/datatables.net/js/jquery.dataTables.js',
-			'~libraries/datatables.net/js/jquery.dataTables.js',
 			'~libraries/datatables.net-bs4/js/dataTables.bootstrap4.js',
 			'~libraries/datatables.net-responsive/js/dataTables.responsive.js',
 			'~libraries/datatables.net-responsive-bs4/js/responsive.bootstrap4.js',
-			'components.InterestsConflict'
+			'components.InterestsConflict',
 		]));
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getHeaderCss(\App\Request $request)
 	{
 		return array_merge(parent::getHeaderCss($request), $this->checkAndConvertCssStyles([
@@ -106,9 +93,7 @@ $this->pageTitle = \App\Language::translate('LBL_CONFIRMATIONS', 'Settings:Inter
 		]));
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getJSLanguageStrings(\App\Request $request)
 	{
 		$translate = parent::getJSLanguageStrings($request);

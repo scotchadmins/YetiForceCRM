@@ -3,8 +3,8 @@
 /**
  * Watchdog Action Class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class Announcements_BasicAjax_Action extends \App\Controller\Action
@@ -51,10 +51,5 @@ class Announcements_BasicAjax_Action extends \App\Controller\Action
 		$response = new Vtiger_Response();
 		$response->setResult(true);
 		$response->emit();
-	}
-
-	public function validateRequest(App\Request $request)
-	{
-		$request->validateWriteAccess();
 	}
 }

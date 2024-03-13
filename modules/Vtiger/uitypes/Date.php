@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Vtiger_Date_UIType extends Vtiger_Base_UIType
@@ -27,7 +27,7 @@ class Vtiger_Date_UIType extends Vtiger_Base_UIType
 				'name' => $fieldModel->getName(),
 				'label' => 'LBL_INTEGER',
 				'displaytype' => 1,
-				'typeofdata' => 'I~M'
+				'typeofdata' => 'I~M',
 			]);
 		}
 		return $fieldModel;
@@ -87,24 +87,26 @@ class Vtiger_Date_UIType extends Vtiger_Base_UIType
 	public function getEditViewDisplayValue($value, $recordModel = false)
 	{
 		if (empty($value) || ' ' === $value) {
-			$value = trim($value);
-			$fieldName = $this->getFieldModel()->getFieldName();
-			$moduleName = $this->getFieldModel()->getModule()->getName();
-			//Restricted Fields for to show Default Value
-			if (('birthday' === $fieldName && 'Contacts' === $moduleName) || 'Products' === $moduleName) {
-				return \App\Purifier::encodeHtml($value);
-			}
-
-			//Special Condition for field 'support_end_date' in Contacts Module
-			if ('support_end_date' === $fieldName && 'Contacts' === $moduleName) {
-				$value = DateTimeField::convertToUserFormat(date('Y-m-d', strtotime('+1 year')));
-			} elseif ('support_start_date' === $fieldName && 'Contacts' === $moduleName) {
-				$value = DateTimeField::convertToUserFormat(date('Y-m-d'));
-			}
+			$value = '';
 		} else {
 			$value = DateTimeField::convertToUserFormat($value);
 		}
 		return \App\Purifier::encodeHtml($value);
+	}
+
+	/** {@inheritdoc} */
+	public function getValueFromImport($value, $defaultValue = null)
+	{
+		if ('' === $value) {
+			$value = $defaultValue ?? '';
+		}
+		if (null === $value || '0000-00-00' === $value) {
+			$value = '';
+		}
+		if (0 == preg_match('/^[0-9]{2,4}[-][0-1]{1,2}?[0-9]{1,2}[-][0-3]{1,2}?[0-9]{1,2}$/', $value)) {
+			$value = '';
+		}
+		return $value;
 	}
 
 	/** {@inheritdoc} */
@@ -158,7 +160,7 @@ class Vtiger_Date_UIType extends Vtiger_Base_UIType
 	/** {@inheritdoc} */
 	public function getQueryOperators()
 	{
-		return array_merge(['e', 'n', 'bw', 'b', 'a', 'y', 'ny'], array_keys(App\Condition::DATE_OPERATORS));
+		return array_merge(['e', 'n', 'bw', 'b', 'a', 'y', 'ny'], \App\Condition::FIELD_COMPARISON_OPERATORS, array_keys(App\Condition::DATE_OPERATORS));
 	}
 
 	/**

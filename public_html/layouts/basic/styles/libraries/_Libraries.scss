@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 
 //-------- mobile first --------//
 
@@ -219,8 +219,8 @@ header {
 	@extend .u-bg-twilight;
 }
 
-.select2-selection__rendered[title="Modern"] {
-	@extend .u-bg-modern;
+.select2-selection__rendered[title="Blue"] {
+	@extend .u-bg-blue;
 }
 
 .select2-selection[aria-labelledby^="select2-theme"] {
@@ -244,6 +244,9 @@ header {
 	@extend .mr-sm-2;
 }
 .select2-container--bootstrap .select2-selection--multiple {
+	max-height: 70px;
+	overflow: auto;
+
 	.select2-selection__choice + .select2-search--inline {
 		.select2-search__field {
 			min-width: 0;
@@ -277,21 +280,17 @@ header {
 	}
 }
 
-//--- list ---//
-
-.openStreetMapModalBody {
-	@extend %input-groupSelect2;
-}
-
-.bootbox-close-button {
-	@extend .order-2;
-}
-
 //-------- daterangepicker --------//
 
 .daterangepicker {
 	&.show-calendar {
 		@extend .p-0;
+		&.js-visible:not(.single) {
+			&:before,
+			&:after {
+				content: none !important;
+			}
+		}
 	}
 
 	.left,
@@ -321,7 +320,7 @@ header {
 
 //-------- jQuery UI --------//
 .ui-autocomplete {
-	padding: 0 !important;
+	padding: 3px !important;
 
 	.ui-menu-item-wrapper,
 	.ui-menu-item-wrapper:hover {
@@ -405,6 +404,7 @@ body:not(.desktop) {
 .grid-stack > .grid-stack-item > .grid-stack-item-content {
 	left: 0.25rem !important;
 	right: 0.25rem !important;
+	overflow-y: hidden !important;
 }
 
 @include media-breakpoint-down(xs) {
@@ -506,11 +506,6 @@ body:not(.desktop) {
 			text-align: center;
 		}
 	}
-
-	li.highlight,
-	li:hover {
-		background: #f8f9fa;
-	}
 }
 
 //-------- font-awesome --------//
@@ -531,8 +526,32 @@ body:not(.desktop) {
 .pnotify-title {
 	line-height: 1.3rem;
 }
-.pnotify .bootstrap4-icon > * {
+.pnotify .pnotify-icon {
 	line-height: 1.5rem;
+	font-size: 1.2rem;
+	margin-right: 5px;
+}
+.pnotify-action-bar {
+	margin-top: 1rem;
+}
+.pnotify.c-confirm-modal {
+	.pnotify-container {
+		color: #000;
+		background-color: #fff;
+		border-color: #fff;
+	}
+	.btn-primary {
+		background-color: #3eac33;
+		border-color: #3eac33;
+	}
+	.btn-secondary {
+		background-color: #d15d5d;
+		border-color: #d15d5d;
+	}
+	.pnotify-icon {
+		font-size: 3rem;
+		margin: 12px 10px 10px 0;
+	}
 }
 //-------- Material Design Icons --------//
 .mdi {

@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 jQuery.Class(
@@ -27,7 +27,7 @@ jQuery.Class(
 		 * Register the field with hosts
 		 */
 		registerDefaultHost: function () {
-			App.Fields.Picklist.showSelect2ElementView(this.getContainer().find('[name="default_host"]'), {
+			App.Fields.Picklist.showSelect2ElementView(this.getContainer().find('[name="imap_host"]'), {
 				delimiter: ',',
 				persist: false,
 				tags: true,

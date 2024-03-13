@@ -10,7 +10,7 @@
  * The Initial Developer of the Original Code is SugarCRM, Inc.
  * Portions created by SugarCRM are Copyright (C) SugarCRM, Inc.;
  * All Rights Reserved.
- * Contributor(s): YetiForce.com.
+ * Contributor(s): YetiForce S.A.
  * ****************************************************************************** */
 /* * *******************************************
  * With modifications by
@@ -22,7 +22,7 @@
  * $Header: /advent/projects/wesat/vtiger_crm/sugarcrm/modules/Users/Users.php,v 1.10 2005/04/19 14:40:48 ray Exp $
  * Portions created by SugarCRM are Copyright (C) SugarCRM, Inc.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com.
+ * Contributor(s): YetiForce S.A.
  * ****************************************************************************** */
 
 require_once 'include/utils/CommonUtils.php';
@@ -65,12 +65,12 @@ class Users extends CRMEntity
 	public $search_fields_name = [
 		'First Name' => 'first_name',
 		'Name' => 'last_name',
+		'Role Name' => 'roleid',
 		'Email' => 'email1',
+		'Status' => 'status',
 	];
 	public $module_name = 'Users';
-	public $object_name = 'User';
 	public $user_preferences;
-	public $encodeFields = ['first_name', 'last_name', 'description'];
 	// This is used to retrieve related fields from form posts.
 	public $additional_column_fields = ['reports_to_name'];
 
@@ -85,7 +85,7 @@ class Users extends CRMEntity
 		'FL_FORCE_PASSWORD_CHANGE' => 'force_password_change',
 		'FL_DATE_PASSWORD_CHANGE' => 'date_password_change',
 	];
-	//Default Fields for Email Templates -- Pavani
+	// Default Fields for Email Templates -- Pavani
 	public $emailTemplate_defaultFields = ['first_name', 'last_name', 'title', 'department', 'phone_home', 'phone_mobile', 'signature', 'email1'];
 	public $popup_fields = ['last_name'];
 	// This is the list of fields that are in the lists.
@@ -93,7 +93,7 @@ class Users extends CRMEntity
 	public $default_sort_order = 'ASC';
 	public $record_id;
 	public $new_schema = true;
-	//Default Widgests
+	// Default Widgests
 	public $default_widgets = ['CVLVT', 'UA'];
 
 	/** constructor function for the main user class.
@@ -115,11 +115,12 @@ class Users extends CRMEntity
 	 */
 	public function isAdminUser()
 	{
-		return isset($this->is_admin) && 'on' === $this->is_admin;
+		return isset($this->column_fields['is_admin']) && 'on' === $this->column_fields['is_admin'];
 	}
 
 	/** Function to get the current user information from the user_privileges file.
 	 * @param $userid -- user id:: Type integer
+	 *
 	 * @returns user info in $this->column_fields array:: Type array
 	 */
 	public function retrieveCurrentUserInfoFromFile($userid)
@@ -128,7 +129,6 @@ class Users extends CRMEntity
 		$userInfo = $userPrivileges['user_info'];
 		foreach ($this->column_fields as $field => $value_iter) {
 			if (isset($userInfo[$field])) {
-				$this->{$field} = $userInfo[$field];
 				$this->column_fields[$field] = $userInfo[$field];
 			}
 		}
@@ -137,36 +137,26 @@ class Users extends CRMEntity
 		return $this;
 	}
 
-	/** Function to retreive the user info of the specifed user id The user info will be available in $this->column_fields array.
-	 * @param $record -- record id:: Type integer
-	 * @param $module -- module:: Type varchar
-	 *
-	 * @throws \App\Exceptions\NoPermittedToRecord
-	 */
-	public function retrieveEntityInfo($record, $module)
+	/** {@inheritdoc} */
+	public function retrieveEntityInfo(int $record, string $module)
 	{
 		\App\Log::trace("Entering into retrieveEntityInfo($record, $module) method.");
-
 		if ('' == $record) {
 			\App\Log::error('record is empty. returning null');
-
 			return null;
 		}
 		$result = [];
-		foreach ($this->tab_name_index as $tableName => $index) {
-			$result[$tableName] = (new \App\Db\Query())
-				->from($tableName)
-				->where([$index => $record])->one();
-			if (empty($result[$tableName])) {
-				throw new \App\Exceptions\NoPermittedToRecord('ERR_RECORD_NOT_FOUND||' . $record);
+		$fields = \App\Field::getModuleFieldInfos($module);
+		foreach ($fields as $fieldName => $fieldRow) {
+			$tableName = $fieldRow['tablename'];
+			if (empty($result[$tableName]) && isset($this->tab_name_index[$tableName])) {
+				$result[$tableName] = (new \App\Db\Query())->from($tableName)->where([$this->tab_name_index[$tableName] => $record])->one();
+				if (empty($result[$tableName])) {
+					throw new \App\Exceptions\NoPermittedToRecord('ERR_RECORD_NOT_FOUND||' . $record);
+				}
 			}
-		}
-		$fields = vtlib\Functions::getModuleFieldInfos($module);
-		foreach ($fields as $fieldName => &$fieldRow) {
-			if (isset($result[$fieldRow['tablename']][$fieldRow['columnname']])) {
-				$value = $result[$fieldRow['tablename']][$fieldRow['columnname']];
-				$this->column_fields[$fieldName] = $value;
-				$this->{$fieldName} = $value;
+			if (isset($result[$tableName][$fieldRow['columnname']])) {
+				$this->column_fields[$fieldName] = $result[$tableName][$fieldRow['columnname']];
 			}
 		}
 		$this->column_fields['record_id'] = $record;
@@ -184,18 +174,18 @@ class Users extends CRMEntity
 		} else {
 			$currencySymbol = $currency['currency_symbol'];
 		}
-		$this->column_fields['currency_name'] = $this->currency_name = $currency['currency_name'];
-		$this->column_fields['currency_code'] = $this->currency_code = $currency['currency_code'];
-		$this->column_fields['currency_symbol'] = $this->currency_symbol = $currencySymbol;
-		$this->column_fields['conv_rate'] = $this->conv_rate = $currency['conversion_rate'];
+		$this->column_fields['currency_name'] = $currency['currency_name'];
+		$this->column_fields['currency_code'] = $currency['currency_code'];
+		$this->column_fields['currency_symbol'] = $currencySymbol;
+		$this->column_fields['conv_rate'] = $currency['conversion_rate'];
 		if ('' === $this->column_fields['no_of_currency_decimals']) {
-			$this->column_fields['no_of_currency_decimals'] = $this->no_of_currency_decimals = App\User::getCurrentUserId() ? (int) App\User::getCurrentUserModel()->getDetail('no_of_currency_decimals') : 2;
+			$this->column_fields['no_of_currency_decimals'] = App\User::getCurrentUserId() ? (int) App\User::getCurrentUserModel()->getDetail('no_of_currency_decimals') : 2;
 		}
 		if ('' == $this->column_fields['currency_grouping_pattern'] && '' == $this->column_fields['currency_symbol_placement']) {
-			$this->column_fields['currency_grouping_pattern'] = $this->currency_grouping_pattern = '123,456,789';
-			$this->column_fields['currency_decimal_separator'] = $this->currency_decimal_separator = '.';
-			$this->column_fields['currency_grouping_separator'] = $this->currency_grouping_separator = ' ';
-			$this->column_fields['currency_symbol_placement'] = $this->currency_symbol_placement = '1.0$';
+			$this->column_fields['currency_grouping_pattern'] = '123,456,789';
+			$this->column_fields['currency_decimal_separator'] = '.';
+			$this->column_fields['currency_grouping_separator'] = ' ';
+			$this->column_fields['currency_symbol_placement'] = '1.0$';
 		}
 		$this->id = $record;
 		\App\Log::trace('Exit from retrieveEntityInfo() method.');
@@ -217,7 +207,7 @@ class Users extends CRMEntity
 		$eventHandler->trigger('UsersBeforeDelete');
 
 		App\Fields\Owner::transferOwnership($userId, $transformToUserId);
-		//updating the vtiger_users table
+		// updating the vtiger_users table
 		App\Db::getInstance()->createCommand()
 			->update('vtiger_users', [
 				'status' => 'Inactive',
@@ -249,7 +239,7 @@ class Users extends CRMEntity
 			}
 		} else {
 			$adminId = 1;
-			$result = (new \App\Db\Query())->select(['id'])->from('vtiger_users')->where(['is_admin' => 'on', 'status' => 'Active'])->limit(1)->scalar();
+			$result = (new \App\Db\Query())->select(['id'])->from('vtiger_users')->where(['is_admin' => 'on', 'status' => 'Active'])->scalar();
 			if ($result) {
 				$adminId = $result;
 			}

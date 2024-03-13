@@ -6,14 +6,12 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com.
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Calendar_SaveAjax_Action extends Vtiger_SaveAjax_Action
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function saveRecord(App\Request $request)
 	{
 		parent::saveRecord($request);
@@ -24,9 +22,7 @@ class Calendar_SaveAjax_Action extends Vtiger_SaveAjax_Action
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getRecordModelFromRequest(App\Request $request)
 	{
 		if (!$request->isEmpty('record') && !$request->has('field')) {

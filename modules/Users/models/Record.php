@@ -1,17 +1,30 @@
 <?php
 
- /* +***********************************************************************************
- * The contents of this file are subject to the vtiger CRM Public License Version 1.0
- * ("License"); You may not use this file except in compliance with the License
- * The Original Code is:  vtiger CRM Open Source
- * The Initial Developer of the Original Code is vtiger.
- * Portions created by vtiger are Copyright (C) vtiger.
- * All Rights Reserved.
- * Contributor(s): YetiForce Sp. z o.o
- * *********************************************************************************** */
+/* +***********************************************************************************
+* The contents of this file are subject to the vtiger CRM Public License Version 1.0
+* ("License"); You may not use this file except in compliance with the License
+* The Original Code is:  vtiger CRM Open Source
+* The Initial Developer of the Original Code is vtiger.
+* Portions created by vtiger are Copyright (C) vtiger.
+* All Rights Reserved.
+* Contributor(s): YetiForce S.A.
+* *********************************************************************************** */
 
 class Users_Record_Model extends Vtiger_Record_Model
 {
+	/**
+	 * Static Function to get the instance of the User Record model for the current user.
+	 *
+	 * @return Users_Record_Model instance
+	 */
+	protected static $currentUserModels = [];
+
+	/** {@inheritdoc} */
+	public function getModule(): Vtiger_Module_Model
+	{
+		return $this->module ?? Users_Module_Model::getCleanInstance('Users');
+	}
+
 	public function getRealId()
 	{
 		if (App\Session::has('baseUserId') && '' != App\Session::get('baseUserId')) {
@@ -132,7 +145,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 		if ($this->getModule()) {
 			return parent::getModuleName();
 		}
-		//get from the class propety module_name
+		// get from the class propety module_name
 		return $this->get('module_name');
 	}
 
@@ -151,6 +164,9 @@ class Users_Record_Model extends Vtiger_Record_Model
 		}
 		if ($this->getPreviousValue('user_password')) {
 			$this->set('date_password_change', date('Y-m-d H:i:s'));
+			if ($this->isNew() || (false === $this->getPreviousValue('force_password_change') && ($relId = App\User::getCurrentUserRealId()) && $relId !== $this->getId())) {
+				$this->set('force_password_change', 1);
+			}
 		}
 		$eventHandler = new App\EventHandler();
 		$eventHandler->setRecordModel($this);
@@ -191,8 +207,11 @@ class Users_Record_Model extends Vtiger_Record_Model
 			}
 		}
 		if (App\Config::module('Users', 'CHECK_LAST_USERNAME') && isset($valuesForSave['vtiger_users']['user_name'])) {
-			$db = \App\Db::getInstance('log');
-			$db->createCommand()->insert('l_#__username_history', ['user_name' => $valuesForSave['vtiger_users']['user_name'], 'user_id' => $this->getId()])->execute();
+			\App\Db::getInstance('log')->createCommand()->insert('l_#__username_history', [
+				'user_name' => $valuesForSave['vtiger_users']['user_name'],
+				'user_id' => $this->getId(),
+				'date' => date('Y-m-d H:i:s'),
+			])->execute();
 		}
 	}
 
@@ -217,6 +236,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 		}
 		if ($this->has('changeUserPassword') || $this->isNew()) {
 			$saveFields[] = 'user_password';
+			$saveFields[] = 'force_password_change';
 		}
 		foreach ($saveFields as $fieldName) {
 			$fieldModel = $moduleModel->getFieldByName($fieldName);
@@ -244,35 +264,8 @@ class Users_Record_Model extends Vtiger_Record_Model
 			$forSave['vtiger_users']['date_entered'] = $now;
 			$forSave['vtiger_users']['date_password_change'] = $now;
 		}
-		return $forSave;
-	}
 
-	/**
-	 * Get default value.
-	 *
-	 * @param string $fieldName
-	 *
-	 * @return mixed
-	 */
-	protected function getDefaultValue($fieldName)
-	{
-		switch ($fieldName) {
-			case 'currency_id':
-				return CurrencyField::getDBCurrencyId();
-			case 'accesskey':
-				return \App\Encryption::generatePassword(20, 'lbn');
-			case 'language':
-				return \App\Language::getLanguage();
-			case 'time_zone':
-				return App\Fields\DateTime::getTimeZone();
-			case 'theme':
-				return Vtiger_Viewer::DEFAULTTHEME;
-			case 'is_admin':
-				return 'off';
-			default:
-				break;
-		}
-		return false;
+		return $forSave;
 	}
 
 	/**
@@ -320,11 +313,12 @@ class Users_Record_Model extends Vtiger_Record_Model
 			}
 		}
 		if (false !== $this->getPreviousValue('user_password') && ($this->isNew() || App\User::getCurrentUserId() === $this->getId())) {
-			$dbCommand->insert('l_#__userpass_history', [
+			\App\Db::getInstance('log')->createCommand()->insert('l_#__userpass_history', [
 				'pass' => \App\Encryption::createHash($this->get('user_password')),
 				'user_id' => $this->getId(),
 				'date' => date('Y-m-d H:i:s'),
 			])->execute();
+			$this->getModule()->saveLoginHistory(strtolower($this->get('user_name')), 'LBL_PASSWORD_CHANGED');
 		}
 		if (false !== $this->getPreviousValue('language') && App\User::getCurrentUserRealId() === $this->getId()) {
 			App\Session::set('language', $this->get('language'));
@@ -382,13 +376,6 @@ class Users_Record_Model extends Vtiger_Record_Model
 		}
 	}
 
-	/**
-	 * Static Function to get the instance of the User Record model for the current user.
-	 *
-	 * @return Users_Record_Model instance
-	 */
-	protected static $currentUserModels = [];
-
 	public static function getCurrentUserModel()
 	{
 		$currentUser = \App\User::getCurrentUserModel();
@@ -418,9 +405,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 	{
 		$userDetails = array_map('\App\Purifier::decodeHtml', $currentUser->getDetails());
 		$userModel = new self();
-		foreach ($userDetails as $key => $value) {
-			$userModel->{$key} = $value;
-		}
+
 		return $userModel->setData($userDetails)->setModule('Users')->setId($currentUser->getId());
 	}
 
@@ -637,7 +622,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 	 */
 	public function getCurrentUserActivityReminderInSeconds()
 	{
-		$activityReminder = $this->reminder_interval;
+		$activityReminder = $this->get('reminder_interval');
 		$activityReminderInSeconds = '';
 		if ('None' != $activityReminder) {
 			preg_match('/([0-9]+)[\s]([a-zA-Z]+)/', $activityReminder, $matches);
@@ -695,7 +680,6 @@ class Users_Record_Model extends Vtiger_Record_Model
 					'linkurl' => $this->getDuplicateRecordUrl(),
 					'linkicon' => 'fas fa-clone',
 					'linkclass' => 'btn-outline-dark btn-sm',
-					'title' => \App\Language::translate('LBL_DUPLICATE_RECORD')
 				];
 			}
 		}
@@ -705,7 +689,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 					'linktype' => 'LIST_VIEW_ACTIONS_RECORD_LEFT_SIDE',
 					'linklabel' => 'LBL_DELETE_RECORD_COMPLETELY',
 					'linkicon' => 'fas fa-eraser',
-					'linkclass' => 'btn-sm btn-primary deleteRecordButton'
+					'linkclass' => 'btn-sm btn-primary deleteRecordButton',
 				];
 			} else {
 				$recordLinks['LBL_DELETE_USER_PERMANENTLY'] = [
@@ -851,9 +835,9 @@ class Users_Record_Model extends Vtiger_Record_Model
 	{
 		$dbCommand = \App\Db::getInstance()->createCommand();
 		$dbCommand->update('vtiger_crmentity', ['smcreatorid' => $newOwnerId, 'smownerid' => $newOwnerId], ['smcreatorid' => $userId, 'setype' => 'ModComments'])->execute();
-		//update history details in vtiger_modtracker_basic
+		// update history details in vtiger_modtracker_basic
 		$dbCommand->update('vtiger_modtracker_basic', ['whodid' => $newOwnerId], ['whodid' => $userId])->execute();
-		//update comments details in vtiger_modcomments
+		// update comments details in vtiger_modcomments
 		$dbCommand->update('vtiger_modcomments', ['userid' => $newOwnerId], ['userid' => $userId])->execute();
 		$dbCommand->delete('vtiger_users', ['id' => $userId])->execute();
 		$dbCommand->delete('vtiger_module_dashboard_widgets', ['userid' => $userId])->execute();
@@ -1012,6 +996,96 @@ class Users_Record_Model extends Vtiger_Record_Model
 	}
 
 	/**
+	 * Verify  password change.
+	 *
+	 * @param App\User $userModel
+	 *
+	 * @return void
+	 */
+	public function verifyPasswordChange(App\User $userModel): void
+	{
+		$passConfig = \Settings_Password_Record_Model::getUserPassConfig();
+		$time = (int) $passConfig['change_time'];
+		if (1 === (int) $userModel->getDetail('force_password_change')) {
+			\App\Session::set('ShowUserPasswordChange', 2);
+			\App\Process::addEvent([
+				'name' => 'ShowUserPasswordChange',
+				'priority' => 3,
+				'type' => 'modal',
+				'url' => 'index.php?module=Users&view=PasswordModal&mode=change&record=' . $userModel->getId(),
+			]);
+			return;
+		}
+		$lastChange = strtotime($userModel->getDetail('date_password_change'));
+		if (0 !== $time && (!$lastChange || strtotime("-$time day") > $lastChange)) {
+			$time += (int) $passConfig['lock_time'];
+			if (!$lastChange || strtotime("-$time day") > $lastChange) {
+				\App\Session::set('ShowUserPasswordChange', 2);
+			} else {
+				\App\Session::set('ShowUserPasswordChange', 1);
+			}
+			\App\Process::addEvent([
+				'name' => 'ShowUserPasswordChange',
+				'priority' => 3,
+				'type' => 'modal',
+				'url' => 'index.php?module=Users&view=PasswordModal&mode=change&record=' . $userModel->getId(),
+			]);
+		}
+	}
+
+	/**
+	 * Update record label.
+	 *
+	 * @return void
+	 */
+	public function updateLabel(): void
+	{
+		$metaInfo = \App\Module::getEntityInfo($this->getModuleName());
+		$labelName = [];
+		foreach ($metaInfo['fieldnameArr'] as $columnName) {
+			$fieldModel = $this->getModule()->getFieldByColumn($columnName);
+			$labelName[] = $fieldModel->getDisplayValue($this->get($fieldModel->getName()), $this->getId(), $this, true);
+		}
+		$label = \App\TextUtils::textTruncate(implode($metaInfo['separator'] ?? ' ', $labelName), 250, false);
+		if (!empty($label)) {
+			$db = \App\Db::getInstance();
+			if (!(new \App\Db\Query())->from('u_#__users_labels')->where(['id' => $this->getId()])->exists()) {
+				$db->createCommand()->insert('u_#__users_labels', ['id' => $this->getId(), 'label' => $label])->execute();
+			} else {
+				$db->createCommand()->update('u_#__users_labels', ['label' => $label], ['id' => $this->getId()])->execute();
+			}
+		}
+	}
+
+	/**
+	 * Get default value.
+	 *
+	 * @param string $fieldName
+	 *
+	 * @return mixed
+	 */
+	protected function getDefaultValue($fieldName)
+	{
+		switch ($fieldName) {
+			case 'currency_id':
+				return CurrencyField::getDBCurrencyId();
+			case 'accesskey':
+				return \App\Encryption::generatePassword(20, 'lbn');
+			case 'language':
+				return \App\Language::getLanguage();
+			case 'time_zone':
+				return App\Fields\DateTime::getTimeZone();
+			case 'theme':
+				return Vtiger_Viewer::DEFAULTTHEME;
+			case 'is_admin':
+				return 'off';
+			default:
+				break;
+		}
+		return false;
+	}
+
+	/**
 	 * User authorization based on authorization methods.
 	 *
 	 * @param string $password
@@ -1047,88 +1121,5 @@ class Users_Record_Model extends Vtiger_Record_Model
 		\App\Cache::save('getAuthMethods', 'config', $auth);
 
 		return $auth;
-	}
-
-	/**
-	 * Verify  password change.
-	 *
-	 * @param App\User $userModel
-	 *
-	 * @return void
-	 */
-	public function verifyPasswordChange(App\User $userModel): void
-	{
-		$passConfig = \Settings_Password_Record_Model::getUserPassConfig();
-		$time = (int) $passConfig['change_time'];
-		if (1 === (int) $userModel->getDetail('force_password_change')) {
-			\App\Session::set('ShowUserPasswordChange', 2);
-			\App\Process::addEvent([
-				'name' => 'ShowUserPasswordChange',
-				'priority' => 3,
-				'type' => 'modal',
-				'url' => 'index.php?module=Users&view=PasswordModal&mode=change&record=' . $userModel->getId()
-			]);
-			return;
-		}
-		$lastChange = strtotime($userModel->getDetail('date_password_change'));
-		if (0 !== $time && (!$lastChange || strtotime("-$time day") > $lastChange)) {
-			$time += (int) $passConfig['lock_time'];
-			if (!$lastChange || strtotime("-$time day") > $lastChange) {
-				\App\Session::set('ShowUserPasswordChange', 2);
-			} else {
-				\App\Session::set('ShowUserPasswordChange', 1);
-			}
-			\App\Process::addEvent([
-				'name' => 'ShowUserPasswordChange',
-				'priority' => 3,
-				'type' => 'modal',
-				'url' => 'index.php?module=Users&view=PasswordModal&mode=change&record=' . $userModel->getId()
-			]);
-		}
-	}
-
-	/**
-	 * Return user favourite users.
-	 *
-	 * @return array
-	 */
-	public function getFavouritesUsers()
-	{
-		if (\App\Cache::has('UsersFavourite', $this->getId())) {
-			$favouriteUsers = \App\Cache::get('UsersFavourite', $this->getId());
-		} else {
-			$query = new \App\Db\Query();
-			$favouriteUsers = $query->select(['fav_element_id', 'pinned_id' => 'fav_element_id'])
-				->from('u_#__users_pinned')
-				->where(['owner_id' => $this->getId()])
-				->createCommand()
-				->queryAllByGroup();
-			\App\Cache::save('UsersFavourite', $this->getId(), $favouriteUsers, \App\Cache::LONG);
-		}
-		return $favouriteUsers;
-	}
-
-	/**
-	 * Update record label.
-	 *
-	 * @return void
-	 */
-	public function updateLabel(): void
-	{
-		$metaInfo = \App\Module::getEntityInfo($this->getModuleName());
-		$labelName = [];
-		foreach ($metaInfo['fieldnameArr'] as $columnName) {
-			$fieldModel = $this->getModule()->getFieldByColumn($columnName);
-			$labelName[] = $fieldModel->getDisplayValue($this->get($fieldModel->getName()), $this->getId(), $this, true);
-		}
-		$label = \App\TextParser::textTruncate(implode($metaInfo['separator'] ?? ' ', $labelName), 250, false);
-		if (!empty($label)) {
-			$db = \App\Db::getInstance();
-			if (!(new \App\Db\Query())->from('u_#__users_labels')->where(['id' => $this->getId()])->exists()) {
-				$db->createCommand()->insert('u_#__users_labels', ['id' => $this->getId(), 'label' => $label])->execute();
-			} else {
-				$db->createCommand()->update('u_#__users_labels', ['label' => $label], ['id' => $this->getId()])->execute();
-			}
-		}
 	}
 }

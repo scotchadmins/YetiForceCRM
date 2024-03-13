@@ -1,4 +1,4 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
 	<div class="tpl-Import-ImportPreview modal" tabindex="-1" role="dialog">
 		<div class="modal-dialog modal-lg modal-full" role="document">
@@ -15,6 +15,7 @@
 							<table class="table table-bordered listViewEntriesTable">
 								<thead>
 									<tr class="listViewHeaders">
+										<th class="{$WIDTHTYPE}"></th>
 										{foreach item=LISTVIEW_HEADER from=$LISTVIEW_HEADERS}
 											<th class="{$WIDTHTYPE}">
 												{App\Language::translate($LISTVIEW_HEADER->getFieldLabel(), $MODULE_NAME)}
@@ -24,6 +25,9 @@
 								</thead>
 								{foreach item=LISTVIEW_ENTRY from=$LISTVIEW_ENTRIES}
 									<tr>
+										<td class="{$WIDTHTYPE}">
+											<a role="button" class="btn btn-sm btn-default" href="index.php?module={$MODULE_NAME}&view=Detail&record={$LISTVIEW_ENTRY->getId()}"><span class="fas fa-th-list "></span></a>
+										</td>
 										{foreach item=LISTVIEW_HEADER from=$LISTVIEW_HEADERS}
 											<td class="{$WIDTHTYPE}">
 												{if $LISTVIEW_HEADER->get('fromOutsideList') eq true}

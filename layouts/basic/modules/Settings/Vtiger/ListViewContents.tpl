@@ -6,11 +6,14 @@
 * The Initial Developer of the Original Code is vtiger.
 * Portions created by vtiger are Copyright (C) vtiger.
 * All Rights Reserved.
-* Contributor(s): YetiForce.com
+* Contributor(s): YetiForce S.A.
 ********************************************************************************/
 -->*}
 {strip}
 	<!-- tpl-Settings-Base-ListViewContents -->
+	{if \App\Layout::checkTemplatePath('ListView/CustomHeader.tpl', $QUALIFIED_MODULE)}
+		{include file=\App\Layout::getTemplatePath('ListView/CustomHeader.tpl', $QUALIFIED_MODULE)}
+	{/if}
 	<input type="hidden" id="pageStartRange" value="{$PAGING_MODEL->getRecordStartRange()}" />
 	<input type="hidden" id="pageEndRange" value="{$PAGING_MODEL->getRecordEndRange()}" />
 	<input type="hidden" id="previousPageExist" value="{$PAGING_MODEL->isPrevPageExists()}" />
@@ -33,15 +36,15 @@
 			{include file=\App\Layout::getTemplatePath('ListView/TableHeader.tpl', $QUALIFIED_MODULE)}
 			<tbody>
 				{foreach item=LISTVIEW_ENTRY from=$LISTVIEW_ENTRIES}
-					<tr class="listViewEntries" data-id="{$LISTVIEW_ENTRY->getId()}" {if method_exists($LISTVIEW_ENTRY,'getDetailViewUrl')}data-recordurl="{$LISTVIEW_ENTRY->getDetailViewUrl()}"{/if}>
+					<tr class="listViewEntries" data-id="{$LISTVIEW_ENTRY->getId()}" {if method_exists($LISTVIEW_ENTRY,'getDetailViewUrl')}data-recordurl="{$LISTVIEW_ENTRY->getDetailViewUrl()}" {/if}>
 						{foreach item=LISTVIEW_HEADER from=$LISTVIEW_HEADERS}
 							{assign var=LISTVIEW_HEADERNAME value=$LISTVIEW_HEADER->get('name')}
 							{assign var=LAST_COLUMN value=$LISTVIEW_HEADER@last}
-							<td class="listViewEntryValue {$WIDTHTYPE}"  width="{$WIDTH}%" nowrap>
+							<td class="listViewEntryValue {$WIDTHTYPE}" width="{$WIDTH}%" nowrap>
 								{$LISTVIEW_ENTRY->getDisplayValue($LISTVIEW_HEADERNAME)}
 								{if $LAST_COLUMN && $LISTVIEW_ENTRY->getRecordLinks()}
-							</td>
-							<td nowrap class="{$WIDTHTYPE} rightRecordActions listButtons {$WIDTHTYPE}">
+								</td>
+								<td nowrap class="{$WIDTHTYPE} rightRecordActions listButtons {$WIDTHTYPE}">
 									{assign var=LINKS value=$LISTVIEW_ENTRY->getRecordLinks()}
 									{if count($LINKS) > 0}
 										<div class="actions">

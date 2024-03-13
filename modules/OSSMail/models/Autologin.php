@@ -2,8 +2,8 @@
 /**
  * OSSMail autologin model class.
  *
- * @copyright YetiForce Sp. z o.o
- * @license YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  */
 
 /**
@@ -19,18 +19,21 @@ class OSSMail_Autologin_Model
 	public static function getAutologinUsers()
 	{
 		$users = [];
-		$query = (new \App\Db\Query())->select(['rcuser_id', 'crmuser_id', 'username', 'password'])
-			->from('roundcube_users_autologin')
-			->innerJoin('roundcube_users', 'roundcube_users_autologin.rcuser_id = roundcube_users.user_id')
-			->where(['roundcube_users_autologin.crmuser_id' => \App\User::getCurrentUserId()])
-			->orderBy(['active' => SORT_DESC]);
 		$rcUser = \App\Session::has('AutoLoginUser') ? (int) \App\Session::get('AutoLoginUser') : 0;
-		$dataReader = $query->createCommand()->query();
-		while ($account = $dataReader->read()) {
-			$account['active'] = $rcUser === (int) $account['rcuser_id'];
-			$users[$account['rcuser_id']] = $account;
+
+		$queryGenerator = (new \App\QueryGenerator('MailAccount'));
+		$queryGenerator->setFields(['id']);
+		$queryGenerator->addCondition('mailaccount_status', 'PLL_ACTIVE', 'e');
+		$dataReader = $queryGenerator->createQuery()->createCommand()->query();
+		while ($recordId = $dataReader->readColumn(0)) {
+			$users[$recordId] = [
+				'id' => $recordId,
+				'active' => $rcUser === (int) $recordId,
+				'name' => \App\Record::getLabel($recordId, true)
+			];
 		}
 		$dataReader->close();
+
 		return $users;
 	}
 

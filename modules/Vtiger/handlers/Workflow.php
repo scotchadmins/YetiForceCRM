@@ -1,15 +1,18 @@
 <?php
-
-Vtiger_Loader::includeOnce('~modules/com_vtiger_workflow/VTWorkflowManager.php');
-
 /**
  * Workflow handler.
  *
  * @package		Handler
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ */
+ Vtiger_Loader::includeOnce('~modules/com_vtiger_workflow/VTWorkflowManager.php');
+
+/**
+ * Workflow handler class.
  */
 class Vtiger_Workflow_Handler
 {
@@ -22,7 +25,7 @@ class Vtiger_Workflow_Handler
 	 */
 	public function entityChangeState(App\EventHandler $eventHandler)
 	{
-		if ('Trash' === $eventHandler->getRecordModel()->get('deleted')) {
+		if (\App\Record::STATE_TRASH === $eventHandler->getRecordModel()->get('deleted')) {
 			$this->performTasks($eventHandler, [
 				VTWorkflowManager::$ON_DELETE
 			]);
@@ -80,6 +83,10 @@ class Vtiger_Workflow_Handler
 	 */
 	private function performTasks(App\EventHandler $eventHandler, $condition = [])
 	{
+		if (\App\Utils::detectRecursion(__CLASS__, __FUNCTION__, 2 + 1)) {
+			\App\Log::error('Detect recursion / circular references:  METHOD: ' . __METHOD__ . ', RECORD ID: ' . $eventHandler->getRecordModel()->getId());
+			return;
+		}
 		$recordModel = $eventHandler->getRecordModel();
 		$moduleName = $eventHandler->getModuleName();
 		if (!isset($this->workflows[$moduleName])) {
@@ -106,27 +113,18 @@ class Vtiger_Workflow_Handler
 					}
 					break;
 				case VTWorkflowManager::$ON_EVERY_SAVE:
+				case VTWorkflowManager::$ON_DELETE:
 					$doEvaluate = true;
 					break;
 				case VTWorkflowManager::$ON_MODIFY:
 					$doEvaluate = !$recordModel->isNew() && !empty($recordModel->getPreviousValue());
 					break;
 				case VTWorkflowManager::$MANUAL:
-					$doEvaluate = false;
-					break;
 				case VTWorkflowManager::$ON_SCHEDULE:
-					$doEvaluate = false;
-					break;
-				case VTWorkflowManager::$ON_DELETE:
-					$doEvaluate = true;
-					break;
 				case VTWorkflowManager::$TRIGGER:
-					$doEvaluate = false;
-					break;
 				case VTWorkflowManager::$BLOCK_EDIT:
-					$doEvaluate = false;
-					break;
 				case VTWorkflowManager::$ON_RELATED:
+				case VTWorkflowManager::TOKEN_LINK:
 					$doEvaluate = false;
 					break;
 				default:

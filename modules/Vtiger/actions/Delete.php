@@ -1,14 +1,16 @@
 <?php
-/* +***********************************************************************************
- * The contents of this file are subject to the vtiger CRM Public License Version 1.0
- * ("License"); You may not use this file except in compliance with the License
- * The Original Code is:  vtiger CRM Open Source
- * The Initial Developer of the Original Code is vtiger.
- * Portions created by vtiger are Copyright (C) vtiger.
- * All Rights Reserved.
- * Contributor(s): YetiForce.com
- * *********************************************************************************** */
+/**
+ * Delete record action file.
+ *
+ * @package Action
+ *
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
+ */
 
+/**
+ * Delete record action class.
+ */
 class Vtiger_Delete_Action extends \App\Controller\Action
 {
 	/**
@@ -18,9 +20,7 @@ class Vtiger_Delete_Action extends \App\Controller\Action
 	 */
 	protected $record;
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function checkPermission(App\Request $request)
 	{
 		if ($request->isEmpty('record', true)) {
@@ -32,18 +32,47 @@ class Vtiger_Delete_Action extends \App\Controller\Action
 		}
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function process(App\Request $request)
 	{
-		$this->record->delete();
+		$result = $this->performDelete($request);
+
 		$response = new Vtiger_Response();
-		if ('List' === $request->getByType('sourceView')) {
-			$response->setResult(['notify' => ['type' => 'success', 'text' => \App\Language::translate('LBL_RECORD_HAS_BEEN_DELETED')]]);
-		} else {
-			$response->setResult($this->record->getModule()->getListViewUrl());
-		}
+		$response->setEmitType(Vtiger_Response::$EMIT_JSON);
+		$response->setResult($result);
 		$response->emit();
+	}
+
+	/**
+	 * Perform delete action.
+	 *
+	 * @param App\Request $request
+	 *
+	 * @return array
+	 */
+	protected function performDelete(App\Request $request): array
+	{
+		$result = [];
+		$skipHandlers = $request->getArray('skipHandlers', \App\Purifier::ALNUM, [], \App\Purifier::INTEGER);
+		$eventHandler = $this->record->getEventHandler();
+		foreach ($eventHandler->getHandlers(\App\EventHandler::PRE_DELETE) as $handler) {
+			$handlerId = $handler['eventhandler_id'];
+			$response = $eventHandler->triggerHandler($handler);
+			if (!($response['result'] ?? null) && (!isset($response['hash'], $skipHandlers[$handlerId]) || $skipHandlers[$handlerId] !== $response['hash'])) {
+				$result[$handlerId] = $response;
+				if ($result && 'confirm' === ($response['type'] ?? '')) {
+					break;
+				}
+			}
+		}
+		if (!$result) {
+			$this->record->delete();
+			if ('List' === $request->getByType('sourceView')) {
+				$result = ['notify' => ['type' => 'success', 'text' => \App\Language::translate('LBL_RECORD_HAS_BEEN_DELETED')]];
+			} else {
+				$result = ['url' => $this->record->getModule()->getListViewUrl()];
+			}
+		}
+		return $result;
 	}
 }

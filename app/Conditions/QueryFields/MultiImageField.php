@@ -7,16 +7,14 @@ namespace App\Conditions\QueryFields;
  *
  * @package UIType
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 class MultiImageField extends BaseField
 {
-	/**
-	 * {@inheritdoc}
-	 */
-	public function operatorY()
+	/** {@inheritdoc} */
+	public function operatorY(): array
 	{
 		return ['or',
 			[$this->getColumnName() => null],
@@ -24,10 +22,8 @@ class MultiImageField extends BaseField
 		];
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
-	public function operatorNy()
+	/** {@inheritdoc} */
+	public function operatorNy(): array
 	{
 		return ['and',
 			['not', [$this->getColumnName() => null]],

@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * ********************************************************************************** */
 
 class VTJsonCondition
@@ -44,8 +44,10 @@ class VTJsonCondition
 					if (!empty($referenceFieldId)) {
 						$cond['fieldname'] = $fieldname;
 						if ('Users' !== $referenceModule) {
-							$referenceRecordModel = Vtiger_Record_Model::getInstanceById($referenceFieldId);
-							$result = $this->checkCondition($referenceRecordModel, $cond, $recordModel);
+							if (\App\Record::isExists($referenceFieldId)) {
+								$referenceRecordModel = Vtiger_Record_Model::getInstanceById($referenceFieldId);
+								$result = $this->checkCondition($referenceRecordModel, $cond, $recordModel);
+							}
 						} elseif ('Users' === \App\Fields\Owner::getType($referenceFieldId) && \App\User::getUserModel($referenceFieldId)->isActive()) {
 							$referenceRecordModel = Vtiger_Record_Model::getInstanceById($referenceFieldId, $referenceModule);
 							$result = $this->checkCondition($referenceRecordModel, $cond, $recordModel);
@@ -161,7 +163,7 @@ class VTJsonCondition
 		} else {
 			$fieldValue = $recordModel->get($cond['fieldname']);
 		}
-		$value = trim(html_entity_decode($cond['value']));
+		$value = trim(html_entity_decode($cond['value'] ?? ''));
 		$expressionType = $cond['valuetype'];
 		if ('fieldname' === $expressionType) {
 			if (null !== $referredRecordModel) {
@@ -181,6 +183,14 @@ class VTJsonCondition
 			}
 		}
 		switch ($dataType) {
+				case 'accountName':
+					$fieldValue = $recordModel->get($fieldInstance->getName());
+					$recordData = explode('|##|', $fieldValue);
+					if (\count($recordData) > 1) {
+						$fieldValue = trim("$recordData[0] $recordData[1]");
+					}
+					return $value === $fieldValue;
+					break;
 				case 'datetime':
 					$fieldValue = $recordModel->get($fieldInstance->getName());
 					break;
@@ -492,9 +502,6 @@ class VTJsonCondition
 			case 'has changed to':
 				$oldValue = $recordModel->getPreviousValue($cond['fieldname']);
 				return ($recordModel->isNew() || false !== $oldValue) && $recordModel->get($cond['fieldname']) == $value;
-			case 'is added':
-				//This condition was used only for comments. It should not execute from not from workflows, So it was always "FALSE"
-				return false;
 			case 'is Watching Record':
 				$watchdog = Vtiger_Watchdog_Model::getInstanceById($recordModel->getId(), $recordModel->getModuleName());
 				if ($watchdog->isWatchingRecord()) {
@@ -527,6 +534,8 @@ class VTJsonCondition
 					return false;
 				}
 				return true;
+			case 'not created by owner':
+				return $recordModel->get($fieldInstance->getName()) !== $recordModel->get('created_user_id');
 			default:
 				//Unexpected condition
 				throw new \App\Exceptions\AppException('Found an unexpected condition: ' . $condition);

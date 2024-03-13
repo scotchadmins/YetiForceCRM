@@ -5,36 +5,35 @@
  *
  * @package   Model
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Adach <a.adach@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
-class Calendar_ExportToIcal_Model extends Vtiger_Export_Model
+class Calendar_ExportToIcal_Model extends \App\Export\Records
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	protected $fileExtension = 'ics';
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getExportContentType(): string
 	{
 		return 'text/calendar';
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
-	public function sanitizeValues($arr)
+	/** {@inheritdoc} */
+	public function exportData()
+	{
+		$this->output([], $this->getExportQuery()->all());
+	}
+
+	/** {@inheritdoc} */
+	public function sanitizeValues($arr): array
 	{
 		return $arr;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function output($headers, $entries)
 	{
 		$calendar = \App\Integrations\Dav\Calendar::createEmptyInstance();

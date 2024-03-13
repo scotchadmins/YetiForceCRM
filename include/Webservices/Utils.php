@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 require_once 'modules/Users/Users.php';
@@ -56,10 +56,11 @@ class WebservicesUtils
 	}
 
 	/**
-	 * Function used to save the lead related products with other entities Account, Contact and Potential
-	 * $leadid - leadid
-	 * $relatedid - related entity id (accountid/contactid/potentialid)
-	 * $setype - related module(Accounts/Contacts).
+	 * Function used to save the lead related products with other entities Account, Contact and Potential.
+	 *
+	 * @param int    $leadId
+	 * @param int    $relatedId - related entity id (accountid/contactid/potentialid)
+	 * @param string $setype    - related module(Accounts/Contacts).
 	 */
 	public static function vtwsSaveLeadRelatedProducts($leadId, $relatedId, $setype)
 	{
@@ -89,10 +90,11 @@ class WebservicesUtils
 	}
 
 	/**
-	 * Function used to save the lead related services with other entities Account, Contact and Potential
-	 * $leadid - leadid
-	 * $relatedid - related entity id (accountid/contactid/potentialid)
-	 * $setype - related module(Accounts/Contacts).
+	 * Function used to save the lead related services with other entities Account, Contact and Potential.
+	 *
+	 * @param int    $leadId
+	 * @param int    $relatedId - related entity id (accountid/contactid/potentialid)
+	 * @param string $setype    - related module(Accounts/Contacts).
 	 */
 	public static function vtwsSaveLeadRelations($leadId, $relatedId, $setype)
 	{
@@ -141,7 +143,7 @@ class WebservicesUtils
 	 * @param int                 $fieldId
 	 * @param Vtiger_Module_Model $moduleModel
 	 *
-	 * @return null|Vtiger_Field_Model
+	 * @return Vtiger_Field_Model|null
 	 */
 	public static function vtwsGetFieldfromFieldId($fieldId, Vtiger_Module_Model $moduleModel)
 	{
@@ -165,7 +167,7 @@ class WebservicesUtils
 	public static function vtwsGetRelatedActivities($leadId, $accountId, $contactId, $relatedId)
 	{
 		if (empty($leadId) || empty($relatedId) || (empty($accountId) && empty($contactId))) {
-			throw new WebServiceException(WebServiceErrorCode::$LEAD_RELATED_UPDATE_FAILED, 'Failed to move related Activities/Emails');
+			throw new WebServiceException('LEAD_RELATEDLIST_UPDATE_FAILED', 'Failed to move related Activities/Emails');
 		}
 		$db = \App\Db::getInstance();
 		if (!empty($accountId)) {
@@ -181,8 +183,8 @@ class WebservicesUtils
 	/**
 	 * Function used to save the lead related Campaigns with Contact.
 	 *
-	 * @param $leadid - leadid
-	 * @param $relatedid - related entity id (contactid/accountid)
+	 * @param int $leadId
+	 * @param int $relatedId - related entity id (contactid/accountid)
 	 *
 	 * @return bool true on success, false otherwise
 	 */
@@ -203,14 +205,14 @@ class WebservicesUtils
 	/**
 	 * Function used to transfer all the lead related records to given Entity(Contact/Account) record.
 	 *
-	 * @param $leadid - leadid
-	 * @param $relatedid - related entity id (contactid/accountid)
-	 * @param $setype - related module(Accounts/Contacts)
+	 * @param int    $leadId
+	 * @param int    $relatedId - related entity id (contactid/accountid)
+	 * @param string $seType    - related module(Accounts/Contacts)
 	 */
 	public static function vtwsTransferLeadRelatedRecords($leadId, $relatedId, $seType)
 	{
 		if (empty($leadId) || empty($relatedId) || empty($seType)) {
-			throw new WebServiceException(WebServiceErrorCode::$LEAD_RELATED_UPDATE_FAILED, 'Failed to move related Records');
+			throw new WebServiceException('LEAD_RELATEDLIST_UPDATE_FAILED', 'Failed to move related Records');
 		}
 		static::vtwsGetRelatedNotesAttachments($leadId, $relatedId);
 		static::vtwsSaveLeadRelatedProducts($leadId, $relatedId, $seType);
@@ -243,8 +245,6 @@ class WebservicesUtils
 	public static function vtwsTransferRelatedRecords($sourceRecordId, $destinationRecordId)
 	{
 		$db = \App\Db::getInstance();
-		//OSSPasswords
-		$db->createCommand()->update('vtiger_osspasswords', ['linkto' => $destinationRecordId], ['linkto' => $sourceRecordId])->execute();
 		//Contacts
 		$db->createCommand()->update('vtiger_contactdetails', ['parentid' => $destinationRecordId], ['parentid' => $sourceRecordId])->execute();
 		//OutsourcedProducts

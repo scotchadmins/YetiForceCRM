@@ -6,7 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce Sp. z o.o
+ * Contributor(s): YetiForce S.A.
  * *********************************************************************************** */
 
 class Vtiger_DocumentsFileUpload_UIType extends Vtiger_Base_UIType
@@ -20,10 +20,13 @@ class Vtiger_DocumentsFileUpload_UIType extends Vtiger_Base_UIType
 	/** {@inheritdoc} */
 	public function getDisplayValue($value, $record = false, $recordModel = false, $rawText = false, $length = false)
 	{
+		if (empty($value)) {
+			return '';
+		}
 		if ($rawText) {
 			return \App\Purifier::encodeHtml($value);
 		}
-		$truncateValue = \App\TextParser::textTruncate($value, $this->getFieldModel()->get('maxlengthtext'));
+		$truncateValue = \App\TextUtils::textTruncate($value, $this->getFieldModel()->get('maxlengthtext'));
 		$truncateValue = \App\Purifier::encodeHtml($truncateValue);
 		if ($recordModel && !empty($value) && $recordModel->getValueByField('filestatus')) {
 			if ('I' === $recordModel->getValueByField('filelocationtype')) {
@@ -35,14 +38,14 @@ class Vtiger_DocumentsFileUpload_UIType extends Vtiger_Base_UIType
 				}
 			} else {
 				$value = \App\Purifier::encodeHtml($value);
-				$value = '<a href="' . $value . '" target="_blank" title="' . \App\Language::translate('LBL_DOWNLOAD_FILE', 'Documents') . '" rel="noreferrer noopener">' . $truncateValue . '</a>';
+				$value = '<a href="' . $value . '" target="_blank" title="' . $value . '" rel="noreferrer noopener">' . $truncateValue . '</a>';
 			}
 		}
 		return $value;
 	}
 
 	/** {@inheritdoc} */
-	public function getApiDisplayValue($value, Vtiger_Record_Model $recordModel)
+	public function getApiDisplayValue($value, Vtiger_Record_Model $recordModel, array $params = [])
 	{
 		$return = [];
 		if ($recordModel && !empty($value)) {
@@ -54,14 +57,16 @@ class Vtiger_DocumentsFileUpload_UIType extends Vtiger_Base_UIType
 						'name' => $row['name'],
 						'type' => $row['type'],
 						'size' => filesize($filePath),
-						'path' => 'Files',
-						'postData' => [
+						'path' => 'Files'
+					];
+					if ($recordModel->getValueByField('filestatus')) {
+						$return['postData'] = [
 							'module' => 'Documents',
 							'actionName' => 'DownloadFile',
 							'record' => $recordModel->getId(),
-							'fileid' => $row['attachmentsid'],
-						]
-					];
+							'key' => $row['attachmentsid'],
+						];
+					}
 				}
 			} else {
 				$return = [

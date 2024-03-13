@@ -5,7 +5,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
- * Contributor(s): YetiForce.com
+ * Contributor(s): YetiForce S.A.
  *************************************************************************************/
 'use strict';
 
@@ -86,7 +86,7 @@ jQuery.Class(
 					data: postData
 				};
 				if (type === 'sendByForm') {
-					app.openUrlMethodPost(massActionUrl, postData);
+					AppConnector.requestForm(massActionUrl, postData);
 					progressIndicatorElement.progressIndicator({ mode: 'hide' });
 				} else {
 					AppConnector.request(actionParams)
@@ -99,7 +99,7 @@ jQuery.Class(
 								if (responseData.result.reloadList) {
 									Vtiger_Detail_Js.reloadRelatedList();
 								}
-								if (responseData.result.procesStop) {
+								if (responseData.result.processStop) {
 									progressIndicatorElement.progressIndicator({ mode: 'hide' });
 									return false;
 								}
@@ -158,7 +158,7 @@ jQuery.Class(
 		},
 		triggerMassQuickCreate: function (moduleName, data) {
 			const self = this.relatedListInstance;
-			if (self.checkListRecordSelected() != true) {
+			if (self.checkListRecordSelected() !== true) {
 				let listParams = self.getSelectedParams();
 				let progress = $.progressIndicator({ blockInfo: { enabled: true } });
 				let params = {
@@ -296,13 +296,15 @@ jQuery.Class(
 				params['entityState'] = container.find('.entityState').val();
 			}
 			if (this.listSearchInstance) {
-				params.search_params = JSON.stringify(this.listSearchInstance.getListSearchParams());
+				params.search_params = this.listSearchInstance.getListSearchParams();
 				let searchValue = this.listSearchInstance.getAlphabetSearchValue();
 				if (typeof searchValue !== 'undefined' && searchValue.length > 0) {
 					params['search_key'] = this.listSearchInstance.getAlphabetSearchField();
 					params['search_value'] = searchValue;
 					params['operator'] = 's';
 				}
+				this.listSearchInstance.parseConditions(params);
+				params.search_params = JSON.stringify(params.search_params);
 			}
 			if (this.moduleName == 'Calendar') {
 				let switchBtn = container.find('.js-switch--calendar');
@@ -382,10 +384,16 @@ jQuery.Class(
 		},
 		showSelectRelation: function (extendParams) {
 			let params = $.extend(this.getRecordsListParams(), extendParams);
-			app.showRecordsList(params, (modal, instance) => {
+			app.showRecordsList(params, (_modal, instance) => {
 				instance.setSelectEvent((responseData) => {
-					this.addRelations(Object.keys(responseData)).done(() => {
-						app.event.trigger('RelatedListView.AfterSelectRelation', responseData, this, instance, params);
+					this.addRelations([], responseData).done(() => {
+						app.event.trigger(
+							'RelatedListView.AfterSelectRelation',
+							responseData.selectedRecords,
+							this,
+							instance,
+							params
+						);
 						let detail = Vtiger_Detail_Js.getInstance();
 						this.loadRelatedList().done(function () {
 							detail.registerRelatedModulesRecordCount();
@@ -807,20 +815,41 @@ jQuery.Class(
 		registerRowsEvent: function () {
 			const self = this;
 			if (this.relatedView === 'List' || this.relatedView === 'Detail') {
+				let lastEvent = false;
 				this.content.find('.listViewEntries').on('click', function (e) {
+					if ($(e.target).hasClass('js-no-link')) return;
 					if ($(e.target).closest('div').hasClass('actions')) return;
 					if ($(e.target).is('button') || $(e.target).parent().is('button') || $(e.target).is('a')) return;
 					if ($(e.target).closest('a').hasClass('noLinkBtn')) return;
-					if ($(e.target, $(e.currentTarget)).is('td:first-child')) return;
-					if ($(e.target).is('input[type="checkbox"]')) return;
-					if ($.contains($(e.currentTarget).find('td:last-child').get(0), e.target)) return;
-					if ($.contains($(e.currentTarget).find('td:first-child').get(0), e.target)) return;
-					let recordUrl = $(e.target).closest('tr').data('recordurl');
+					if ($(e.target).is('a')) return;
+					if ($(e.target).is('input')) return;
+					const element = $(e.currentTarget);
+					if ($(e.target, element).is('td:first-child')) return;
+					if ($.contains(element.find('td:last-child').get(0), e.target)) return;
+					if ($.contains(element.find('td:first-child').get(0), e.target)) return;
+					let recordUrl = element.data('recordurl');
 					if (!recordUrl) return;
-					if (app.getViewName() === 'DetailPreview') {
-						top.document.location.href = recordUrl;
+
+					if (lastEvent) {
+						lastEvent = e.timeStamp;
+						if (element.find('.js-quick-edit-modal').length) {
+							element.find('.js-quick-edit-modal').trigger('click');
+						} else if (element.find('.js-full-edit').length) {
+							element.find('.js-full-edit').trigger('click');
+						}
 					} else {
-						document.location.href = recordUrl;
+						lastEvent = e.timeStamp;
+						setTimeout(() => {
+							if (lastEvent === e.timeStamp) {
+								if (app.getViewName() === 'DetailPreview') {
+									top.document.location.href = recordUrl;
+								} else {
+									document.location.href = recordUrl;
+								}
+							} else {
+								lastEvent = false;
+							}
+						}, 300);
 					}
 				});
 				this.content.find('.js-toggle-hidden-row').on('click', function (e) {
@@ -960,9 +989,8 @@ jQuery.Class(
 			});
 		},
 		registerListEvents: function () {
-			let relatedContent = this.content;
 			let thisInstance = this;
-			this.content.find('a.favorites').on('click', function (e) {
+			this.content.find('a.favorites').on('click', function () {
 				let progressInstance = jQuery.progressIndicator({
 					position: 'html',
 					blockInfo: {
@@ -991,7 +1019,7 @@ jQuery.Class(
 					}
 				});
 			});
-			this.content.find('[name="addButton"]').on('click', function (e) {
+			this.content.find('[name="addButton"]').on('click', function () {
 				const element = $(this);
 				if (element.hasClass('quickCreateSupported') !== true) {
 					app.openUrl(element.data('url'));
@@ -999,7 +1027,7 @@ jQuery.Class(
 				}
 				thisInstance.addRelatedRecord(element);
 			});
-			this.content.find('.relatedHeader button.selectRelation').on('click', function (e) {
+			this.content.find('.relatedHeader button.selectRelation').on('click', function () {
 				let restrictionsField = $(this).data('rf');
 				let params = {
 					relationId: thisInstance.getCompleteParams()['relationId']
@@ -1016,21 +1044,32 @@ jQuery.Class(
 			this.content.find('button.relationDelete').on('click', function (e) {
 				e.stopImmediatePropagation();
 				let target = $(e.currentTarget);
-				let params = {};
+				let params = {
+					icon: false,
+					confirmedCallback: () => {
+						thisInstance.deleteRelation(target);
+					}
+				};
 				if (target.data('confirm')) {
-					params.message = target.data('confirm');
+					params.text = target.data('confirm');
 					params.title = target.html() + ' ' + target.data('content');
 				} else if (target.data('content')) {
-					params.message = target.data('content');
+					params.text = target.data('content');
 				} else {
-					params.message = app.vtranslate('JS_DELETE_CONFIRMATION');
+					params.text = app.vtranslate('JS_DELETE_CONFIRMATION');
 				}
-				Vtiger_Helper_Js.showConfirmationBox(params).done(function () {
-					thisInstance.deleteRelation(target);
-				});
+				app.showConfirmModal(params);
 			});
-			this.content.find('.js-switch--calendar,select.js-relation-cv-id').on('change', function (e) {
-				thisInstance.loadRelatedList();
+			this.content.find('.js-switch--calendar,select.js-relation-cv-id').on('change', function () {
+				thisInstance.listSearchInstance.reloadList({
+					search_params: [],
+					search_key: '',
+					search_value: '',
+					operator: '',
+					lockedEmptyFields: [],
+					page: 1,
+					totalCount: 0
+				});
 			});
 		},
 		registerPostLoadEvents: function () {
@@ -1053,22 +1092,17 @@ jQuery.Class(
 			}
 			app.event.trigger('RelatedList.AfterLoad', thisInstance);
 		},
-		getSecondColMinWidth: function (container) {
-			let maxWidth = 0,
-				thisWidth;
-			container.find('.js-list__row').each(function (i) {
-				thisWidth = $(this).find('.js-list__field').first().width();
-				if (i === 0) {
-					maxWidth = thisWidth;
-				} else {
-					thisWidth > maxWidth ? (maxWidth = thisWidth) : maxWidth;
-				}
-			});
-			return maxWidth;
+		getListColumnWidth: function () {
+			let width = 300;
+			let column = this.container.find('.listViewEntriesDiv .listViewHeaders th:eq(1)');
+			if (column.length) {
+				width = column.offset().left + column.width();
+			}
+			return width;
 		},
 		setDomParams: function (container) {
-			this.listColumnFirstWidth = container.find('.listViewEntriesDiv .listViewHeaders th').first().width();
-			this.listColumnSecondWidth = this.getSecondColMinWidth(container);
+			this.container = container;
+			this.listColumnWidth = this.getListColumnWidth();
 			this.windowW = $(window).width();
 			this.mainBody = container.closest('.mainBody');
 			this.windowMinWidth = (15 / this.windowW) * 100;
@@ -1083,7 +1117,7 @@ jQuery.Class(
 			this.headerH = $('.js-header').outerHeight();
 		},
 		getDefaultSplitSizes: function () {
-			let thWidth = ((this.listColumnFirstWidth + this.listColumnSecondWidth + 82) / this.windowW) * 100;
+			let thWidth = (this.listColumnWidth / this.windowW) * 100;
 			return [thWidth, 100 - thWidth];
 		},
 		getSplitSizes() {
@@ -1253,7 +1287,6 @@ jQuery.Class(
 					app.moduleCacheSet('userRelatedSplitSet', split.getSizes());
 				}
 			});
-			this.gutter = container.find('.gutter');
 			if (splitSizes[0] < 10) {
 				this.gutter.addClass('js-gutter-corr-left');
 				this.sideBlockLeft.addClass('d-block');
@@ -1263,6 +1296,7 @@ jQuery.Class(
 				this.sideBlockRight.addClass('d-block');
 				this.preview.hide();
 			}
+			this.gutter = container.find('.gutter');
 			let mainWindowHeightCss = {
 				height: $(window).height() - this.list.offset().top - this.footerH
 			};
@@ -1291,7 +1325,7 @@ jQuery.Class(
 			this.split = this.registerSplit(container);
 			splitsArray.push(this.split);
 			$(window).on('resize', () => {
-				if ($(window).width() < 993) {
+				if (this.windowW < 993) {
 					if (container.find('.gutter').length) {
 						splitsArray[splitsArray.length - 1].destroy();
 						this.sideBlockRight.removeClass('d-block');
@@ -1313,7 +1347,7 @@ jQuery.Class(
 						splitsArray.push(this.split);
 					}
 					let currentSplit = splitsArray[splitsArray.length - 1];
-					let minWidth = (15 / $(window).width()) * 100;
+					let minWidth = (15 / this.windowW) * 100;
 					let maxWidth = 100 - minWidth;
 					if (typeof currentSplit === 'undefined') return;
 					if (currentSplit.getSizes()[0] < minWidth + 5) {
@@ -1367,10 +1401,7 @@ jQuery.Class(
 		},
 		checkListRecordSelected: function (minNumberOfRecords = 1) {
 			let selectedIds = this.readSelectedIds();
-			if (typeof selectedIds === 'object' && selectedIds.length < minNumberOfRecords) {
-				return true;
-			}
-			return false;
+			return typeof selectedIds === 'object' && selectedIds.length < minNumberOfRecords;
 		},
 		readSelectedIds: function (decode) {
 			let selectedIdsDataAttr = this.getCurrentCvId() + 'selectedIds',
@@ -1516,20 +1547,6 @@ jQuery.Class(
 			});
 		},
 		/**
-		 * Register quick edit save event description.
-		 */
-		registerQuickEditSaveEvent() {
-			app.event.on('QuickEdit.AfterSaveFinal', (e, data, instance, element) => {
-				if (this.moduleName === instance.data('moduleName')) {
-					if (element.closest('.js-detail-widget').length) {
-						Vtiger_Detail_Js.getInstance().postSummaryWidgetAddRecord(data, element);
-					} else {
-						this.loadRelatedList();
-					}
-				}
-			});
-		},
-		/**
 		 * Register change related view.
 		 */
 		registerChangeViewEvent() {
@@ -1537,6 +1554,63 @@ jQuery.Class(
 			self.getRelatedContainer().on('click', '.js-change-related-view', function () {
 				self.relatedView = this.dataset.view;
 				self.loadRelatedList();
+			});
+		},
+		/**
+		 * Register mass records events.
+		 */
+		registerMassRecordsEvents: function () {
+			const self = this;
+			self.getRelatedContainer().on('click', '.js-mass-record-event', function () {
+				let target = $(this);
+				if (self.checkListRecordSelected() !== true) {
+					if (target.data('type') === 'modal') {
+						let params = self.getSelectedParams();
+						target.data('url').replace(/[?&]+([^=&]+)=([^&]*)/gi, function (_m, key, value) {
+							params[key] = value;
+						});
+						AppConnector.request({
+							type: 'POST',
+							url: target.data('url'),
+							data: params
+						}).done(function (modal) {
+							app.showModalWindow(modal);
+						});
+					} else {
+						let params = {
+							icon: false,
+							confirmedCallback: () => {
+								let progressIndicatorElement = $.progressIndicator(),
+									dataParams = self.getSearchParams();
+								delete dataParams.view;
+								AppConnector.request({
+									type: 'POST',
+									url: target.data('url'),
+									data: dataParams
+								})
+									.done(function (data) {
+										progressIndicatorElement.progressIndicator({ mode: 'hide' });
+										if (data && data.result && data.result.notify) {
+											Vtiger_Helper_Js.showMessage(data.result.notify);
+										}
+										self.getListViewRecords();
+									})
+									.fail(function (error, err) {
+										progressIndicatorElement.progressIndicator({ mode: 'hide' });
+									});
+							}
+						};
+						if (target.data('confirm')) {
+							params.text = target.data('confirm');
+							params.title = target.html();
+						} else {
+							params.text = target.html();
+						}
+						app.showConfirmModal(params);
+					}
+				} else {
+					self.noRecordSelectedAlert();
+				}
 			});
 		},
 		/**
@@ -1553,8 +1627,8 @@ jQuery.Class(
 			this.registerMainCheckBoxClickEvent();
 			this.registerSelectAllClickEvent();
 			this.registerDeselectAllClickEvent();
-			this.registerQuickEditSaveEvent();
 			this.registerChangeViewEvent();
+			this.registerMassRecordsEvents();
 			YetiForce_ListSearch_Js.registerSearch(this.content, (data) => {
 				this.loadRelatedList(data);
 			});

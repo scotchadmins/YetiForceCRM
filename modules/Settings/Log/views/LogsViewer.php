@@ -3,8 +3,8 @@
 /**
  * Log list viewer file.
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadisz Sołek <a.solek@yetiforce.com>
  */
 /**
@@ -22,7 +22,7 @@ class Settings_Log_LogsViewer_View extends Settings_Vtiger_Index_View
 		$type = $request->has('type') ? $request->getByType('type', 'Text') : 'magento';
 		$viewer = $this->getViewer($request);
 		$viewer->assign('TYPE', $type);
-		$viewer->assign('MAPPING', \App\Log::$logsViewerColumnMapping[$type]);
+		$viewer->assign('MAPPING', \App\Log::LOGS_VIEWER_COLUMN_MAP[$type]);
 		$viewer->view('LogsViewer.tpl', $request->getModule(false));
 	}
 }

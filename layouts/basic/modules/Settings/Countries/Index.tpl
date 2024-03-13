@@ -1,4 +1,4 @@
-{*<!-- {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
+{*<!-- {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} -->*}
 {strip}
 	<div class="">
 		<div class="o-breadcrumb widget_header row">
@@ -16,13 +16,13 @@
 						<input class="js-switch js-update-get-default-phone-country" type="radio" name="defaultPhoneCountry"
 							data-js="change" id="defaultPhoneCountry1" autocomplete="off" value="1"
 							{if $DEFAULT_PHONE_COUNTRY}checked{/if}>
-							{\App\Language::translate('LBL_DEFAULT_PHONE_FROM_PANEL', $QUALIFIED_MODULE)}
+						{\App\Language::translate('LBL_DEFAULT_PHONE_FROM_PANEL', $QUALIFIED_MODULE)}
 					</label>
 					<label class="btn btn-sm btn-outline-primary {if !$DEFAULT_PHONE_COUNTRY} active {/if}">
 						<input class="js-switch js-update-get-default-phone-country" type="radio" name="defaultPhoneCountry"
 							data-js="change" id="defaultPhoneCountry2" autocomplete="off" value="0"
-							{if !$DEFAULT_PHONE_COUNTRY}checked{/if} >
-							{\App\Language::translate('LBL_DEFAULT_PHONE_FROM_USER', $QUALIFIED_MODULE)}
+							{if !$DEFAULT_PHONE_COUNTRY}checked{/if}>
+						{\App\Language::translate('LBL_DEFAULT_PHONE_FROM_USER', $QUALIFIED_MODULE)}
 					</label>
 				</div>
 			</div>
@@ -51,7 +51,7 @@
 								<span class="fas fa-ellipsis-v" title="{\App\Purifier::encodeHtml(\App\Language::translate('LBL_DRAG',$QUALIFIED_MODULE))}"></span>
 							</td>
 							<td nowrap class="{$WIDTHTYPE}">
-								{\App\Purifier::encodeHtml(\App\Language::translateSingleMod($ROW['name'],'Other.Country'))}
+								{\App\Language::translateSingleMod($ROW['name'],'Other.Country')}
 							</td>
 							<td nowrap class="{$WIDTHTYPE}">
 								{\App\Purifier::encodeHtml($ROW['code'])}

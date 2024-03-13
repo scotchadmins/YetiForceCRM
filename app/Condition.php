@@ -5,10 +5,11 @@
  *
  * @package App
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Tomasz Kur <t.kur@yetiforce.com>
  * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 
 namespace App;
@@ -19,10 +20,9 @@ namespace App;
 class Condition
 {
 	/**
-	 * Data filter list.
+	 * @var array Data filter list.
 	 */
 	const DATE_OPERATORS = [
-		'custom' => ['label' => 'LBL_CUSTOM'],
 		'smallerthannow' => ['label' => 'LBL_SMALLER_THAN_NOW'],
 		'greaterthannow' => ['label' => 'LBL_GREATER_THAN_NOW'],
 		'prevfy' => ['label' => 'LBL_PREVIOUS_FY'],
@@ -56,8 +56,14 @@ class Condition
 		'next120days' => ['label' => 'LBL_NEXT_120_DAYS'],
 		'moreThanDaysAgo' => ['label' => 'LBL_DATE_CONDITION_MORE_THAN_DAYS_AGO'],
 	];
+
 	/**
-	 * Supported advanced filter operations.
+	 * @var string[] List of field comparison operators
+	 */
+	const FIELD_COMPARISON_OPERATORS = ['ef', 'nf', 'lf', 'gf', 'mf', 'hf'];
+
+	/**
+	 * @var string[] Supported advanced filter operations.
 	 */
 	const STANDARD_OPERATORS = [
 		'e' => 'LBL_EQUALS',
@@ -80,6 +86,7 @@ class Condition
 		'om' => 'LBL_CURRENTLY_LOGGED_USER',
 		'nom' => 'LBL_USER_CURRENTLY_NOT_LOGGED',
 		'ogr' => 'LBL_CURRENTLY_LOGGED_USER_GROUP',
+		'ogu' => 'LBL_USERS_GROUP_LOGGED_IN_USER',
 		'wr' => 'LBL_IS_WATCHING_RECORD',
 		'nwr' => 'LBL_IS_NOT_WATCHING_RECORD',
 		'hs' => 'LBL_HAS_CHANGED',
@@ -87,12 +94,19 @@ class Condition
 		'ro' => 'LBL_IS_RECORD_OPEN',
 		'rc' => 'LBL_IS_RECORD_CLOSED',
 		'nco' => 'LBL_NOT_CREATED_BY_OWNER',
+		'ef' => 'LBL_EQUALS_FIELD',
+		'nf' => 'LBL_NOT_EQUAL_TO_FIELD',
+		'lf' => 'LBL_LESS_THAN_FIELD',
+		'gf' => 'LBL_GREATER_THAN_FIELD',
+		'mf' => 'LBL_LESS_THAN_OR_EQUAL_FIELD',
+		'hf' => 'LBL_GREATER_OR_EQUAL_FIELD',
 	];
+
 	/**
-	 * Operators without values.
+	 * @var string[] Operators without values.
 	 */
 	const OPERATORS_WITHOUT_VALUES = [
-		'y', 'ny', 'om', 'nom', 'ogr', 'wr', 'nwr', 'hs', 'ro', 'rc', 'nco',
+		'y', 'ny', 'om', 'nom', 'ogr', 'wr', 'nwr', 'hs', 'ro', 'rc', 'nco', 'ogu',
 		'smallerthannow',
 		'greaterthannow',
 		'prevfy',
@@ -133,6 +147,29 @@ class Condition
 	private static $recordCache = [];
 
 	/**
+	 * Gets operator labels.
+	 *
+	 * @param array $operators
+	 *
+	 * @return string[]
+	 */
+	public static function getOperatorLabels(array $operators): array
+	{
+		$labels = [];
+		foreach ($operators as $operator) {
+			$label = '';
+			if (isset(self::STANDARD_OPERATORS[$operator])) {
+				$label = self::STANDARD_OPERATORS[$operator];
+			} elseif (isset(self::DATE_OPERATORS[$operator])) {
+				$label = self::DATE_OPERATORS[$operator]['label'];
+			}
+			$labels[$operator] = $label;
+		}
+
+		return $labels;
+	}
+
+	/**
 	 * Checks structure search_params.
 	 *
 	 * @param string $moduleName
@@ -167,14 +204,15 @@ class Condition
 					if (!isset($fields[$referenceField], $relatedFields[$relatedFieldName])) {
 						throw new Exceptions\IllegalValue("ERR_FIELD_NOT_FOUND||{$param[0]}||" . Utils::varExport($param, true), 406);
 					}
-					$fieldModel = $relatedFields[$relatedFieldName];
+					$value = $relatedFields[$relatedFieldName]->getUITypeModel()->getDbConditionBuilderValue($param[2], $param[1]);
+				} elseif (0 === strpos($param[0], 'relationColumn_') && preg_match('/(^relationColumn_)(\d+)$/', $param[0])) {
+					$value = (int) $param[2];
 				} else {
 					if (!isset($fields[$param[0]])) {
 						throw new Exceptions\IllegalValue("ERR_FIELD_NOT_FOUND||{$param[0]}||" . Utils::varExport($param, true), 406);
 					}
-					$fieldModel = $fields[$param[0]];
+					$value = $fields[$param[0]]->getUITypeModel()->getDbConditionBuilderValue($param[2], $param[1]);
 				}
-				$value = $fieldModel->getUITypeModel()->getDbConditionBuilderValue($param[2], $param[1]);
 				if ($convert) {
 					$param[2] = $value;
 				}
@@ -219,9 +257,9 @@ class Condition
 				} else {
 					$operator = $condition['operator'];
 					$value = $condition['value'] ?? '';
-					if (!\in_array($operator, self::OPERATORS_WITHOUT_VALUES + array_keys(self::DATE_OPERATORS))) {
+					if (!\in_array($operator, array_merge(self::OPERATORS_WITHOUT_VALUES, self::FIELD_COMPARISON_OPERATORS, array_keys(self::DATE_OPERATORS)))) {
 						[$fieldName, $fieldModuleName,] = array_pad(explode(':', $condition['fieldname']), 3, false);
-						$value = \Vtiger_Field_Model::getInstance($fieldName, \Vtiger_Module_Model::getInstance($fieldModuleName))
+						$value = \Vtiger_Module_Model::getInstance($fieldModuleName)->getFieldByName($fieldName)
 							->getUITypeModel()
 							->getDbConditionBuilderValue($value, $operator);
 					}
@@ -255,7 +293,7 @@ class Condition
 	 */
 	private static function parseConditions(?array $conditions, \Vtiger_Record_Model $recordModel): bool
 	{
-		if (empty($conditions)) {
+		if (empty($conditions) || empty($conditions['rules'])) {
 			return true;
 		}
 		$result = false;
@@ -290,7 +328,7 @@ class Condition
 	public static function checkCondition(array $rule, \Vtiger_Record_Model $recordModel): bool
 	{
 		[$fieldName, $moduleName, $sourceFieldName] = array_pad(explode(':', $rule['fieldname']), 3, false);
-		if (!empty($sourceFieldName)) {
+		if ($sourceFieldName) {
 			if ($recordModel->isEmpty($sourceFieldName)) {
 				return false;
 			}
@@ -330,7 +368,7 @@ class Condition
 		if (isset($conditions['rules'])) {
 			foreach ($conditions['rules'] as &$condition) {
 				if (isset($condition['condition'])) {
-					$condition = static::getFieldsFromConditions($condition);
+					$fields = array_merge_recursive($fields, static::getFieldsFromConditions($condition));
 				} else {
 					[$fieldName, $moduleName, $sourceFieldName] = array_pad(explode(':', $condition['fieldname']), 3, false);
 					if ($sourceFieldName) {
@@ -342,5 +380,60 @@ class Condition
 			}
 		}
 		return $fields;
+	}
+
+	/**
+	 * Remove field from conditions.
+	 *
+	 * @param string $baseModuleName The base name of the module for which conditions have been set
+	 * @param array  $conditions
+	 * @param string $moduleName     The module name of the field to be deleted.
+	 * @param string $fieldName      The name of the field to be deleted
+	 *
+	 * @return array
+	 */
+	public static function removeFieldFromCondition(string $baseModuleName, array $conditions, string $moduleName, string $fieldName): array
+	{
+		if (isset($conditions['rules'])) {
+			foreach ($conditions['rules'] as $key => &$condition) {
+				if (isset($condition['condition'])) {
+					$condition = static::removeFieldFromCondition($baseModuleName, $condition, $moduleName, $fieldName);
+				} else {
+					[$cFieldName, $cModuleName, $sourceFieldName] = array_pad(explode(':', $condition['fieldname']), 3, false);
+					if (($fieldName === $cFieldName && $moduleName === $cModuleName) || ($sourceFieldName && $sourceFieldName === $fieldName && $moduleName === $baseModuleName)) {
+						$condition = [];
+					}
+				}
+				if (empty($condition)) {
+					unset($conditions['rules'][$key]);
+				}
+			}
+			if (empty($conditions['rules'] = array_filter($conditions['rules']))) {
+				$conditions = [];
+			}
+		}
+		return $conditions;
+	}
+
+	/**
+	 * Checks structure advancedConditions.
+	 *
+	 * @param array $advancedConditions
+	 *
+	 * @return array
+	 */
+	public static function validAdvancedConditions(array $advancedConditions): array
+	{
+		if (!empty($advancedConditions['relationConditions']) && 0 != $advancedConditions['relationId']) {
+			$advancedConditions['relationConditions'] = self::getConditionsFromRequest($advancedConditions['relationConditions']);
+		}
+		if (!empty($advancedConditions['relationColumns'])) {
+			array_map(function ($v) {
+				if (!\App\Validator::integer($v)) {
+					throw new \App\Exceptions\IllegalValue('ERR_NOT_ALLOWED_VALUE||' . $v, 406);
+				}
+			}, $advancedConditions['relationColumns']);
+		}
+		return $advancedConditions;
 	}
 }

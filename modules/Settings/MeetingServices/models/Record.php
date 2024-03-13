@@ -4,9 +4,10 @@
  *
  * @package   Settings.Model
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
 
 /**
@@ -49,28 +50,17 @@ class Settings_MeetingServices_Record_Model extends Settings_Vtiger_Record_Model
 		return 'index.php?parent=Settings&module=MeetingServices&view=Edit&record=' . $this->getId();
 	}
 
-	/**
-	 * Function to get the list view actions for the record.
-	 *
-	 * @return array - Associate array of Vtiger_Link_Model instances
-	 */
-	public function getRecordLinks()
+	/** {@inheritdoc} */
+	public function getRecordLinks(): array
 	{
 		$links = [];
 		$recordLinks = [
 			[
 				'linktype' => 'LISTVIEWRECORD',
-				'linklabel' => 'BTN_COPY_API_KEY',
-				'linkicon' => 'fas fa-copy',
-				'linkclass' => 'btn btn-sm btn-primary js-clipboard',
-				'linkdata' => ['copy-attribute' => 'clipboard-text', 'clipboard-text' => \App\Purifier::encodeHtml($this->get('key'))]
-			],
-			[
-				'linktype' => 'LISTVIEWRECORD',
 				'linklabel' => 'BTN_RECORD_EDIT',
 				'linkdata' => ['url' => $this->getEditViewUrl()],
 				'linkicon' => 'yfi yfi-full-editing-view',
-				'linkclass' => 'btn btn-sm btn-primary js-edit-record'
+				'linkclass' => 'btn btn-sm btn-primary js-edit-record-modal',
 			],
 			[
 				'linktype' => 'LISTVIEWRECORD',
@@ -109,6 +99,7 @@ class Settings_MeetingServices_Record_Model extends Settings_Vtiger_Record_Model
 
 		if ($row = \App\MeetingService::getService($id)) {
 			$instance = new self();
+			$row['secret'] = \App\Encryption::getInstance()->decrypt($row['secret']);
 			$instance->setData($row);
 		}
 		return $instance;
@@ -136,10 +127,10 @@ class Settings_MeetingServices_Record_Model extends Settings_Vtiger_Record_Model
 		$db = App\Db::getInstance();
 		$params = array_intersect_key($this->getData(), $this->getModule()->getFormFields());
 		$tableName = $this->getModule()->baseTable;
+		$params['secret'] = \App\Encryption::getInstance()->encrypt($params['secret']);
 		if ($this->getId()) {
 			$result = $db->createCommand()->update($tableName, $params, ['id' => $this->getId()])->execute();
 		} else {
-			$params['key'] = \App\Encryption::generatePassword(self::KEY_LENGTH);
 			$result = $db->createCommand()->insert($tableName, $params)->execute();
 			$this->set('id', $db->getLastInsertID("{$tableName}_id_seq"));
 		}
@@ -159,18 +150,10 @@ class Settings_MeetingServices_Record_Model extends Settings_Vtiger_Record_Model
 	{
 		foreach ($this->getModule()->getFormFields() as $fieldName => $fieldInfo) {
 			if ($request->has($fieldName)) {
-				switch ($fieldName) {
-					case 'secret':
-						$value = \App\Encryption::getInstance()->encrypt($request->getRaw($fieldName));
-						break;
-					default:
-						$value = $request->getByType($fieldName, $fieldInfo['purifyType']);
-						$fieldModel = $this->getFieldInstanceByName($fieldName)->getUITypeModel();
-						$fieldModel->validate($value, true);
-						$value = $fieldModel->getDBValue($value);
-						break;
-				}
-				$this->set($fieldName, $value);
+				$value = $request->getByType($fieldName, $fieldInfo['purifyType']);
+				$fieldModel = $this->getFieldInstanceByName($fieldName)->getUITypeModel();
+				$fieldModel->validate($value, true);
+				$this->set($fieldName, $fieldModel->getDBValue($value));
 			}
 		}
 	}
@@ -205,32 +188,31 @@ class Settings_MeetingServices_Record_Model extends Settings_Vtiger_Record_Model
 			'label' => $fields[$name]['label'],
 			'fieldvalue' => $this->get($name) ?? $fields[$name]['default'] ?? '',
 			'typeofdata' => $fields[$name]['required'] ? 'V~M' : 'V~O',
-			'maximumlength' => $fields[$name]['maximumlength'] ?? ''
+			'maximumlength' => $fields[$name]['maximumlength'] ?? '',
 		];
 		switch ($name) {
 			case 'url':
 				$params['uitype'] = 17;
+				$params['maximumlength'] = '250';
 				break;
 			case 'status':
 				$params['uitype'] = 56;
 				$params['typeofdata'] = 'C~O';
 				break;
-			case 'secret':
-				$params['uitype'] = 99;
-				break;
 		}
 		return \Vtiger_Field_Model::init($moduleName, $params, $name);
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
+	/** {@inheritdoc} */
 	public function getDisplayValue(string $key)
 	{
 		$value = $this->get($key);
 		switch ($key) {
 			case 'status':
 				$value = \App\Language::translate(1 == $value ? 'LBL_ACTIVE' : 'LBL_INACTIVE', $this->getModule()->getName(true));
+				break;
+			default:
+				$value = \App\Purifier::encodeHtml($value);
 				break;
 		}
 		return $value;

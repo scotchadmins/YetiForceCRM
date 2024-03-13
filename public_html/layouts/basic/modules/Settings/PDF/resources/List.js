@@ -1,4 +1,4 @@
-/* {[The file is published on the basis of YetiForce Public License 3.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
+/* {[The file is published on the basis of YetiForce Public License 5.0 that can be found in the following directory: licenses/LicenseEN.txt or yetiforce.com]} */
 'use strict';
 
 Settings_Vtiger_List_Js(
@@ -35,8 +35,16 @@ Settings_Vtiger_List_Js(
 		registerRowClickEvent: function () {
 			var listViewContentDiv = this.getListViewContentContainer();
 			listViewContentDiv.on('click', '.listViewEntries', function (e) {
-				var editUrl = jQuery(e.currentTarget).find('.fas').closest('a').attr('href');
-				window.location.href = editUrl;
+				if ($(e.target).closest('div').hasClass('actions')) return;
+				if ($(e.target).is('button') || $(e.target).parent().is('button')) return;
+				if ($(e.target).closest('a').hasClass('noLinkBtn')) return;
+				if ($(e.target).is('input[type="checkbox"]')) return;
+				if ($.contains($(e.currentTarget).find('td:last-child').get(0), e.target)) return;
+				if ($.contains($(e.currentTarget).find('td:first-child').get(0), e.target)) return;
+				let recordUrl = $(e.currentTarget).find('a.js-edit').attr('href');
+				if (typeof recordUrl !== 'undefined') {
+					window.location.href = recordUrl;
+				}
 			});
 		},
 		getDefaultParams: function () {
@@ -76,12 +84,13 @@ Settings_Vtiger_List_Js(
 				e.stopPropagation();
 				e.preventDefault();
 				let deleteId = $(this).closest('tr').data('id');
-				Vtiger_Helper_Js.showConfirmationBox({
-					message: app.vtranslate('JS_LBL_ARE_YOU_SURE_YOU_WANT_TO_DELETE')
-				}).done(function (e) {
-					Settings_PDF_List_Js.deleteById(deleteId, false).done(function () {
-						self.registerTemplateDelete(container);
-					});
+				app.showConfirmModal({
+					title: app.vtranslate('JS_LBL_ARE_YOU_SURE_YOU_WANT_TO_DELETE'),
+					confirmedCallback: () => {
+						Settings_PDF_List_Js.deleteById(deleteId, false).done(function () {
+							self.registerTemplateDelete(container);
+						});
+					}
 				});
 			});
 		},

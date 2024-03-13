@@ -1,21 +1,30 @@
 <?php
 
 /**
- * UIType multi email Field Class.
+ * UIType multi email field file.
  *
  * @package   UIType
  *
- * @copyright YetiForce Sp. z o.o
- * @license   YetiForce Public License 3.0 (licenses/LicenseEN.txt or yetiforce.com)
+ * @copyright YetiForce S.A.
+ * @license   YetiForce Public License 5.0 (licenses/LicenseEN.txt or yetiforce.com)
  * @author    Arkadiusz Adach <a.adach@yetiforce.com>
  * @author    Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
+ * @author    Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ */
+/**
+ * UIType multi email field class.
  */
 class Vtiger_MultiEmail_UIType extends Vtiger_Email_UIType
 {
 	/** {@inheritdoc} */
 	public function getDbConditionBuilderValue($value, string $operator)
 	{
-		return \App\Purifier::decodeHtml($value);
+		if (!empty($value)) {
+			$value = array_filter(explode(',', \App\Purifier::decodeHtml($value)));
+			$value = implode(',', array_map('trim', $value));
+		}
+
+		return $value;
 	}
 
 	/** {@inheritdoc} */
@@ -78,13 +87,17 @@ class Vtiger_MultiEmail_UIType extends Vtiger_Email_UIType
 		}
 		$emails = [];
 		foreach ($value as $item) {
+			if ($rawText || false === $this->getFieldModel()->getParam('consenticon')) {
+				$emails[] = parent::getDisplayValue($item['e'], $record, $recordModel, $rawText, false);
+				continue;
+			}
 			if ($item['o']) {
-				$emails[] = parent::getDisplayValue($item['e'], $record, $recordModel, $rawText, $length) . '<span class="fas fa-check text-success ml-2" title="' . \App\Language::translate('LBL_CONSENT_TO_SEND') . '"></span>';
+				$emails[] = parent::getDisplayValue($item['e'], $record, $recordModel, $rawText, false) . '<span class="fas fa-check text-success ml-1" title="' . \App\Language::translate('LBL_CONSENT_TO_SEND') . '"></span>';
 			} else {
-				$emails[] = parent::getDisplayValue($item['e'], $record, $recordModel, true, $length) . '<span class="fas fa-ban text-danger ml-2"></span>';
+				$emails[] = parent::getDisplayValue($item['e'], $record, $recordModel, true, false) . '<span class="fas fa-ban text-danger ml-1"></span>';
 			}
 		}
-		return implode('<br>', $emails);
+		return \App\Layout::truncateHtml(implode(', ', $emails), 'miniHtml', $length ?: 100, true);
 	}
 
 	/** {@inheritdoc} */
@@ -103,7 +116,7 @@ class Vtiger_MultiEmail_UIType extends Vtiger_Email_UIType
 	/** {@inheritdoc} */
 	public function getListViewDisplayValue($value, $record = false, $recordModel = false, $rawText = false)
 	{
-		return strip_tags($this->getDisplayValue($value, $record, $recordModel, $rawText), '<br>');
+		return $this->getDisplayValue($value, $record, $recordModel, $rawText, $this->getFieldModel()->get('maxlengthtext') ?: 50);
 	}
 
 	/** {@inheritdoc} */
@@ -115,7 +128,7 @@ class Vtiger_MultiEmail_UIType extends Vtiger_Email_UIType
 	/** {@inheritdoc} */
 	public function getQueryOperators()
 	{
-		return ['c', 'k', 'y', 'ny'];
+		return ['e', 'n', 'c', 'k', 'y', 'ny', 'ef', 'nf'];
 	}
 
 	/** {@inheritdoc} */
