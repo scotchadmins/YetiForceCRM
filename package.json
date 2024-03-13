@@ -39,7 +39,7 @@
     "css-element-queries": "^1.2.3",
     "datatables.net": "^2.0.2",
     "datatables.net-bs4": "^2.0.2",
-    "datatables.net-responsive-bs4": "^2.2.9",
+    "datatables.net-responsive-bs4": "^3.0.0",
     "device-uuid": "^1.0.4",
     "emoji-mart-vue-fast": "^15",
     "flag-icons": "^7.2.0",
