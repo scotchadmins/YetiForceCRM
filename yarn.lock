@@ -214,7 +214,7 @@ csstype@^3.1.0:
   resolved "https://registry.yarnpkg.com/csstype/-/csstype-3.1.2.tgz#1d4bf9d572f11c14031f0436e1c10bc1f571f50b"
   integrity sha512-I7K1Uu0MBPzaFKg4nI5Q7Vs2t+3gWWW648spaF+Rg7pI9ds18Ugn+lvg4SHczUdKlHI5LWBXyqfS8+DufyBsgQ==
 
-datatables.net-bs4@>=1.13.4, datatables.net-bs4@^2.0.2:
+datatables.net-bs4@>=2.0.0, datatables.net-bs4@^2.0.2:
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/datatables.net-bs4/-/datatables.net-bs4-2.0.2.tgz#d282637ac2bedd09ae9b56c4a44e1d718e6b6f36"
   integrity sha512-n1P/vkfLaGW7v+Nme1NnrwCSp/zl7Y5lHlK7KRBxfoPvUS/42ZChDUCA4v3yDPiH5DQmx8dJhCPI16O20DHZEg==
@@ -222,24 +222,24 @@ datatables.net-bs4@>=1.13.4, datatables.net-bs4@^2.0.2:
     datatables.net "2.0.2"
     jquery ">=1.7"
 
-datatables.net-responsive-bs4@^2.2.9:
-  version "2.5.0"
-  resolved "https://registry.yarnpkg.com/datatables.net-responsive-bs4/-/datatables.net-responsive-bs4-2.5.0.tgz#ba628bc9030297c00dc584bfa53e453fc1c5dff3"
-  integrity sha512-APa2fqjCoPGZWStXoMfQ1nD5QGbSc2WXyHqnsNfZ8N9aAF4E/VSIXrQ9HYUx0xqs4lfUKCpqplrOoP9oMytkiQ==
+datatables.net-responsive-bs4@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/datatables.net-responsive-bs4/-/datatables.net-responsive-bs4-3.0.0.tgz#20f58d19b3e629b134f1bb98abd8c8ba230f5308"
+  integrity sha512-UYNxDdT1mch7aPWQJyKdmCYMeDwGjyn06vFL/cR6dNNZEOqUfO+i2glmFZzx4i/ghl5qhP9qNFaRAzb3ks1IWQ==
   dependencies:
-    datatables.net-bs4 ">=1.13.4"
-    datatables.net-responsive ">=2.4.1"
+    datatables.net-bs4 ">=2.0.0"
+    datatables.net-responsive "3.0.0"
     jquery ">=1.7"
 
-datatables.net-responsive@>=2.4.1:
-  version "2.5.0"
-  resolved "https://registry.yarnpkg.com/datatables.net-responsive/-/datatables.net-responsive-2.5.0.tgz#56919903646648f362f58c25784794fb89effda1"
-  integrity sha512-GL7DFiRl5qqrp5ql54Psz92xTGPR0rMcrO3hzNxMfvcfpRGL5zFNTvMpTUh59Erm6u1+KoX+j+Ig1ZD3r0iFsA==
+datatables.net-responsive@3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/datatables.net-responsive/-/datatables.net-responsive-3.0.0.tgz#230382ed4058079164dd3cdfeb2dd08712428e16"
+  integrity sha512-6O+hZREfZ6bj86bEFOVYH76OgqETX7t0EsfKWwKuo8gpYe50SE9QPcy7DKsuO1swqluwS+442QIVsLfIXoBnNg==
   dependencies:
-    datatables.net ">=1.13.4"
+    datatables.net ">=2.0.0"
     jquery ">=1.7"
 
-datatables.net@2.0.2, datatables.net@>=1.13.4:
+datatables.net@2.0.2, datatables.net@>=2.0.0:
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/datatables.net/-/datatables.net-2.0.2.tgz#50e5e8a392d9c0cf6c96c4e4228e4f50ced58128"
   integrity sha512-uQM+s1oXhpTajUw5DCxarpfAtQJMh0MKFCLZMCc+UWLWPg8ipe6L2zgDMbRC8n9UCwGVpHOwUYlQu2JU1/PhSg==
