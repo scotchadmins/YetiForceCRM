@@ -4947,20 +4947,20 @@
         },
         {
             "name": "simshaun/recurr",
-            "version": "v5.0.1",
+            "version": "v5.0.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/simshaun/recurr.git",
-                "reference": "6887b7bd7075de97c8c69835e0939ff68d23c47e"
+                "reference": "1aff62e6e0ee875b3f2487352542605123ee9172"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/simshaun/recurr/zipball/6887b7bd7075de97c8c69835e0939ff68d23c47e",
-                "reference": "6887b7bd7075de97c8c69835e0939ff68d23c47e",
+                "url": "https://api.github.com/repos/simshaun/recurr/zipball/1aff62e6e0ee875b3f2487352542605123ee9172",
+                "reference": "1aff62e6e0ee875b3f2487352542605123ee9172",
                 "shasum": ""
             },
             "require": {
-                "doctrine/collections": "~1.6",
+                "doctrine/collections": "~1.6||^2.0",
                 "php": "^7.2||^8.0"
             },
             "require-dev": {
@@ -5000,9 +5000,9 @@
             ],
             "support": {
                 "issues": "https://github.com/simshaun/recurr/issues",
-                "source": "https://github.com/simshaun/recurr/tree/v5.0.1"
+                "source": "https://github.com/simshaun/recurr/tree/v5.0.2"
             },
-            "time": "2022-09-09T05:37:22+00:00"
+            "time": "2023-09-26T20:31:33+00:00"
         },
         {
             "name": "smarty/smarty",
