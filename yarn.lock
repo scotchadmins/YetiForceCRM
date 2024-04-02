@@ -246,6 +246,13 @@ datatables.net@2.0.2, datatables.net@>=2.0.0:
   dependencies:
     jquery ">=1.7"
 
+datatables.net@^2.0.2:
+  version "2.0.3"
+  resolved "https://registry.yarnpkg.com/datatables.net/-/datatables.net-2.0.3.tgz#55456745e3f305698288a17f83955bc1c5ff48a6"
+  integrity sha512-phq7jhkjIlVdahZYa2nd/yeiDgFrvT++Sily3GgztG3T7qqdAWkjtLuGA2Pv5p7XBwkJ0zwf+0KDRU54uR7WAg==
+  dependencies:
+    jquery ">=1.7"
+
 dayjs@^1.8.16:
   version "1.11.9"
   resolved "https://registry.yarnpkg.com/dayjs/-/dayjs-1.11.9.tgz#9ca491933fadd0a60a2c19f6c237c03517d71d1a"
@@ -438,10 +445,10 @@ nanoid@^3.3.6:
   resolved "https://registry.yarnpkg.com/nanoid/-/nanoid-3.3.6.tgz#443380c856d6e9f9824267d960b4236ad583ea4c"
   integrity sha512-BGcqMMJuToF7i1rt+2PWSNVnWIkGCU78jBG3RxO/bZlnZPK2Cmi2QaffxGO/2RvWi9sL+FAiRiXMgsyxQ1DIDA==
 
-overlayscrollbars@^2.6.1:
-  version "2.6.1"
-  resolved "https://registry.yarnpkg.com/overlayscrollbars/-/overlayscrollbars-2.6.1.tgz#50210de1d869ed0bf027de11cf705f5b9591a097"
-  integrity sha512-V+ZAqWMYMyGBJNRDEcdRC7Ch+WT9RBx9hY8bfJSMyFObQeJoecs1Vqg7ZAzBVcpN6sCUXFAZldCbeySwmmD0RA==
+overlayscrollbars@^2.7.0:
+  version "2.7.0"
+  resolved "https://registry.yarnpkg.com/overlayscrollbars/-/overlayscrollbars-2.7.0.tgz#1ada2d1e0440a19d8ea26c5022062eb51c3d4549"
+  integrity sha512-ApBoB8NZyPLqmfuhzYsNVYNRbqQ91fUEWOOhnCp3JJ2/vvKOKHq8jC4ZBgxH5zHKB+5FVidQ8pVIsRyPrry3Dg==
 
 perfect-scrollbar@^1.3.0:
   version "1.5.5"
