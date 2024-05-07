@@ -246,6 +246,13 @@ datatables.net@2.0.2, datatables.net@>=2.0.0:
   dependencies:
     jquery ">=1.7"
 
+datatables.net@^2.0.2:
+  version "2.0.6"
+  resolved "https://registry.yarnpkg.com/datatables.net/-/datatables.net-2.0.6.tgz#4f7d0658e397fea35a5195c19709d25850c6d19d"
+  integrity sha512-p9hJAwBZ2svrL8sbJPsy58ERsRHOL6+eshvfYHmqV2AGgtR/2GUzFQjPlCGXcUOoXlOhymMk2g4FSJluvlqGyg==
+  dependencies:
+    jquery ">=1.7"
+
 dayjs@^1.8.16:
   version "1.11.9"
   resolved "https://registry.yarnpkg.com/dayjs/-/dayjs-1.11.9.tgz#9ca491933fadd0a60a2c19f6c237c03517d71d1a"
@@ -472,10 +479,10 @@ preact@~10.12.1:
   resolved "https://registry.yarnpkg.com/preact/-/preact-10.12.1.tgz#8f9cb5442f560e532729b7d23d42fd1161354a21"
   integrity sha512-l8386ixSsBdbreOAkqtrwqHwdvR35ID8c3rKPa8lCWuO86dBi32QWHV4vfsZK1utLLFMvw+Z5Ad4XLkZzchscg==
 
-quasar@^2.15.0:
-  version "2.15.0"
-  resolved "https://registry.yarnpkg.com/quasar/-/quasar-2.15.0.tgz#7be519c5bcedcdc63394540b38dd70cbee4dd7d8"
-  integrity sha512-yREEAoG6bkH4Mt2NbRfIGU1K/t0Iw3ILx75evdR3qKT0XHjjyDnvu++MQc3b9K79AYqZvcmVfmNncKozC3NU5g==
+quasar@^2.16.0:
+  version "2.16.0"
+  resolved "https://registry.yarnpkg.com/quasar/-/quasar-2.16.0.tgz#c168a3a135fb67c39bd1e8e5fa82880a7dd2a412"
+  integrity sha512-j0MSuGuIAOQdtg/zEn/7jMIZjqS00Kp4t4h/0+HCqEkf6mxtwOJoaC7s0rIC+6AVYIErCTiXrp7Hmkt32Hom1w==
 
 regenerator-runtime@^0.13.11:
   version "0.13.11"
