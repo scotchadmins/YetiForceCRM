@@ -246,6 +246,13 @@ datatables.net@2.0.2, datatables.net@>=2.0.0:
   dependencies:
     jquery ">=1.7"
 
+datatables.net@^2.0.2:
+  version "2.0.8"
+  resolved "https://registry.yarnpkg.com/datatables.net/-/datatables.net-2.0.8.tgz#5199f0f2c26d8bba653af74cea035e9e07166768"
+  integrity sha512-4/2dYx4vl975zQqZbyoVEm0huPe61qffjBRby7K7V+y9E+ORq4R8KavkgrNMmIgO6cl85Pg4AvCbVjvPCIT1Yg==
+  dependencies:
+    jquery ">=1.7"
+
 dayjs@^1.8.16:
   version "1.11.9"
   resolved "https://registry.yarnpkg.com/dayjs/-/dayjs-1.11.9.tgz#9ca491933fadd0a60a2c19f6c237c03517d71d1a"
@@ -322,10 +329,10 @@ good-listener@^1.2.2:
   dependencies:
     delegate "^3.1.2"
 
-gridstack@^10.1.1:
-  version "10.1.1"
-  resolved "https://registry.yarnpkg.com/gridstack/-/gridstack-10.1.1.tgz#2aa8f9ce0825230ec22b4f440ead8ea9548ed8ac"
-  integrity sha512-pUd+5Bz8KJr/O4JrjKjGoVHAPOB4G+aW3xOM8xK7FZj6msEsbELcAxKFCwm3irjjd4zglE1jdaEPp7b2TObg9w==
+gridstack@^10.2.0:
+  version "10.2.0"
+  resolved "https://registry.yarnpkg.com/gridstack/-/gridstack-10.2.0.tgz#4ba9c7ee69a730851721a9f5cb33dc55026ded1f"
+  integrity sha512-svKAOq/dfinpvhe/nnxdyZOOEd9qynXiOPHvL96PALE0yWChWp/6lechnqKwud0tL/rRyAfMJ6Hh/z2fS13pBA==
 
 html2canvas@^1.0.0-alpha.12:
   version "1.4.1"
