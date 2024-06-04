@@ -214,12 +214,12 @@ csstype@^3.1.0:
   resolved "https://registry.yarnpkg.com/csstype/-/csstype-3.1.2.tgz#1d4bf9d572f11c14031f0436e1c10bc1f571f50b"
   integrity sha512-I7K1Uu0MBPzaFKg4nI5Q7Vs2t+3gWWW648spaF+Rg7pI9ds18Ugn+lvg4SHczUdKlHI5LWBXyqfS8+DufyBsgQ==
 
-datatables.net-bs4@>=2.0.0, datatables.net-bs4@^2.0.2:
-  version "2.0.2"
-  resolved "https://registry.yarnpkg.com/datatables.net-bs4/-/datatables.net-bs4-2.0.2.tgz#d282637ac2bedd09ae9b56c4a44e1d718e6b6f36"
-  integrity sha512-n1P/vkfLaGW7v+Nme1NnrwCSp/zl7Y5lHlK7KRBxfoPvUS/42ZChDUCA4v3yDPiH5DQmx8dJhCPI16O20DHZEg==
+datatables.net-bs4@>=2.0.0, datatables.net-bs4@^2.0.8:
+  version "2.0.8"
+  resolved "https://registry.yarnpkg.com/datatables.net-bs4/-/datatables.net-bs4-2.0.8.tgz#aae2657f4bef93a0043b901e523e62e4178f21d0"
+  integrity sha512-AUnimPFMpduIPuU/w0C35EEtRdpblsQ/1Qr3OXN1qX5JjDC4ZWK63Xbhqd1XoA/jubDUjXHkxQVfCqhtygS4rw==
   dependencies:
-    datatables.net "2.0.2"
+    datatables.net "2.0.8"
     jquery ">=1.7"
 
 datatables.net-responsive-bs4@^3.0.0:
@@ -239,10 +239,10 @@ datatables.net-responsive@3.0.0:
     datatables.net ">=2.0.0"
     jquery ">=1.7"
 
-datatables.net@2.0.2, datatables.net@>=2.0.0:
-  version "2.0.2"
-  resolved "https://registry.yarnpkg.com/datatables.net/-/datatables.net-2.0.2.tgz#50e5e8a392d9c0cf6c96c4e4228e4f50ced58128"
-  integrity sha512-uQM+s1oXhpTajUw5DCxarpfAtQJMh0MKFCLZMCc+UWLWPg8ipe6L2zgDMbRC8n9UCwGVpHOwUYlQu2JU1/PhSg==
+datatables.net@2.0.8, datatables.net@>=2.0.0, datatables.net@^2.0.2:
+  version "2.0.8"
+  resolved "https://registry.yarnpkg.com/datatables.net/-/datatables.net-2.0.8.tgz#5199f0f2c26d8bba653af74cea035e9e07166768"
+  integrity sha512-4/2dYx4vl975zQqZbyoVEm0huPe61qffjBRby7K7V+y9E+ORq4R8KavkgrNMmIgO6cl85Pg4AvCbVjvPCIT1Yg==
   dependencies:
     jquery ">=1.7"
 
