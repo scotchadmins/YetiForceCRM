@@ -73,7 +73,7 @@
     "yetiforce/yii2": "^2.0.43",
     "yetiforce/yetiforcepdf": "0.1.40",
     "adhocore/jwt": "^1.0",
-    "zbateson/mail-mime-parser": "^2.0",
+    "zbateson/mail-mime-parser": "^3.0",
     "mlocati/spf-lib": "^3",
     "phpmailer/dkimvalidator": "^v0.3",
     "league/climate": "^3.6",
