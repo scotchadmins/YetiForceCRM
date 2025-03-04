@@ -239,7 +239,7 @@ datatables.net-responsive@3.0.0:
     datatables.net ">=2.0.0"
     jquery ">=1.7"
 
-datatables.net@2.0.2, datatables.net@>=2.0.0, datatables.net@^2.0.2:
+datatables.net@2.0.2, datatables.net@>=2.0.0:
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/datatables.net/-/datatables.net-2.0.2.tgz#50e5e8a392d9c0cf6c96c4e4228e4f50ced58128"
   integrity sha512-uQM+s1oXhpTajUw5DCxarpfAtQJMh0MKFCLZMCc+UWLWPg8ipe6L2zgDMbRC8n9UCwGVpHOwUYlQu2JU1/PhSg==
@@ -329,10 +329,10 @@ good-listener@^1.2.2:
   dependencies:
     delegate "^3.1.2"
 
-gridstack@^10.1.1:
-  version "10.1.1"
-  resolved "https://registry.yarnpkg.com/gridstack/-/gridstack-10.1.1.tgz#2aa8f9ce0825230ec22b4f440ead8ea9548ed8ac"
-  integrity sha512-pUd+5Bz8KJr/O4JrjKjGoVHAPOB4G+aW3xOM8xK7FZj6msEsbELcAxKFCwm3irjjd4zglE1jdaEPp7b2TObg9w==
+gridstack@^11.4.0:
+  version "11.4.0"
+  resolved "https://registry.yarnpkg.com/gridstack/-/gridstack-11.4.0.tgz#5d98a471c90a3e8c478382ac71f5a63551eb83c4"
+  integrity sha512-V1faqcHZjbXODt/cMg8a0aIN1uqqR4R5lENTls3sP8vbArvHrYAa9UPzzJWR6+RqPMLxmFG/OG2Evnmu/XOE9A==
 
 html2canvas@^1.0.0-alpha.12:
   version "1.4.1"
